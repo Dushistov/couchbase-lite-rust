@@ -26,7 +26,7 @@ pool:
 
 steps:
   - checkout: self
-    submodules: true
+    submodules: recursive
   - bash: |
       set -e
       export RUSTUP_HOME=$HOME/.rustup

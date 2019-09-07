@@ -26,7 +26,7 @@ pool:
 
 steps:
   - checkout: self
-    submodules: true
+    submodules: recursive
   - bash: |
       set -e
       export RUSTUP_HOME=$HOME/.rustup
@@ -55,6 +55,24 @@ steps:
       rustup component add rustfmt --toolchain $RUSTUP_TOOLCHAIN
       rustfmt --version
     displayName: "Rust post-install"
+  - script: |
+      curl http://releases.llvm.org/5.0.2/LLVM-5.0.2-win64.exe -o llvm-installer.exe
+      7z x llvm-installer.exe -oc:\llvm-binary
+      echo ##vso[task.setvariable variable=LIBCLANG_PATH]C:\llvm-binary\bin
+      echo ##vso[task.setvariable variable=PATH]%PATH%;C:\llvm-binary\bin
+    condition: and(eq( variables['Agent.OS'], 'Windows_NT' ), eq( variables['platform'], 'x64' ))
+    displayName: Install llvm on windows 64bit
+  - script: |
+      curl http://releases.llvm.org/5.0.2/LLVM-5.0.2-win32.exe -o llvm-installer.exe
+      7z x llvm-installer.exe -oc:\llvm-binary
+      echo ##vso[task.setvariable variable=LIBCLANG_PATH]C:\llvm-binary\bin
+      set JAVA_PKG=zulu8.40.0.25-ca-jdk8.0.222-win_i686
+      curl https://cdn.azul.com/zulu/bin/%JAVA_PKG%.zip -o java-win_i686.zip
+      7z x java-win_i686.zip -oc:\
+      echo ##vso[task.setvariable variable=JAVA_HOME]C:\%JAVA_PKG%
+      echo ##vso[task.setvariable variable=PATH]c:\%JAVA_PKG%\bin;%PATH%;C:\llvm-binary\bin
+    condition: and(eq( variables['Agent.OS'], 'Windows_NT' ), eq( variables['platform'], 'x86' ))
+    displayName: Install dependicies on windows 32bit
   - bash: |
       set -e
       if [ "$GCC_VARIANT" == "gcc-8" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test && sudo apt-get update -qq && sudo apt-get install -qq g++-8 && sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 90; fi
@@ -64,6 +82,7 @@ steps:
     displayName: Install gcc-8 if required
   - bash: |
       set -e
+      clang --version
       rustc -vV
       cargo -vV
       cmake --version

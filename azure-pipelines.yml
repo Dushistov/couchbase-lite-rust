@@ -1,0 +1,72 @@
+strategy:
+  matrix:
+    linux-stable:
+      imageName: 'ubuntu-16.04'
+      rustup_toolchain: stable
+    linux-stable-gcc-8:
+      imageName: 'ubuntu-16.04'
+      rustup_toolchain: stable
+      gcc_variant: gcc-8
+    mac-stable:
+      imageName: 'macos-10.14'
+      rustup_toolchain: stable
+    linux-beta:
+      imageName: 'ubuntu-16.04'
+      rustup_toolchain: beta
+    windows-stable-64bit:
+      imageName: 'vs2017-win2016'
+      rustup_toolchain: stable-x86_64-pc-windows-msvc
+      platform: x64
+    windows-stable-32bit:
+      imageName: 'vs2017-win2016'
+      rustup_toolchain: stable-i686-pc-windows-msvc
+      platform: x86
+pool:
+  vmImage: $(imageName)
+
+steps:
+  - checkout: self
+    submodules: true
+  - bash: |
+      set -e
+      export RUSTUP_HOME=$HOME/.rustup
+      export CARGO_HOME=$HOME/.cargo
+      echo ##vso[task.setvariable variable=RUSTUP_HOME]$HOME/.rustup
+      echo ##vso[task.setvariable variable=CARGO_HOME]$HOME/.cargo
+      curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $RUSTUP_TOOLCHAIN
+      echo "##vso[task.prependpath]$HOME/.cargo/bin"
+    condition: ne( variables['Agent.OS'], 'Windows_NT' )
+    displayName: Install Rust on linux/mac
+  - script: |
+      set RUSTUP_HOME=%USERPROFILE%\.rustup
+      set CARGO_HOME=%USERPROFILE%\.cargo
+      echo ##vso[task.setvariable variable=RUSTUP_HOME]%USERPROFILE%\.rustup
+      echo ##vso[task.setvariable variable=CARGO_HOME]%USERPROFILE%\.cargo
+      curl -sSf -o rustup-init.exe https://win.rustup.rs
+      rustup-init.exe -y --default-toolchain %RUSTUP_TOOLCHAIN%
+      echo ##vso[task.setvariable variable=PATH]%PATH%;%USERPROFILE%\.cargo\bin
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
+    displayName: Install Rust on windows
+  - bash: |
+      set -e
+      rustup default $RUSTUP_TOOLCHAIN
+      rustup update $RUSTUP_TOOLCHAIN
+      rustc -vV
+      rustup component add rustfmt --toolchain $RUSTUP_TOOLCHAIN
+      rustfmt --version
+    displayName: "Rust post-install"
+  - bash: |
+      set -e
+      if [ "$GCC_VARIANT" == "gcc-8" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test && sudo apt-get update -qq && sudo apt-get install -qq g++-8 && sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 90; fi
+      gcc --version
+      g++ --version
+    condition: eq( variables['Agent.OS'], 'Linux' )
+    displayName: Install gcc-8 if required
+  - bash: |
+      set -e
+      rustc -vV
+      cargo -vV
+      cmake --version
+      cargo build
+      cargo test
+    displayName: Build and run tests

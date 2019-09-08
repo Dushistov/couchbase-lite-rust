@@ -90,7 +90,6 @@ fn main() {
         includes.append(&mut addon_include_dirs);
         framework_dirs.append(&mut addon_framework_dirs);
     }
-    println!("AAAAA: framework_dirs {:?}", framework_dirs);
     run_bindgen_for_c_headers(
         &target,
         &includes,

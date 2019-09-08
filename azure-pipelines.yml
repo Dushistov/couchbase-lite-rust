@@ -88,4 +88,5 @@ steps:
       cmake --version
       cargo build
       cargo test
+      cargo test --release
     displayName: Build and run tests

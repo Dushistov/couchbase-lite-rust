@@ -44,6 +44,7 @@ mod doc_enumerator;
 mod document;
 mod error;
 mod fl_slice;
+mod log;
 mod query;
 mod transaction;
 mod value;
@@ -66,8 +67,10 @@ use crate::{
         C4DocumentVersioning, C4EncryptionAlgorithm, C4EncryptionKey, C4String,
     },
     fl_slice::AsFlSlice,
+    log::DB_LOGGER,
     transaction::Transaction,
 };
+use once_cell::sync::Lazy;
 use std::{path::Path, ptr::NonNull};
 
 /// Database configuration, used during open
@@ -104,6 +107,7 @@ impl Drop for Database {
 
 impl Database {
     pub fn open(path: &Path, cfg: DatabaseConfig) -> Result<Database> {
+        Lazy::force(&DB_LOGGER);
         let mut error = c4error_init();
         let os_path_utf8 = path.to_str().ok_or(Error::Utf8)?;
         let os_path_utf8: C4String = os_path_utf8.as_flslice();

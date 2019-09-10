@@ -14,6 +14,7 @@ struct Foo {
 
 #[test]
 fn test_write_read() {
+    let _ = env_logger::try_init();
     let tmp_dir = tempdir().expect("Can not create tmp directory");
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");

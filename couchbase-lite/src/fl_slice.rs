@@ -1,5 +1,5 @@
 use crate::ffi::{FLSlice, FLSliceResult, FLSliceResult_Release};
-use std::{borrow::Cow, os::raw::c_void, slice};
+use std::{borrow::Cow, os::raw::c_void, ptr, slice, str};
 
 pub(crate) trait AsFlSlice {
     fn as_flslice(&self) -> FLSlice;
@@ -47,4 +47,19 @@ impl From<FLSliceResult> for FlSliceOwner {
     fn from(x: FLSliceResult) -> Self {
         Self(x)
     }
+}
+
+impl Default for FlSliceOwner {
+    fn default() -> Self {
+        Self(FLSliceResult {
+            buf: ptr::null(),
+            size: 0,
+        })
+    }
+}
+
+#[inline]
+pub(crate) unsafe fn fl_slice_to_str_unchecked<'a>(s: FLSlice) -> &'a str {
+    let bytes: &[u8] = slice::from_raw_parts(s.buf as *const u8, s.size);
+    str::from_utf8_unchecked(bytes)
 }

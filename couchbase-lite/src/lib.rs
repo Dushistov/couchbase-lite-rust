@@ -1,28 +1,48 @@
 //! couchbase-lite is an ergonomic wrapper for using couchbase-lite-core from Rust.
 //! ```rust
-//! use couchbase_lite::{Database, DatabaseConfig};
+//! # #[macro_use]
+//! # extern crate serde;
+//! # use serde::{Serialize, Deserialize};
+//! use couchbase_lite::{Database, DatabaseConfig, Document};
 //! use std::path::Path;
 //!
+//! #[derive(Serialize, Deserialize, Debug)]
+//! #[serde(tag = "type")]
+//! struct Message {
+//!     msg: String,
+//! }
+//!
 //! fn main() -> Result<(), couchbase_lite::Error> {
-//!     let db = Database::open(Path::new("a.cblite2"), DatabaseConfig::default())?;
+//!     let mut db = Database::open(Path::new("a.cblite2"), DatabaseConfig::default())?;
+//!     {
+//!         let msg = Message { msg: "Test message".into() };
+//!         let mut trans = db.transaction()?;
+//!         let mut doc = Document::new(&msg)?;
+//!         trans.save(&mut doc)?;
+//!         trans.commit()?;
+//!     }
 //!     Ok(())
 //! }
 //! ```
 
+mod document;
 mod error;
 mod fl_slice;
+mod transaction;
 
-pub use crate::error::Error;
+pub use crate::{document::Document, error::Error};
 pub use couchbase_lite_core_sys as ffi;
 
 use crate::{
+    document::C4DocumentOwner,
     error::{c4error_init, Result},
     ffi::{
-        c4db_free, c4db_open, kC4DB_Create, kC4EncryptionNone, kC4RevisionTrees,
+        c4db_free, c4db_open, c4doc_get, kC4DB_Create, kC4EncryptionNone, kC4RevisionTrees,
         kC4SQLiteStorageEngine, C4Database, C4DatabaseConfig, C4DatabaseFlags,
         C4DocumentVersioning, C4EncryptionAlgorithm, C4EncryptionKey, C4String,
     },
     fl_slice::AsFlSlice,
+    transaction::Transaction,
 };
 use std::{path::Path, ptr::NonNull};
 
@@ -67,5 +87,27 @@ impl Database {
         NonNull::new(db_ptr)
             .map(|inner| Database { inner })
             .ok_or_else(|| error.into())
+    }
+
+    pub(crate) fn internal_get(&self, doc_id: &str, must_exists: bool) -> Result<C4DocumentOwner> {
+        let mut c4err = c4error_init();
+        let doc_ptr = unsafe {
+            c4doc_get(
+                self.inner.as_ptr(),
+                doc_id.as_bytes().as_flslice(),
+                must_exists,
+                &mut c4err,
+            )
+        };
+        NonNull::new(doc_ptr)
+            .map(C4DocumentOwner)
+            .ok_or_else(|| c4err.into())
+    }
+
+    /// Begin a new transaction, the transaction defaults to rolling back
+    /// when it is dropped. If you want the transaction to commit,
+    /// you must call `Transaction::commit`
+    pub fn transaction(&mut self) -> Result<Transaction> {
+        Transaction::new(self)
     }
 }

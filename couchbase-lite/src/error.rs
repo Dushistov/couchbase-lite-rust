@@ -12,6 +12,12 @@ pub enum Error {
     DbError(C4Error),
     /// UTF-8 encoding problem
     Utf8,
+    /// `serde_json::Error`
+    SerdeJson(serde_json::Error),
+    /// some invariant was broken
+    LogicError(String),
+    /// `json5::Error`
+    Json5(json5::Error),
 }
 
 impl std::error::Error for Error {}
@@ -30,7 +36,10 @@ impl fmt::Display for Error {
                     msg.as_utf8_lossy()
                 )
             }
-            Error::Utf8 => write!(fmt, "utf8 encoding/decoding error"),
+            Error::Utf8 => write!(fmt, "Utf8 encoding/decoding error"),
+            Error::Json5(err) => write!(fmt, "Json5: {}", err),
+            Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
+            Error::SerdeJson(err) => write!(fmt, "SerdeJson: {}", err),
         }
     }
 }
@@ -48,7 +57,10 @@ impl fmt::Debug for Error {
                     msg.as_utf8_lossy()
                 )
             }
-            Error::Utf8 => write!(fmt, "utf8 encoding/decoding error"),
+            Error::Utf8 => write!(fmt, "Utf8 encoding/decoding error"),
+            Error::Json5(err) => write!(fmt, "Json5: {:?}", err),
+            Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
+            Error::SerdeJson(err) => write!(fmt, "SerdeJson: {:?}", err),
         }
     }
 }
@@ -71,5 +83,17 @@ pub(crate) fn c4error_init() -> C4Error {
         domain: kC4MaxErrorDomainPlus1 as C4ErrorDomain,
         code: 0,
         internal_info: 0,
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Error::SerdeJson(e)
+    }
+}
+
+impl From<json5::Error> for Error {
+    fn from(error: json5::Error) -> Self {
+        Error::Json5(error)
     }
 }

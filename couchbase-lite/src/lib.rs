@@ -3,7 +3,10 @@
 //! # #[macro_use]
 //! # extern crate serde;
 //! # use serde::{Serialize, Deserialize};
-//! use couchbase_lite::{Database, DatabaseConfig, Document};
+//! use couchbase_lite::{
+//!     Database, DatabaseConfig, Document,
+//!     fallible_streaming_iterator::FallibleStreamingIterator
+//! };
 //! use std::path::Path;
 //!
 //! #[derive(Serialize, Deserialize, Debug)]
@@ -21,6 +24,18 @@
 //!         trans.save(&mut doc)?;
 //!         trans.commit()?;
 //!     }
+//!     println!("we have {} documents in db", db.document_count());
+//!     let query = db.query(r#"{"WHAT": ["._id"], "WHERE": ["=", [".type"], "Message"]}"#)?;
+//!     let mut iter = query.run()?;
+//!     while let Some(item) = iter.next()? {
+//!         let id = item.get_raw_checked(0)?;
+//!         let id = id.as_str()?;
+//!         let doc = db.get_existsing(id)?;
+//!         println!("doc id {}", doc.id());
+//!         let db_msg: Message = doc.decode_data()?;
+//!         println!("db_msg: {:?}", db_msg);
+//!         assert_eq!("Test message", db_msg.msg);
+//!     }
 //!     Ok(())
 //! }
 //! ```
@@ -28,17 +43,20 @@
 mod document;
 mod error;
 mod fl_slice;
+mod query;
 mod transaction;
+mod value;
 
-pub use crate::{document::Document, error::Error};
+pub use crate::{document::Document, error::Error, query::Query};
 pub use couchbase_lite_core_sys as ffi;
+pub use fallible_streaming_iterator;
 
 use crate::{
     document::C4DocumentOwner,
     error::{c4error_init, Result},
     ffi::{
-        c4db_free, c4db_open, c4doc_get, kC4DB_Create, kC4EncryptionNone, kC4RevisionTrees,
-        kC4SQLiteStorageEngine, C4Database, C4DatabaseConfig, C4DatabaseFlags,
+        c4db_free, c4db_getDocumentCount, c4db_open, c4doc_get, kC4DB_Create, kC4EncryptionNone,
+        kC4RevisionTrees, kC4SQLiteStorageEngine, C4Database, C4DatabaseConfig, C4DatabaseFlags,
         C4DocumentVersioning, C4EncryptionAlgorithm, C4EncryptionKey, C4String,
     },
     fl_slice::AsFlSlice,
@@ -109,5 +127,21 @@ impl Database {
     /// you must call `Transaction::commit`
     pub fn transaction(&mut self) -> Result<Transaction> {
         Transaction::new(self)
+    }
+    /// Returns the number of (undeleted) documents in the database
+    pub fn document_count(&self) -> u64 {
+        unsafe { c4db_getDocumentCount(self.inner.as_ptr()) }
+    }
+    /// Return existing document from database
+    pub fn get_existsing(&self, doc_id: &str) -> Result<Document> {
+        self.internal_get(doc_id, true)
+            .map(|x| Document::new_internal(x, doc_id))
+    }
+
+    /// Compiles a query from an expression given as JSON.
+    /// The expression is a predicate that describes which documents should be returned.
+    /// A separate, optional sort expression describes the ordering of the results.
+    pub fn query(&self, query_json: &str) -> Result<Query> {
+        Query::new(self, query_json)
     }
 }

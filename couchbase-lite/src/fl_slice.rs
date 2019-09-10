@@ -23,6 +23,13 @@ impl<'a> AsFlSlice for &'a str {
     }
 }
 
+pub(crate) fn fl_slice_empty() -> FLSlice {
+    FLSlice {
+        buf: ptr::null(),
+        size: 0,
+    }
+}
+
 #[repr(transparent)]
 pub(crate) struct FlSliceOwner(FLSliceResult);
 

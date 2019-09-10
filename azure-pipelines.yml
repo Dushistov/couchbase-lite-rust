@@ -13,14 +13,6 @@ strategy:
     linux-beta:
       imageName: 'ubuntu-16.04'
       rustup_toolchain: beta
-    windows-stable-64bit:
-      imageName: 'vs2017-win2016'
-      rustup_toolchain: stable-x86_64-pc-windows-msvc
-      platform: x64
-    windows-stable-32bit:
-      imageName: 'vs2017-win2016'
-      rustup_toolchain: stable-i686-pc-windows-msvc
-      platform: x86
 pool:
   vmImage: $(imageName)
 
@@ -88,4 +80,5 @@ steps:
       cmake --version
       cargo build
       cargo test
+      cargo test --release
     displayName: Build and run tests

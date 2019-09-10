@@ -40,6 +40,7 @@
 //! }
 //! ```
 
+mod doc_enumerator;
 mod document;
 mod error;
 mod fl_slice;
@@ -47,7 +48,12 @@ mod query;
 mod transaction;
 mod value;
 
-pub use crate::{document::Document, error::Error, query::Query};
+pub use crate::{
+    doc_enumerator::{DocEnumerator, DocEnumeratorFlags},
+    document::Document,
+    error::Error,
+    query::Query,
+};
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;
 
@@ -143,5 +149,10 @@ impl Database {
     /// A separate, optional sort expression describes the ordering of the results.
     pub fn query(&self, query_json: &str) -> Result<Query> {
         Query::new(self, query_json)
+    }
+
+    /// Creates an enumerator ordered by docID.
+    pub fn enumerate_all_docs(&self, flags: DocEnumeratorFlags) -> Result<DocEnumerator> {
+        DocEnumerator::enumerate_all_docs(self, flags)
     }
 }

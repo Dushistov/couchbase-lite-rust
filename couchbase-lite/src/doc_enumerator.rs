@@ -30,7 +30,7 @@ impl<'a> DocEnumerator<'a> {
     ) -> Result<DocEnumerator<'a>> {
         let mut c4err = c4error_init();
         let opts = C4EnumeratorOptions { flags: flags.bits };
-        let enum_ptr = unsafe { c4db_enumerateAllDocs(db.inner.as_ptr(), &opts, &mut c4err) };
+        let enum_ptr = unsafe { c4db_enumerateAllDocs(db.inner.0.as_ptr(), &opts, &mut c4err) };
         NonNull::new(enum_ptr)
             .map(|inner| DocEnumerator {
                 _db: db,

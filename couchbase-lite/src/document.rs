@@ -42,7 +42,11 @@ impl Document {
         if let Some(json5) = self.unsaved_json5_body.as_ref() {
             let mut c4err = c4error_init();
             let encoded = unsafe {
-                c4db_encodeJSON(db.inner.as_ptr(), json5.as_bytes().as_flslice(), &mut c4err)
+                c4db_encodeJSON(
+                    db.inner.0.as_ptr(),
+                    json5.as_bytes().as_flslice(),
+                    &mut c4err,
+                )
             };
             if !encoded.buf.is_null() {
                 Ok(encoded.into())

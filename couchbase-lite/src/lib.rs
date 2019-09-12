@@ -47,6 +47,7 @@ mod fl_slice;
 mod log_reroute;
 mod observer;
 mod query;
+mod replicator;
 mod transaction;
 mod value;
 
@@ -71,13 +72,13 @@ use crate::{
     fl_slice::AsFlSlice,
     log_reroute::DB_LOGGER,
     observer::{DatabaseObserver, DbChange, DbChangesIter},
+    replicator::Replicator,
     transaction::Transaction,
 };
 use log::error;
 use once_cell::sync::Lazy;
 use std::{
     collections::HashSet,
-    panic::UnwindSafe,
     path::Path,
     ptr::NonNull,
     sync::{Arc, Mutex},
@@ -111,15 +112,25 @@ pub fn use_c4_civet_web_socket_factory() {
 
 /// A connection to a couchbase-lite database.
 pub struct Database {
-    inner: NonNull<C4Database>,
+    inner: DbInner,
     db_events: Arc<Mutex<HashSet<usize>>>,
     db_observers: Vec<DatabaseObserver>,
+    db_replicator: Option<Replicator>,
 }
+
+pub(crate) struct DbInner(NonNull<C4Database>);
+/// According to
+/// https://github.com/couchbase/couchbase-lite-core/wiki/Thread-Safety
+/// it is possible to call from any thread, but not concurrently
+unsafe impl Send for DbInner {}
 
 impl Drop for Database {
     fn drop(&mut self) {
+        if let Some(repl) = self.db_replicator.take() {
+            repl.stop();
+        }
         self.db_observers.clear();
-        unsafe { c4db_free(self.inner.as_ptr()) };
+        unsafe { c4db_free(self.inner.0.as_ptr()) };
     }
 }
 
@@ -132,9 +143,10 @@ impl Database {
         let db_ptr = unsafe { c4db_open(os_path_utf8, &cfg.inner, &mut error) };
         NonNull::new(db_ptr)
             .map(|inner| Database {
-                inner,
+                inner: DbInner(inner),
                 db_events: Arc::new(Mutex::new(HashSet::new())),
                 db_observers: vec![],
+                db_replicator: None,
             })
             .ok_or_else(|| error.into())
     }
@@ -143,7 +155,7 @@ impl Database {
         let mut c4err = c4error_init();
         let doc_ptr = unsafe {
             c4doc_get(
-                self.inner.as_ptr(),
+                self.inner.0.as_ptr(),
                 doc_id.as_bytes().as_flslice(),
                 must_exists,
                 &mut c4err,
@@ -162,7 +174,7 @@ impl Database {
     }
     /// Returns the number of (undeleted) documents in the database
     pub fn document_count(&self) -> u64 {
-        unsafe { c4db_getDocumentCount(self.inner.as_ptr()) }
+        unsafe { c4db_getDocumentCount(self.inner.0.as_ptr()) }
     }
     /// Return existing document from database
     pub fn get_existsing(&self, doc_id: &str) -> Result<Document> {
@@ -187,7 +199,7 @@ impl Database {
     /// be called again until all of the changes have been read by calling `Database::observed_changes`.
     pub fn register_observer<F>(&mut self, mut callback_f: F) -> Result<()>
     where
-        F: FnMut() + Send + UnwindSafe + 'static,
+        F: FnMut() + Send + 'static,
     {
         let db_events = self.db_events.clone();
         let obs = DatabaseObserver::new(self, move |obs| {
@@ -210,12 +222,23 @@ impl Database {
         Ok(())
     }
 
+    /// Remove all database observers
+    pub fn clear_observers(&mut self) {
+        self.db_observers.clear();
+    }
+
     /// Get observed changes for this database
     pub fn observed_changes(&mut self) -> ObserverdChangesIter {
         ObserverdChangesIter {
             db: self,
             obs_it: None,
         }
+    }
+
+    /// starts database replication
+    pub fn start_replicator(&mut self, url: &str, token: Option<&str>) -> Result<()> {
+        self.db_replicator = Some(Replicator::new(self, url, token)?);
+        Ok(())
     }
 }
 

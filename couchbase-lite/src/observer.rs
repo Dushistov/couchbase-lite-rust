@@ -7,12 +7,8 @@ use crate::{
     fl_slice::fl_slice_to_str_unchecked,
     Database, Result,
 };
-use std::{
-    mem::MaybeUninit,
-    os::raw::c_void,
-    panic::{catch_unwind, UnwindSafe},
-    ptr::NonNull,
-};
+use log::error;
+use std::{mem::MaybeUninit, os::raw::c_void, panic::catch_unwind, process::abort, ptr::NonNull};
 
 pub(crate) struct DatabaseObserver {
     inner: NonNull<C4DatabaseObserver>,
@@ -32,7 +28,7 @@ impl Drop for DatabaseObserver {
 impl DatabaseObserver {
     pub(crate) fn new<F>(db: &Database, callback_f: F) -> Result<DatabaseObserver>
     where
-        F: FnMut(*const C4DatabaseObserver) + Send + UnwindSafe + 'static,
+        F: FnMut(*const C4DatabaseObserver) + Send + 'static,
     {
         unsafe extern "C" fn call_boxed_closure<F>(
             obs: *mut C4DatabaseObserver,
@@ -40,7 +36,7 @@ impl DatabaseObserver {
         ) where
             F: FnMut(*const C4DatabaseObserver) + Send,
         {
-            let _r = catch_unwind(|| {
+            let r = catch_unwind(|| {
                 let boxed_f = context as *mut F;
                 assert!(
                     !boxed_f.is_null(),
@@ -48,11 +44,15 @@ impl DatabaseObserver {
                 );
                 (*boxed_f)(obs);
             });
+            if r.is_err() {
+                error!("DatabaseObserver::call_boxed_closure catch panic aborting");
+                abort();
+            }
         }
         let boxed_f: *mut F = Box::into_raw(Box::new(callback_f));
         let obs = unsafe {
             c4dbobs_create(
-                db.inner.as_ptr(),
+                db.inner.0.as_ptr(),
                 Some(call_boxed_closure::<F>),
                 boxed_f as *mut c_void,
             )

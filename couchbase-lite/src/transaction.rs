@@ -19,7 +19,7 @@ pub struct Transaction<'db> {
 impl Transaction<'_> {
     pub(crate) fn new(db: &mut Database) -> Result<Transaction> {
         let mut c4err = c4error_init();
-        if unsafe { c4db_beginTransaction(db.inner.as_ptr(), &mut c4err) } {
+        if unsafe { c4db_beginTransaction(db.inner.0.as_ptr(), &mut c4err) } {
             Ok(Transaction {
                 db,
                 finished: false,
@@ -36,7 +36,7 @@ impl Transaction<'_> {
     fn end_transaction(&mut self, commit: bool) -> Result<()> {
         self.finished = true;
         let mut c4err = c4error_init();
-        if unsafe { c4db_endTransaction(self.db.inner.as_ptr(), commit, &mut c4err) } {
+        if unsafe { c4db_endTransaction(self.db.inner.0.as_ptr(), commit, &mut c4err) } {
             Ok(())
         } else {
             Err(c4err.into())
@@ -126,7 +126,7 @@ impl Transaction<'_> {
         } else {
             unsafe {
                 c4doc_create(
-                    self.db.inner.as_ptr(),
+                    self.db.inner.0.as_ptr(),
                     doc.id().as_bytes().as_flslice(),
                     body.as_bytes().as_flslice(),
                     rev_flags,

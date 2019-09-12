@@ -7,9 +7,6 @@ strategy:
       imageName: 'ubuntu-16.04'
       rustup_toolchain: stable
       gcc_variant: gcc-8
-    mac-stable:
-      imageName: 'macos-10.14'
-      rustup_toolchain: stable
     linux-beta:
       imageName: 'ubuntu-16.04'
       rustup_toolchain: beta

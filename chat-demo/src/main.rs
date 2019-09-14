@@ -1,19 +1,11 @@
 use couchbase_lite::{
     fallible_streaming_iterator::FallibleStreamingIterator, use_c4_civet_web_socket_factory,
-    Database, DatabaseConfig, Document,
+    Database, DatabaseConfig, Document, ReplicatorState,
 };
-use futures::{
-    future::{lazy, Future},
-    stream::Stream,
-};
+use futures::{future::Future, stream::Stream};
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashSet,
-    env,
-    path::Path,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashSet, env, path::Path};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
@@ -24,7 +16,6 @@ struct Message {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let mut runtime = tokio::runtime::Runtime::new()?;
-    let task_executor = runtime.executor();
 
     let db_path = env::args().nth(1).expect("No path to db file");
     let db_path = Path::new(&db_path);
@@ -35,10 +26,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     use_c4_civet_web_socket_factory();
     let (db_thread, db_exec) = run_db_thread(db_path);
+    let db_exec_repl = db_exec.clone();
     db_exec.spawn(move |db| {
         if let Some(db) = db.as_mut() {
-            db.start_replicator(&sync_url, token.as_ref().map(String::as_str))
-                .expect("replicator start failed");
+            db.start_replicator(
+                &sync_url,
+                token.as_ref().map(String::as_str),
+                move |repl_state| {
+                    println!("replicator state changed: {:?}", repl_state);
+                    match repl_state {
+                        ReplicatorState::Stopped(_) | ReplicatorState::Offline => {
+                            db_exec_repl.spawn(|db| {
+                                if let Some(db) = db.as_mut() {
+                                    println!("restarting replicator");
+                                    std::thread::sleep(std::time::Duration::from_secs(5));
+                                    db.restart_replicator().expect("restart_replicator failed");
+                                } else {
+                                    eprintln!("db is NOT open");
+                                }
+                            });
+                        }
+                        _ => {}
+                    }
+                },
+            )
+            .expect("replicator start failed");
         } else {
             eprintln!("db is NOT open");
         }
@@ -50,41 +62,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             db.register_observer(move || {
                 db_exec2
                     .spawn(|db| print_external_changes(db).expect("read external changes failed"));
-            });
+            })
+            .expect("register observer failed");
         } else {
             eprintln!("db is NOT open");
         }
     });
-    /*
-       let db = Arc::new(Mutex::new());
 
-
-       {
-           let db2 = db.clone();
-           let mut ldb = db.lock().expect("db lock failed");
-
-           print_all_messages(&ldb)?;
-
-           ldb.register_observer(move || {
-               eprintln!("databaseobserver: Something changed in db");
-               let db3 = db2.clone();
-
-               task_executor.spawn(lazy(move || {
-                   println!("Inside tokio thread");
-                   let mut db = db3.lock().expect("db lock failed");
-
-
-
-
-                   Ok(())
-               }));
-           })?;
-
-           ldb.start_replicator(&sync_url, token.as_ref().map(String::as_str))?;
-       }
-
-
-    */
     let db_exec3 = db_exec.clone();
     let stdin = tokio::io::stdin();
     let framed_read = tokio_codec::FramedRead::new(stdin, tokio::codec::BytesCodec::new())

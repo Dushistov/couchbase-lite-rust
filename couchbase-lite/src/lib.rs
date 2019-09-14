@@ -56,6 +56,7 @@ pub use crate::{
     document::Document,
     error::Error,
     query::Query,
+    replicator::ReplicatorState,
 };
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;
@@ -79,6 +80,7 @@ use log::error;
 use once_cell::sync::Lazy;
 use std::{
     collections::HashSet,
+    convert::{TryFrom, TryInto},
     path::Path,
     ptr::NonNull,
     sync::{Arc, Mutex},
@@ -116,6 +118,12 @@ pub struct Database {
     db_events: Arc<Mutex<HashSet<usize>>>,
     db_observers: Vec<DatabaseObserver>,
     db_replicator: Option<Replicator>,
+    replicator_params: Option<ReplicatorParams>,
+}
+
+struct ReplicatorParams {
+    url: String,
+    token: Option<String>,
 }
 
 pub(crate) struct DbInner(NonNull<C4Database>);
@@ -147,6 +155,7 @@ impl Database {
                 db_events: Arc::new(Mutex::new(HashSet::new())),
                 db_observers: vec![],
                 db_replicator: None,
+                replicator_params: None,
             })
             .ok_or_else(|| error.into())
     }
@@ -235,9 +244,60 @@ impl Database {
         }
     }
 
+    pub fn replicator_state(&self) -> Result<ReplicatorState> {
+        match self.db_replicator.as_ref() {
+            Some(repl) => repl.status().try_into(),
+            None => Ok(ReplicatorState::Offline),
+        }
+    }
+
     /// starts database replication
-    pub fn start_replicator(&mut self, url: &str, token: Option<&str>) -> Result<()> {
-        self.db_replicator = Some(Replicator::new(self, url, token)?);
+    pub fn start_replicator<F>(
+        &mut self,
+        url: &str,
+        token: Option<&str>,
+        mut repl_status_changed: F,
+    ) -> Result<()>
+    where
+        F: FnMut(ReplicatorState) + Send + 'static,
+    {
+        self.db_replicator =
+            Some(Replicator::new(
+                self,
+                url,
+                token,
+                move |status| match ReplicatorState::try_from(status) {
+                    Ok(state) => repl_status_changed(state),
+                    Err(err) => {
+                        error!("replicator status change: invalid status {}", err);
+                    }
+                },
+            )?);
+        self.replicator_params = Some(ReplicatorParams {
+            url: url.into(),
+            token: token.map(str::to_string),
+        });
+        Ok(())
+    }
+    /// restart database replicator, gives error if `Database::start_replicator`
+    /// haven't called yet
+    pub fn restart_replicator(&mut self) -> Result<()> {
+        let replicator_params = self.replicator_params.as_ref().ok_or_else(|| {
+            Error::LogicError(
+                "you call restart_replicator, but have not yet call start_replicator (params)"
+                    .into(),
+            )
+        })?;
+        let repl = self.db_replicator.take().ok_or_else(|| {
+            Error::LogicError(
+                "you call restart_replicator, but have not yet call start_replicator (repl)".into(),
+            )
+        })?;
+        self.db_replicator = Some(repl.restart(
+            self,
+            &replicator_params.url,
+            replicator_params.token.as_ref().map(String::as_str),
+        )?);
         Ok(())
     }
 }

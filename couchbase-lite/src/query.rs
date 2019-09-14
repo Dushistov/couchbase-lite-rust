@@ -28,7 +28,7 @@ impl Query<'_> {
         let mut c4err = c4error_init();
         let query = unsafe {
             c4query_new(
-                db.inner.as_ptr(),
+                db.inner.0.as_ptr(),
                 query_json.as_bytes().as_flslice(),
                 &mut c4err,
             )

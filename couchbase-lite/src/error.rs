@@ -18,6 +18,8 @@ pub enum Error {
     LogicError(String),
     /// `json5::Error`
     Json5(json5::Error),
+    /// fleece library errors
+    FlError(u32),
 }
 
 impl std::error::Error for Error {}
@@ -40,6 +42,7 @@ impl fmt::Display for Error {
             Error::Json5(err) => write!(fmt, "Json5: {}", err),
             Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
             Error::SerdeJson(err) => write!(fmt, "SerdeJson: {}", err),
+            Error::FlError(err) => write!(fmt, "FlError: {}", err),
         }
     }
 }
@@ -61,6 +64,7 @@ impl fmt::Debug for Error {
             Error::Json5(err) => write!(fmt, "Json5: {:?}", err),
             Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
             Error::SerdeJson(err) => write!(fmt, "SerdeJson: {:?}", err),
+            Error::FlError(err) => write!(fmt, "FlError: {}", err),
         }
     }
 }

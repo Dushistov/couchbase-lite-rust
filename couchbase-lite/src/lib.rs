@@ -44,8 +44,10 @@ mod doc_enumerator;
 mod document;
 mod error;
 mod fl_slice;
-mod log;
+mod log_reroute;
+mod observer;
 mod query;
+mod replicator;
 mod transaction;
 mod value;
 
@@ -54,6 +56,7 @@ pub use crate::{
     document::Document,
     error::Error,
     query::Query,
+    replicator::ReplicatorState,
 };
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;
@@ -62,16 +65,26 @@ use crate::{
     document::C4DocumentOwner,
     error::{c4error_init, Result},
     ffi::{
-        c4db_free, c4db_getDocumentCount, c4db_open, c4doc_get, kC4DB_Create, kC4EncryptionNone,
-        kC4RevisionTrees, kC4SQLiteStorageEngine, C4Database, C4DatabaseConfig, C4DatabaseFlags,
+        c4db_free, c4db_getDocumentCount, c4db_open, c4doc_get, c4socket_registerFactory,
+        kC4DB_Create, kC4EncryptionNone, kC4RevisionTrees, kC4SQLiteStorageEngine,
+        C4CivetWebSocketFactory, C4Database, C4DatabaseConfig, C4DatabaseFlags,
         C4DocumentVersioning, C4EncryptionAlgorithm, C4EncryptionKey, C4String,
     },
     fl_slice::AsFlSlice,
-    log::DB_LOGGER,
+    log_reroute::DB_LOGGER,
+    observer::{DatabaseObserver, DbChange, DbChangesIter},
+    replicator::Replicator,
     transaction::Transaction,
 };
+use log::error;
 use once_cell::sync::Lazy;
-use std::{path::Path, ptr::NonNull};
+use std::{
+    collections::HashSet,
+    convert::{TryFrom, TryInto},
+    path::Path,
+    ptr::NonNull,
+    sync::{Arc, Mutex},
+};
 
 /// Database configuration, used during open
 pub struct DatabaseConfig {
@@ -94,14 +107,38 @@ impl Default for DatabaseConfig {
     }
 }
 
+/// use embedded web-socket library
+pub fn use_c4_civet_web_socket_factory() {
+    unsafe { c4socket_registerFactory(C4CivetWebSocketFactory) };
+}
+
 /// A connection to a couchbase-lite database.
 pub struct Database {
-    inner: NonNull<C4Database>,
+    inner: DbInner,
+    db_events: Arc<Mutex<HashSet<usize>>>,
+    db_observers: Vec<DatabaseObserver>,
+    db_replicator: Option<Replicator>,
+    replicator_params: Option<ReplicatorParams>,
 }
+
+struct ReplicatorParams {
+    url: String,
+    token: Option<String>,
+}
+
+pub(crate) struct DbInner(NonNull<C4Database>);
+/// According to
+/// https://github.com/couchbase/couchbase-lite-core/wiki/Thread-Safety
+/// it is possible to call from any thread, but not concurrently
+unsafe impl Send for DbInner {}
 
 impl Drop for Database {
     fn drop(&mut self) {
-        unsafe { c4db_free(self.inner.as_ptr()) };
+        if let Some(repl) = self.db_replicator.take() {
+            repl.stop();
+        }
+        self.db_observers.clear();
+        unsafe { c4db_free(self.inner.0.as_ptr()) };
     }
 }
 
@@ -113,7 +150,13 @@ impl Database {
         let os_path_utf8: C4String = os_path_utf8.as_flslice();
         let db_ptr = unsafe { c4db_open(os_path_utf8, &cfg.inner, &mut error) };
         NonNull::new(db_ptr)
-            .map(|inner| Database { inner })
+            .map(|inner| Database {
+                inner: DbInner(inner),
+                db_events: Arc::new(Mutex::new(HashSet::new())),
+                db_observers: vec![],
+                db_replicator: None,
+                replicator_params: None,
+            })
             .ok_or_else(|| error.into())
     }
 
@@ -121,7 +164,7 @@ impl Database {
         let mut c4err = c4error_init();
         let doc_ptr = unsafe {
             c4doc_get(
-                self.inner.as_ptr(),
+                self.inner.0.as_ptr(),
                 doc_id.as_bytes().as_flslice(),
                 must_exists,
                 &mut c4err,
@@ -140,7 +183,7 @@ impl Database {
     }
     /// Returns the number of (undeleted) documents in the database
     pub fn document_count(&self) -> u64 {
-        unsafe { c4db_getDocumentCount(self.inner.as_ptr()) }
+        unsafe { c4db_getDocumentCount(self.inner.0.as_ptr()) }
     }
     /// Return existing document from database
     pub fn get_existsing(&self, doc_id: &str) -> Result<Document> {
@@ -158,5 +201,143 @@ impl Database {
     /// Creates an enumerator ordered by docID.
     pub fn enumerate_all_docs(&self, flags: DocEnumeratorFlags) -> Result<DocEnumerator> {
         DocEnumerator::enumerate_all_docs(self, flags)
+    }
+
+    /// Register a database observer, with a callback that will be invoked after the database
+    /// changes. The callback will be called _once_, after the first change. After that it won't
+    /// be called again until all of the changes have been read by calling `Database::observed_changes`.
+    pub fn register_observer<F>(&mut self, mut callback_f: F) -> Result<()>
+    where
+        F: FnMut() + Send + 'static,
+    {
+        let db_events = self.db_events.clone();
+        let obs = DatabaseObserver::new(self, move |obs| {
+            {
+                match db_events.lock() {
+                    Ok(mut db_events) => {
+                        db_events.insert(obs as usize);
+                    }
+                    Err(err) => {
+                        error!(
+                            "register_observer::DatabaseObserver::lambda db_events lock failed: {}",
+                            err
+                        );
+                    }
+                }
+            }
+            callback_f();
+        })?;
+        self.db_observers.push(obs);
+        Ok(())
+    }
+
+    /// Remove all database observers
+    pub fn clear_observers(&mut self) {
+        self.db_observers.clear();
+    }
+
+    /// Get observed changes for this database
+    pub fn observed_changes(&mut self) -> ObserverdChangesIter {
+        ObserverdChangesIter {
+            db: self,
+            obs_it: None,
+        }
+    }
+
+    pub fn replicator_state(&self) -> Result<ReplicatorState> {
+        match self.db_replicator.as_ref() {
+            Some(repl) => repl.status().try_into(),
+            None => Ok(ReplicatorState::Offline),
+        }
+    }
+
+    /// starts database replication
+    pub fn start_replicator<F>(
+        &mut self,
+        url: &str,
+        token: Option<&str>,
+        mut repl_status_changed: F,
+    ) -> Result<()>
+    where
+        F: FnMut(ReplicatorState) + Send + 'static,
+    {
+        self.db_replicator =
+            Some(Replicator::new(
+                self,
+                url,
+                token,
+                move |status| match ReplicatorState::try_from(status) {
+                    Ok(state) => repl_status_changed(state),
+                    Err(err) => {
+                        error!("replicator status change: invalid status {}", err);
+                    }
+                },
+            )?);
+        self.replicator_params = Some(ReplicatorParams {
+            url: url.into(),
+            token: token.map(str::to_string),
+        });
+        Ok(())
+    }
+    /// restart database replicator, gives error if `Database::start_replicator`
+    /// haven't called yet
+    pub fn restart_replicator(&mut self) -> Result<()> {
+        let replicator_params = self.replicator_params.as_ref().ok_or_else(|| {
+            Error::LogicError(
+                "you call restart_replicator, but have not yet call start_replicator (params)"
+                    .into(),
+            )
+        })?;
+        let repl = self.db_replicator.take().ok_or_else(|| {
+            Error::LogicError(
+                "you call restart_replicator, but have not yet call start_replicator (repl)".into(),
+            )
+        })?;
+        self.db_replicator = Some(repl.restart(
+            self,
+            &replicator_params.url,
+            replicator_params.token.as_ref().map(String::as_str),
+        )?);
+        Ok(())
+    }
+}
+
+pub struct ObserverdChangesIter<'db> {
+    db: &'db Database,
+    obs_it: Option<DbChangesIter<'db>>,
+}
+
+impl<'db> Iterator for ObserverdChangesIter<'db> {
+    type Item = DbChange;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(obs_it) = self.obs_it.as_mut() {
+                if let Some(item) = obs_it.next() {
+                    return Some(item);
+                }
+                self.obs_it = None;
+            }
+            let obs_ptr = {
+                let mut db_events = self.db.db_events.lock().expect("db_events lock failed");
+                if db_events.is_empty() {
+                    return None;
+                }
+                let obs_ptr = match db_events.iter().next() {
+                    Some(obs_ptr) => *obs_ptr,
+                    None => return None,
+                };
+                db_events.remove(&obs_ptr);
+                obs_ptr
+            };
+            let obs: Option<&'db DatabaseObserver> = self
+                .db
+                .db_observers
+                .iter()
+                .find(|obs| obs.match_obs_ptr(obs_ptr));
+            if let Some(obs) = obs {
+                self.obs_it = Some(obs.changes_iter());
+            }
+        }
     }
 }

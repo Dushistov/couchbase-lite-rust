@@ -1,2 +1,2 @@
 [workspace]
-members = ["couchbase-lite-core-sys", "couchbase-lite"]
+members = ["couchbase-lite-core-sys", "couchbase-lite", "chat-demo"]

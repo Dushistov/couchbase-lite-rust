@@ -19,11 +19,11 @@ pub struct Document {
 }
 
 impl Document {
-    pub(crate) fn new_internal<S>(inner: C4DocumentOwner, doc_id: S) -> Document
+    pub(crate) fn new_internal<S>(inner: C4DocumentOwner, doc_id: S) -> Self
     where
         S: Into<String>,
     {
-        Document {
+        Self {
             inner: Some(inner),
             id: doc_id.into(),
             unsaved_json5_body: None,
@@ -84,26 +84,34 @@ impl Document {
         Ok(x)
     }
 
-    pub fn new_with_id<S, T>(doc_id: S, data: &T) -> Result<Document>
+    pub fn new_with_id<S, T>(doc_id: S, data: &T) -> Result<Self>
     where
         S: Into<String>,
         T: Serialize,
     {
-        Ok(Document {
+        Ok(Self {
             inner: None,
             id: doc_id.into(),
             unsaved_json5_body: Some(json5::to_string(data)?),
         })
     }
 
-    pub fn new<T>(data: &T) -> Result<Document>
+    pub fn new<T>(data: &T) -> Result<Self>
     where
         T: Serialize,
     {
-        Ok(Document {
+        Ok(Self {
             inner: None,
             id: Uuid::new_v4().to_hyphenated().to_string(),
             unsaved_json5_body: Some(json5::to_string(data)?),
+        })
+    }
+
+    pub fn new_with_id_json5<S: Into<String>>(doc_id: S, json5_str: String) -> Result<Self> {
+        Ok(Self {
+            inner: None,
+            id: doc_id.into(),
+            unsaved_json5_body: Some(json5_str),
         })
     }
 

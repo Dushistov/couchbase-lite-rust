@@ -1,7 +1,3 @@
-use serde::{de::DeserializeOwned, Serialize};
-use std::ptr::NonNull;
-use uuid::Uuid;
-
 use crate::{
     error::{c4error_init, Error},
     ffi::{
@@ -11,7 +7,11 @@ use crate::{
     fl_slice::{fl_slice_to_str_unchecked, AsFlSlice, FlSliceOwner},
     Database, Result,
 };
+use serde::{de::DeserializeOwned, Serialize};
+use std::{fmt, fmt::Debug, ptr::NonNull};
+use uuid::Uuid;
 
+#[derive(Debug)]
 pub struct Document {
     id: String,
     unsaved_json5_body: Option<String>,
@@ -30,11 +30,12 @@ impl Document {
         }
     }
 
+    /// return the document's ID
     pub fn id(&self) -> &str {
         &self.id
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.unsaved_json5_body.is_none()
     }
 
@@ -115,6 +116,8 @@ impl Document {
         })
     }
 
+    /// Update internal buffer with data, you need save document
+    /// to database to make this change permanent
     pub fn update_data<T>(&mut self, data: &T) -> Result<()>
     where
         T: Serialize,
@@ -140,6 +143,12 @@ fn load_body(inner: NonNull<C4Document>) -> Result<()> {
 
 #[repr(transparent)]
 pub(crate) struct C4DocumentOwner(pub(crate) NonNull<C4Document>);
+
+impl Debug for C4DocumentOwner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", unsafe { self.0.as_ref() })
+    }
+}
 
 impl C4DocumentOwner {
     pub(crate) fn exists(&self) -> bool {

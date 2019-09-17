@@ -12,6 +12,9 @@ struct Foo {
     s: String,
 }
 
+#[derive(Deserialize, Debug)]
+struct Empty {}
+
 #[test]
 fn test_write_read() {
     let _ = env_logger::try_init();
@@ -114,5 +117,60 @@ fn test_write_read() {
         assert_eq!((ids_and_data.len() - n) as u64, db.document_count());
     }
 
+    tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+#[test]
+fn test_observed_changes() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open(&db_path, DatabaseConfig::default()).unwrap();
+        db.register_observer(|| println!("something changed"))
+            .unwrap();
+        let changes: Vec<_> = db.observed_changes().collect();
+        assert!(changes.is_empty());
+        let doc_id: String = {
+            let mut trans = db.transaction().unwrap();
+            let foo = Foo {
+                i: 17,
+                s: "hello".into(),
+            };
+            let mut doc = Document::new(&foo).unwrap();
+            trans.save(&mut doc).unwrap();
+            trans.commit().unwrap();
+            doc.id().into()
+        };
+        let changes: Vec<_> = db.observed_changes().collect();
+        println!("changes: {:?}", changes);
+        assert_eq!(1, changes.len());
+        assert_eq!(doc_id, changes[0].doc_id());
+        assert!(!changes[0].revision_id().is_empty());
+        assert!(!changes[0].external());
+        assert!(changes[0].body_size() > 2);
+
+        let changes: Vec<_> = db.observed_changes().collect();
+        assert!(changes.is_empty());
+
+        {
+            let mut trans = db.transaction().unwrap();
+            let mut doc = trans.get_existsing(&doc_id).unwrap();
+            trans.delete(&mut doc).unwrap();
+            trans.commit().unwrap();
+        }
+        let changes: Vec<_> = db.observed_changes().collect();
+        println!("changes: {:?}", changes);
+        assert_eq!(1, changes.len());
+        assert_eq!(doc_id, changes[0].doc_id());
+        assert!(!changes[0].revision_id().is_empty());
+        assert!(!changes[0].external());
+        assert_eq!(2, changes[0].body_size());
+
+        let doc = db.get_existsing(&doc_id).unwrap();
+        println!("doc {:?}", doc);
+        doc.decode_data::<Empty>().unwrap();
+    }
     tmp_dir.close().expect("Can not close tmp_dir");
 }

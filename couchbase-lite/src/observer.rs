@@ -85,6 +85,7 @@ pub(crate) struct DbChangesIter<'obs> {
     obs: &'obs DatabaseObserver,
 }
 
+#[derive(Debug)]
 pub struct DbChange {
     inner: C4DatabaseChange,
     external: bool,
@@ -98,6 +99,14 @@ impl DbChange {
     #[inline]
     pub fn doc_id(&self) -> &str {
         unsafe { fl_slice_to_str_unchecked(self.inner.docID) }
+    }
+    #[inline]
+    pub fn revision_id(&self) -> &str {
+        unsafe { fl_slice_to_str_unchecked(self.inner.revID) }
+    }
+    #[inline]
+    pub fn body_size(&self) -> u32 {
+        self.inner.bodySize
     }
 }
 

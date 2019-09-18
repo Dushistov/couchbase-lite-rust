@@ -300,6 +300,13 @@ impl Database {
         )?);
         Ok(())
     }
+
+    /// stop database replication
+    pub fn stop_replicator(&mut self) {
+        if let Some(repl) = self.db_replicator.take() {
+            repl.stop();
+        }
+    }
 }
 
 pub struct ObserverdChangesIter<'db> {

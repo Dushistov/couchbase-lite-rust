@@ -8,7 +8,11 @@ pub(crate) trait AsFlSlice {
 impl<'a> AsFlSlice for &'a [u8] {
     fn as_flslice(&self) -> FLSlice {
         FLSlice {
-            buf: self.as_ptr() as *const c_void,
+            buf: if !self.is_empty() {
+                self.as_ptr() as *const c_void
+            } else {
+                ptr::null()
+            },
             size: self.len(),
         }
     }
@@ -17,7 +21,11 @@ impl<'a> AsFlSlice for &'a [u8] {
 impl<'a> AsFlSlice for &'a str {
     fn as_flslice(&self) -> FLSlice {
         FLSlice {
-            buf: self.as_ptr() as *const c_void,
+            buf: if !self.is_empty() {
+                self.as_ptr() as *const c_void
+            } else {
+                ptr::null()
+            },
             size: self.len(),
         }
     }

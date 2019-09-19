@@ -15,6 +15,19 @@ struct Foo {
 #[derive(Deserialize, Debug)]
 struct Empty {}
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+struct S {
+    f: f64,
+    s: String,
+}
+
+impl PartialEq for S {
+    fn eq(&self, o: &S) -> bool {
+        (self.f - o.f).abs() < 1e-13 && self.s == o.s
+    }
+}
+
 #[test]
 fn test_write_read() {
     let _ = env_logger::try_init();
@@ -171,6 +184,84 @@ fn test_observed_changes() {
         let doc = db.get_existsing(&doc_id).unwrap();
         println!("doc {:?}", doc);
         doc.decode_data::<Empty>().unwrap();
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+#[test]
+fn test_save_float() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open(&db_path, DatabaseConfig::default()).unwrap();
+        let mut trans = db.transaction().unwrap();
+        let s = S {
+            f: 17.48,
+            s: "ABCD".into(),
+        };
+        let mut doc = Document::new(&s).unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        let doc_id: String = doc.id().into();
+        drop(doc);
+
+        let doc = db.get_existsing(&doc_id).unwrap();
+        let loaded_s: S = doc.decode_data().unwrap();
+        assert_eq!(s, loaded_s);
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+#[test]
+fn test_save_several_times() {
+    fn create_s(i: i32) -> S {
+        S {
+            f: f64::from(i) / 3.6,
+            s: format!("Hello {}", i),
+        }
+    }
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open(&db_path, DatabaseConfig::default()).unwrap();
+        let s = create_s(500);
+        let mut trans = db.transaction().unwrap();
+        let mut doc = Document::new(&s).unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        let doc_id: String = doc.id().into();
+        drop(doc);
+        assert_eq!(1, db.document_count());
+
+        let doc = db.get_existsing(&doc_id).unwrap();
+        assert_eq!(s, doc.decode_data::<S>().unwrap());
+
+        let s = create_s(501);
+        let mut doc = Document::new_with_id(doc_id.as_str(), &s).unwrap();
+        let mut trans = db.transaction().unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        drop(doc);
+        assert_eq!(1, db.document_count());
+
+        let doc = db.get_existsing(&doc_id).unwrap();
+        assert_eq!(s, doc.decode_data::<S>().unwrap());
+
+        let s = create_s(400);
+        let json5 = json5::to_string(&s).unwrap();
+        let mut doc = Document::new_with_id_json5(&doc_id, json5.into()).unwrap();
+        let mut trans = db.transaction().unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        drop(doc);
+        assert_eq!(1, db.document_count());
+
+        let doc = db.get_existsing(&doc_id).unwrap();
+        assert_eq!(s, doc.decode_data::<S>().unwrap());
     }
     tmp_dir.close().expect("Can not close tmp_dir");
 }

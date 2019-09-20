@@ -71,6 +71,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let db_exec3 = db_exec.clone();
     let stdin = tokio::io::stdin();
+    static EDIT_PREFIX: &'static str = "edit ";
+    let mut edit_id = None;
     let framed_read = tokio_codec::FramedRead::new(stdin, tokio::codec::BytesCodec::new())
         .map_err(|e| {
             println!("error = {:?}", e);
@@ -79,17 +81,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Ok(msg) = std::str::from_utf8(&bytes) {
                 let msg = msg.trim_end();
                 if !msg.is_empty() {
-                    println!("Your message is '{}'", msg);
+                    if msg.starts_with(EDIT_PREFIX) {
+                        edit_id = Some((&msg[EDIT_PREFIX.len()..]).to_string());
+                        println!("ready to edit message {:?}", edit_id);
+                    } else {
+                        println!("Your message is '{}'", msg);
 
-                    {
-                        let msg = msg.to_string();
-                        db_exec.spawn(move |db| {
-                            if let Some(mut db) = db.as_mut() {
-                                save_msg(&mut db, &msg).expect("save to db failed");
-                            } else {
-                                eprintln!("db is NOT open");
-                            }
-                        });
+                        {
+                            let msg = msg.to_string();
+                            let edit_id = edit_id.clone();
+                            db_exec.spawn(move |db| {
+                                if let Some(mut db) = db.as_mut() {
+                                    save_msg(&mut db, &msg, edit_id.as_ref().map(String::as_str))
+                                        .expect("save to db failed");
+                                } else {
+                                    eprintln!("db is NOT open");
+                                }
+                            });
+                        }
                     }
                 }
             } else {
@@ -157,11 +166,20 @@ fn run_db_thread(db_path: &Path) -> (std::thread::JoinHandle<()>, DbQueryExecuto
     (join_handle, DbQueryExecutor { inner: sender })
 }
 
-fn save_msg(db: &mut Database, data: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn save_msg(
+    db: &mut Database,
+    data: &str,
+    doc_id: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut trans = db.transaction()?;
     let msg = Message { msg: data.into() };
-    let mut doc = Document::new(&msg)?;
-    println!("creat new doc, id {}", doc.id());
+    let mut doc = if let Some(doc_id) = doc_id {
+        println!("save_msg: edit message");
+        Document::new_with_id(doc_id, &msg)?
+    } else {
+        Document::new(&msg)?
+    };
+    println!("save_msg: doc id {}", doc.id());
     trans.save(&mut doc)?;
     trans.commit()?;
     Ok(())

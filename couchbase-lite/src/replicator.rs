@@ -2,19 +2,18 @@ use crate::{
     error::{c4error_init, Error},
     ffi::{
         c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_stop, kC4Continuous,
-        kC4ReplicatorOptionCookies, C4Address, C4Replicator, C4ReplicatorActivityLevel,
-        C4ReplicatorMode, C4ReplicatorParameters, C4ReplicatorStatus,
+        kC4ReplicatorOptionCookies, kC4ReplicatorOptionOutgoingConflicts, C4Address, C4Replicator,
+        C4ReplicatorActivityLevel, C4ReplicatorMode, C4ReplicatorParameters, C4ReplicatorStatus,
         C4ReplicatorStatusChangedCallback, FLEncoder_BeginDict, FLEncoder_EndDict,
-        FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey, FLEncoder_WriteString,
-        FLError_kFLNoError,
+        FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteBool, FLEncoder_WriteKey,
+        FLEncoder_WriteString, FLError_kFLNoError,
     },
     fl_slice::{fl_slice_empty, AsFlSlice, FlSliceOwner},
     Database, Result,
 };
 use log::{error, info};
 use std::{
-    convert::TryFrom, ffi::CStr, mem, os::raw::c_void, panic::catch_unwind, process::abort, ptr,
-    ptr::NonNull,
+    convert::TryFrom, mem, os::raw::c_void, panic::catch_unwind, process::abort, ptr, ptr::NonNull,
 };
 
 pub(crate) struct Replicator {
@@ -125,15 +124,19 @@ impl Replicator {
         }
 
         let token_cookie = format!("{}={}", "SyncGatewaySession", token.unwrap_or(""));
-        let option_cookies = CStr::from_bytes_with_nul(kC4ReplicatorOptionCookies)
-            .expect("Invalid kC4ReplicatorOptionCookies constant");
+        let option_cookies = &kC4ReplicatorOptionCookies[0..kC4ReplicatorOptionCookies.len() - 1];
+        let option_allow_conflicts = &kC4ReplicatorOptionOutgoingConflicts
+            [0..kC4ReplicatorOptionOutgoingConflicts.len() - 1];
         let options: FlSliceOwner = if token.is_some() {
             unsafe {
                 let enc = FLEncoder_New();
 
-                FLEncoder_BeginDict(enc, 1);
-                FLEncoder_WriteKey(enc, option_cookies.to_bytes().as_flslice());
+                FLEncoder_BeginDict(enc, 2);
+                FLEncoder_WriteKey(enc, option_cookies.as_flslice());
                 FLEncoder_WriteString(enc, token_cookie.as_bytes().as_flslice());
+
+                FLEncoder_WriteKey(enc, option_allow_conflicts.as_flslice());
+                FLEncoder_WriteBool(enc, true);
                 FLEncoder_EndDict(enc);
 
                 let mut fl_err = FLError_kFLNoError;
@@ -145,7 +148,22 @@ impl Replicator {
                 res.into()
             }
         } else {
-            FlSliceOwner::default()
+            unsafe {
+                let enc = FLEncoder_New();
+
+                FLEncoder_BeginDict(enc, 1);
+                FLEncoder_WriteKey(enc, option_allow_conflicts.as_flslice());
+                FLEncoder_WriteBool(enc, true);
+                FLEncoder_EndDict(enc);
+
+                let mut fl_err = FLError_kFLNoError;
+                let res = FLEncoder_Finish(enc, &mut fl_err);
+                FLEncoder_Free(enc);
+                if fl_err != FLError_kFLNoError {
+                    return Err(Error::FlError(fl_err));
+                }
+                res.into()
+            }
         };
 
         let repl_params = C4ReplicatorParameters {

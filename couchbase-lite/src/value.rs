@@ -1,7 +1,8 @@
 use crate::{
     error::Error,
     ffi::{
-        FLValue, FLValueType, FLValue_AsBool, FLValue_AsDouble, FLValue_AsInt, FLValue_AsString,
+        FLArray, FLArray_Count, FLArray_Get, FLArray_IsEmpty, FLValue, FLValueType,
+        FLValue_AsArray, FLValue_AsBool, FLValue_AsDouble, FLValue_AsInt, FLValue_AsString,
         FLValue_AsUnsigned, FLValue_GetType, FLValue_IsDouble, FLValue_IsInteger,
         FLValue_IsUnsigned,
     },
@@ -17,6 +18,7 @@ pub enum ValueRef<'a> {
     UnsignedInt(u64),
     Double(f64),
     String(&'a str),
+    Array(ValueRefArray),
 }
 
 impl ValueRef<'_> {
@@ -25,6 +27,12 @@ impl ValueRef<'_> {
     }
     pub fn as_u64(&self) -> Result<u64> {
         FromValueRef::column_result(*self)
+    }
+    pub fn is_null(&self) -> bool {
+        match self {
+            ValueRef::Null => true,
+            _ => false,
+        }
     }
 }
 
@@ -48,8 +56,28 @@ impl<'a> Into<ValueRef<'a>> for FLValue {
                 let s = unsafe { fl_slice_to_str_unchecked(FLValue_AsString(self)) };
                 ValueRef::String(s)
             }
-            kFLData | kFLArray | kFLDict => unimplemented!(),
+            kFLArray => ValueRef::Array(ValueRefArray(unsafe { FLValue_AsArray(self) })),
+            kFLData | kFLDict => unimplemented!(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct ValueRefArray(FLArray);
+
+impl ValueRefArray {
+    pub fn len(&self) -> u32 {
+        unsafe { FLArray_Count(self.0) }
+    }
+    pub fn is_empty(&self) -> bool {
+        unsafe { FLArray_IsEmpty(self.0) }
+    }
+    pub(crate) unsafe fn get_raw(&self, idx: u32) -> FLValue {
+        FLArray_Get(self.0, idx)
+    }
+    pub fn get<'a>(&'a self, idx: u32) -> ValueRef<'a> {
+        unsafe { self.get_raw(idx) }.into()
     }
 }
 

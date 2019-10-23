@@ -1,5 +1,3 @@
-use std::{ops::Deref, ptr::NonNull};
-
 use crate::{
     document::{C4DocumentOwner, Document},
     error::{c4error_init, Error},
@@ -10,6 +8,7 @@ use crate::{
     fl_slice::{AsFlSlice, FlSliceOwner},
     Database, Result,
 };
+use std::{ops::Deref, ptr::NonNull};
 
 pub struct Transaction<'db> {
     db: &'db Database,

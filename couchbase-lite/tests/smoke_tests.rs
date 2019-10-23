@@ -1,8 +1,9 @@
 use couchbase_lite::{
     fallible_streaming_iterator::FallibleStreamingIterator, Database, DatabaseConfig,
-    DocEnumeratorFlags, Document,
+    DocEnumeratorFlags, Document, IndexType,
 };
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use tempfile::tempdir;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -262,6 +263,78 @@ fn test_save_several_times() {
 
         let doc = db.get_existsing(&doc_id).unwrap();
         assert_eq!(s, doc.decode_data::<S>().unwrap());
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+#[test]
+fn test_indices() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open(&db_path, DatabaseConfig::default()).unwrap();
+
+        fn get_index_list(db: &Database) -> Vec<String> {
+            let mut ret = vec![];
+            let mut index_name_it = db.get_indexes().unwrap();
+            while let Some(value) = index_name_it.next().unwrap() {
+                println!("index name: {}", value);
+                ret.push(value.into());
+            }
+            ret
+        }
+
+        println!("before index creation:");
+        assert!(get_index_list(&db).is_empty());
+
+        db.create_index("Foo_s", "[[\".s\"]]", IndexType::ValueIndex, None)
+            .unwrap();
+        println!("after index creation:");
+        assert_eq!(vec!["Foo_s".to_string()], get_index_list(&db));
+
+        {
+            let mut trans = db.transaction().unwrap();
+            for i in 0..10_000 {
+                let foo = Foo {
+                    i: i,
+                    s: format!("Hello {}", i),
+                };
+                let mut doc = Document::new(&foo).unwrap();
+                trans.save(&mut doc).unwrap();
+            }
+            trans.commit().unwrap();
+        }
+
+        let work_time = SystemTime::now();
+        let query = db
+            .query(
+                r#"
+{
+ "WHAT": ["._id"],
+ "WHERE": ["AND", ["=", [".type"], "Foo"], ["=", [".s"], "Hello 500"]]
+}
+"#,
+            )
+            .unwrap();
+        let mut iter = query.run().unwrap();
+        while let Some(item) = iter.next().unwrap() {
+            // work with item
+            let id = item.get_raw_checked(0).unwrap();
+            let id = id.as_str().unwrap();
+            println!("iteration id {}", id);
+            let doc = db.get_existsing(id).unwrap();
+            println!("doc id {}", doc.id());
+
+            let foo: Foo = doc.decode_data().unwrap();
+            println!("foo: {:?}", foo);
+            assert_eq!(500, foo.i);
+        }
+        println!(
+            "work time: {:?}",
+            SystemTime::now().duration_since(work_time)
+        );
     }
     tmp_dir.close().expect("Can not close tmp_dir");
 }

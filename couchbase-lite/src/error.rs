@@ -20,6 +20,8 @@ pub enum Error {
     Json5(json5::Error),
     /// fleece library errors
     FlError(u32),
+    /// argument contains 0 character
+    NulError(std::ffi::NulError),
 }
 
 impl std::error::Error for Error {}
@@ -43,6 +45,7 @@ impl fmt::Display for Error {
             Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
             Error::SerdeJson(err) => write!(fmt, "SerdeJson: {}", err),
             Error::FlError(err) => write!(fmt, "FlError: {}", err),
+            Error::NulError(err) => write!(fmt, "NulError: {}", err),
         }
     }
 }
@@ -65,6 +68,7 @@ impl fmt::Debug for Error {
             Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
             Error::SerdeJson(err) => write!(fmt, "SerdeJson: {:?}", err),
             Error::FlError(err) => write!(fmt, "FlError: {}", err),
+            Error::NulError(err) => write!(fmt, "NulError: {:?}", err),
         }
     }
 }
@@ -99,5 +103,11 @@ impl From<serde_json::Error> for Error {
 impl From<json5::Error> for Error {
     fn from(error: json5::Error) -> Self {
         Error::Json5(error)
+    }
+}
+
+impl From<std::ffi::NulError> for Error {
+    fn from(err: std::ffi::NulError) -> Self {
+        Error::NulError(err)
     }
 }

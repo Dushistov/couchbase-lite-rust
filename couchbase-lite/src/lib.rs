@@ -65,23 +65,30 @@ use crate::{
     document::C4DocumentOwner,
     error::{c4error_init, Result},
     ffi::{
-        c4db_free, c4db_getDocumentCount, c4db_open, c4doc_get, c4socket_registerFactory,
-        kC4DB_Create, kC4EncryptionNone, kC4RevisionTrees, kC4SQLiteStorageEngine,
+        c4db_createIndex, c4db_free, c4db_getDocumentCount, c4db_getIndexes, c4db_open, c4doc_get,
+        c4socket_registerFactory, kC4ArrayIndex, kC4DB_Create, kC4EncryptionNone, kC4FullTextIndex,
+        kC4PredictiveIndex, kC4RevisionTrees, kC4SQLiteStorageEngine, kC4ValueIndex,
         C4CivetWebSocketFactory, C4Database, C4DatabaseConfig, C4DatabaseFlags,
-        C4DocumentVersioning, C4EncryptionAlgorithm, C4EncryptionKey, C4String,
+        C4DocumentVersioning, C4EncryptionAlgorithm, C4EncryptionKey, C4IndexOptions, C4String,
+        FLTrust_kFLTrusted, FLValue, FLValueType, FLValue_AsString, FLValue_FromData,
+        FLValue_GetType,
     },
-    fl_slice::AsFlSlice,
+    fl_slice::{fl_slice_to_str_unchecked, AsFlSlice, FlSliceOwner},
     log_reroute::DB_LOGGER,
     observer::{DatabaseObserver, DbChange, DbChangesIter},
     replicator::Replicator,
     transaction::Transaction,
+    value::{ValueRef, ValueRefArray},
 };
+use fallible_streaming_iterator::FallibleStreamingIterator;
 use log::error;
 use once_cell::sync::Lazy;
 use std::{
     collections::HashSet,
     convert::{TryFrom, TryInto},
+    ffi::CString,
     path::Path,
+    ptr,
     ptr::NonNull,
     sync::{Arc, Mutex},
 };
@@ -307,6 +314,90 @@ impl Database {
             repl.stop();
         }
     }
+
+    /// Returns the names of all indexes in the database
+    pub fn get_indexes(&self) -> Result<impl FallibleStreamingIterator<Item = str, Error = Error>> {
+        let mut c4err = c4error_init();
+        let enc_data = unsafe { c4db_getIndexes(self.inner.0.as_ptr(), &mut c4err) };
+        if enc_data.buf.is_null() {
+            return Err(c4err.into());
+        }
+
+        let enc_data: FlSliceOwner = enc_data.into();
+        let indexes_list = DbIndexesListIterator::new(enc_data)?;
+        Ok(indexes_list)
+    }
+
+    /// Creates a database index, of the values of specific expressions across
+    /// all documents. The name is used to identify the index for later updating
+    /// or deletion; if an index with the same name already exists, it will be
+    /// replaced unless it has the exact same expressions.
+    /// Note: If some documents are missing the values to be indexed,
+    /// those documents will just be omitted from the index. It's not an error.
+    pub fn create_index(
+        &mut self,
+        index_name: &str,
+        expression_json: &str,
+        index_type: IndexType,
+        index_options: Option<IndexOptions>,
+    ) -> Result<()> {
+        use IndexType::*;
+        let index_type = match index_type {
+            ValueIndex => kC4ValueIndex,
+            FullTextIndex => kC4FullTextIndex,
+            ArrayIndex => kC4ArrayIndex,
+            PredictiveIndex => kC4PredictiveIndex,
+        };
+        let mut c4err = c4error_init();
+        let result = if let Some(index_options) = index_options {
+            let language = CString::new(index_options.language)?;
+            let stop_words: Option<CString> = if let Some(stop_words) = index_options.stop_words {
+                let mut list = String::with_capacity(stop_words.len() * 5);
+                for word in stop_words {
+                    if !list.is_empty() {
+                        list.push(' ');
+                    }
+                    list.push_str(&word);
+                }
+                Some(CString::new(list)?)
+            } else {
+                None
+            };
+
+            let opts = C4IndexOptions {
+                language: language.as_ptr(),
+                disableStemming: index_options.disable_stemming,
+                ignoreDiacritics: index_options.ignore_diacritics,
+                stopWords: stop_words.map_or(ptr::null(), |x| x.as_ptr()),
+            };
+            unsafe {
+                c4db_createIndex(
+                    self.inner.0.as_ptr(),
+                    index_name.as_flslice(),
+                    expression_json.as_flslice(),
+                    index_type,
+                    &opts,
+                    &mut c4err,
+                )
+            }
+        } else {
+            unsafe {
+                c4db_createIndex(
+                    self.inner.0.as_ptr(),
+                    index_name.as_flslice(),
+                    expression_json.as_flslice(),
+                    index_type,
+                    ptr::null(),
+                    &mut c4err,
+                )
+            }
+        };
+        if result {
+            Ok(())
+        } else {
+            Err(c4err.into())
+        }
+    }
 }
 
 pub struct ObserverdChangesIter<'db> {
@@ -347,4 +438,106 @@ impl<'db> Iterator for ObserverdChangesIter<'db> {
             }
         }
     }
+}
+
+struct DbIndexesListIterator {
+    _enc_data: FlSliceOwner,
+    array: ValueRefArray,
+    next_idx: u32,
+    cur_val: Option<FLValue>,
+}
+
+impl DbIndexesListIterator {
+    fn new(enc_data: FlSliceOwner) -> Result<Self> {
+        let fvalue = unsafe { FLValue_FromData(enc_data.as_flslice(), FLTrust_kFLTrusted) };
+        let val: ValueRef = fvalue.into();
+        let array = match val {
+            ValueRef::Array(arr) => arr,
+            _ => {
+                return Err(Error::LogicError(
+                    "db indexes are not fleece encoded array".into(),
+                ))
+            }
+        };
+
+        Ok(Self {
+            _enc_data: enc_data,
+            array,
+            next_idx: 0,
+            cur_val: None,
+        })
+    }
+}
+
+impl FallibleStreamingIterator for DbIndexesListIterator {
+    type Error = Error;
+    type Item = str;
+
+    fn advance(&mut self) -> Result<()> {
+        if self.next_idx < self.array.len() {
+            let val = unsafe { self.array.get_raw(self.next_idx) };
+            let val_type = unsafe { FLValue_GetType(val) };
+            if val_type != FLValueType::kFLString {
+                return Err(Error::LogicError(format!(
+                    "Wrong index type, expect String, got {:?}",
+                    val_type
+                )));
+            }
+            self.cur_val = Some(val);
+            self.next_idx += 1;
+        } else {
+            self.cur_val = None;
+        }
+        Ok(())
+    }
+
+    fn get(&self) -> Option<&str> {
+        if let Some(val) = self.cur_val {
+            Some(unsafe { fl_slice_to_str_unchecked(FLValue_AsString(val)) })
+        } else {
+            None
+        }
+    }
+}
+
+pub enum IndexType {
+    /// Regular index of property value
+    ValueIndex,
+    /// Full-text index
+    FullTextIndex,
+    /// Index of array values, for use with UNNEST
+    ArrayIndex,
+    /// Index of prediction() results (Enterprise Edition only)
+    PredictiveIndex,
+}
+
+#[derive(Default)]
+pub struct IndexOptions<'a> {
+    /// Dominant language of text to be indexed; setting this enables word stemming, i.e.
+    /// matching different cases of the same word ("big" and "bigger", for instance.)
+    /// Can be an ISO-639 language code or a lowercase (English) language name; supported
+    /// languages are: da/danish, nl/dutch, en/english, fi/finnish, fr/french, de/german,
+    /// hu/hungarian, it/italian, no/norwegian, pt/portuguese, ro/romanian, ru/russian,
+    /// es/spanish, sv/swedish, tr/turkish.
+    /// If left empty,  or set to an unrecognized language, no language-specific behaviors
+    /// such as stemming and stop-word removal occur.
+    pub language: &'a str,
+    /// Should diacritical marks (accents) be ignored? Defaults to false.
+    /// Generally this should be left false for non-English text.
+    pub ignore_diacritics: bool,
+    /// "Stemming" coalesces different grammatical forms of the same word ("big" and "bigger",
+    /// for instance.) Full-text search normally uses stemming if the language is one for
+    /// which stemming rules are available, but this flag can be set to `true` to disable it.
+    /// Stemming is currently available for these languages: da/danish, nl/dutch, en/english,
+    /// fi/finnish, fr/french, de/german, hu/hungarian, it/italian, no/norwegian, pt/portuguese,
+    /// ro/romanian, ru/russian, s/spanish, sv/swedish, tr/turkish.
+    pub disable_stemming: bool,
+    /// List of words to ignore ("stop words") for full-text search. Ignoring common words
+    /// like "the" and "a" helps keep down the size of the index.
+    /// If `None`, a default word list will be used based on the `language` option, if there is
+    /// one for that language.
+    /// To suppress stop-words, use an empty list.
+    /// To provide a custom list of words, use the words in lowercase
+    /// separated by spaces.
+    pub stop_words: Option<&'a [&'a str]>,
 }

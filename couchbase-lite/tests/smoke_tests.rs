@@ -338,3 +338,107 @@ fn test_indices() {
     }
     tmp_dir.close().expect("Can not close tmp_dir");
 }
+
+#[test]
+fn test_like_offset_limit() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open(&db_path, DatabaseConfig::default()).unwrap();
+        let mut trans = db.transaction().unwrap();
+        for i in 0..10_000 {
+            let foo = Foo {
+                i: i,
+                s: format!("Hello {}", i),
+            };
+            let mut doc = Document::new(&foo).unwrap();
+            trans.save(&mut doc).unwrap();
+        }
+        trans.commit().unwrap();
+
+        assert_eq!(
+            vec![
+                "Hello 1555",
+                "Hello 2555",
+                "Hello 3555",
+                "Hello 4555",
+                "Hello 555",
+                "Hello 5555",
+                "Hello 6555",
+                "Hello 7555",
+                "Hello 8555",
+                "Hello 9555",
+            ],
+            query_data(
+                &db,
+                r#"
+{
+ "WHAT": [".s"],
+ "WHERE": ["LIKE", [".s"], "%555"]
+}
+"#,
+            )
+            .unwrap()
+        );
+
+        assert_eq!(
+            vec!["Hello 0", "Hello 1"],
+            query_data(
+                &db,
+                r#"
+{
+ "WHAT": [".s"],
+ "LIMIT": 2, "OFFSET": 0
+}
+"#,
+            )
+            .unwrap()
+        );
+
+        assert_eq!(
+            vec!["Hello 1", "Hello 2"],
+            query_data(
+                &db,
+                r#"
+{
+ "WHAT": [".s"],
+ "LIMIT": 2, "OFFSET": 1
+}
+"#,
+            )
+            .unwrap()
+        );
+
+        assert_eq!(
+            vec!["Hello 2555", "Hello 3555",],
+            query_data(
+                &db,
+                r#"
+{
+ "WHAT": [".s"],
+ "WHERE": ["LIKE", [".s"], "%555"],
+ "ORDER_BY": [".s"],
+ "LIMIT": 2, "OFFSET": 1
+}
+"#,
+            )
+            .unwrap()
+        );
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+
+    fn query_data(db: &Database, query: &str) -> Result<Vec<String>, couchbase_lite::Error> {
+        let query = db.query(query)?;
+        let mut iter = query.run()?;
+        let mut query_ret = Vec::with_capacity(10);
+        while let Some(item) = iter.next()? {
+            let val = item.get_raw_checked(0)?;
+            let val = val.as_str()?;
+            query_ret.push(val.to_string());
+        }
+        query_ret.sort();
+        Ok(query_ret)
+    }
+}

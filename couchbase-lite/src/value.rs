@@ -9,6 +9,7 @@ use crate::{
     fl_slice::fl_slice_to_str_unchecked,
     Result,
 };
+use std::convert::TryFrom;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ValueRef<'a> {
@@ -176,6 +177,24 @@ impl<'a> FromValueRef<'a> for u64 {
             ValueRef::UnsignedInt(x) => Ok(x),
             _ => Err(Error::LogicError(format!(
                 "Wrong ValueRef type, expect SignedInt|UnsignedInt (u64) got {:?}",
+                value
+            ))),
+        }
+    }
+}
+
+impl<'a> FromValueRef<'a> for i64 {
+    fn column_result(value: ValueRef<'a>) -> Result<Self> {
+        match value {
+            ValueRef::SignedInt(x) => Ok(x),
+            ValueRef::UnsignedInt(x) => i64::try_from(x).map_err(|err| {
+                Error::LogicError(format!(
+                    "ValueRef (UnsignedInt) to i64 conversation failed: {}",
+                    err
+                ))
+            }),
+            _ => Err(Error::LogicError(format!(
+                "Wrong ValueRef type, expect SignedInt|UnsignedInt (i64) got {:?}",
                 value
             ))),
         }

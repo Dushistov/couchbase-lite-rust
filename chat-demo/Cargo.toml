@@ -8,9 +8,9 @@ edition = "2018"
 
 [dependencies]
 couchbase-lite = { path = "../couchbase-lite" }
-serde = { version = "1.0.84", features = ["derive"] }
+serde = { version = "1.0.104", features = ["derive"] }
 futures = "0.1.25"
 tokio = "0.1.14"
 tokio-codec = "0.1.1"
 log = "0.4.8"
-env_logger = "0.6"
+env_logger = "0.7"

@@ -2,10 +2,10 @@ use couchbase_lite::{
     fallible_streaming_iterator::FallibleStreamingIterator, use_c4_civet_web_socket_factory,
     Database, DatabaseConfig, Document, ReplicatorState,
 };
-use futures::{future::Future, stream::Stream};
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, env, path::Path};
+use tokio::prelude::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
@@ -70,45 +70,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let db_exec3 = db_exec.clone();
-    let stdin = tokio::io::stdin();
+    let mut stdin = tokio::io::BufReader::new(tokio::io::stdin());
     static EDIT_PREFIX: &'static str = "edit ";
-    let mut edit_id = None;
-    let framed_read = tokio_codec::FramedRead::new(stdin, tokio::codec::BytesCodec::new())
-        .map_err(|e| {
-            println!("error = {:?}", e);
-        })
-        .for_each(move |bytes| {
-            if let Ok(msg) = std::str::from_utf8(&bytes) {
-                let msg = msg.trim_end();
-                if !msg.is_empty() {
-                    if msg.starts_with(EDIT_PREFIX) {
-                        edit_id = Some((&msg[EDIT_PREFIX.len()..]).to_string());
-                        println!("ready to edit message {:?}", edit_id);
-                    } else {
-                        println!("Your message is '{}'", msg);
 
-                        {
-                            let msg = msg.to_string();
-                            let edit_id = edit_id.clone();
-                            db_exec.spawn(move |db| {
-                                if let Some(mut db) = db.as_mut() {
-                                    save_msg(&mut db, &msg, edit_id.as_ref().map(String::as_str))
-                                        .expect("save to db failed");
-                                } else {
-                                    eprintln!("db is NOT open");
-                                }
-                            });
-                        }
+    runtime.block_on(async move {
+        let mut buf = String::new();
+        let mut edit_id = None;
+        loop {
+            stdin
+                .read_line(&mut buf)
+                .await
+                .expect("reading from stdin fail");
+            let msg = &buf;
+            let msg = msg.trim_end();
+            if !msg.is_empty() {
+                if msg.starts_with(EDIT_PREFIX) {
+                    edit_id = Some((&msg[EDIT_PREFIX.len()..]).to_string());
+                    println!("ready to edit message {:?}", edit_id);
+                } else {
+                    println!("Your message is '{}'", msg);
+
+                    {
+                        let msg = msg.to_string();
+                        let edit_id = edit_id.take();
+                        db_exec.spawn(move |db| {
+                            if let Some(mut db) = db.as_mut() {
+                                save_msg(&mut db, &msg, edit_id.as_ref().map(String::as_str))
+                                    .expect("save to db failed");
+                            } else {
+                                eprintln!("db is NOT open");
+                            }
+                        });
                     }
                 }
-            } else {
-                eprintln!("you enter strange bytes: {:?}", bytes);
             }
-            Ok(())
-        });
+            buf.clear();
+        }
+    });
 
-    runtime.spawn(framed_read);
-    runtime.shutdown_on_idle().wait().unwrap();
     db_exec3.spawn(|db| {
         if let Some(db) = db.as_mut() {
             db.clear_observers();

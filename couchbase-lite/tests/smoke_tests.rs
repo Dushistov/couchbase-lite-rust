@@ -442,3 +442,55 @@ fn test_like_offset_limit() {
         Ok(query_ret)
     }
 }
+
+#[test]
+fn test_like_performance() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open(&db_path, DatabaseConfig::default()).unwrap();
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+        #[serde(tag = "type")]
+        struct Data {
+            field1: String,
+            field2: String,
+        }
+
+        const N: usize = 3_000;
+        let mut trans = db.transaction().unwrap();
+        for i in 0..N {
+            let d = Data {
+                field1: format!("_common_prefix_{}", i),
+                field2: format!("{}", i + 1),
+            };
+            let mut doc = Document::new(&d).unwrap();
+            trans.save(&mut doc).unwrap();
+        }
+        trans.commit().unwrap();
+
+        for i in 0..N {
+            let pat = format!("{}", i);
+            let query = db
+                .query(&format!(
+                    r#"{{
+"WHAT": [["count()"]],
+ "WHERE": ["OR", ["LIKE", [".field1"], "%{pat}%"],
+                 ["LIKE", [".field2"], "%{pat}%"]]}}"#,
+                    pat = pat,
+                ))
+                .unwrap();
+            let mut iter = query.run().unwrap();
+            let mut query_ret = Vec::with_capacity(10);
+            while let Some(item) = iter.next().unwrap() {
+                let val = item.get_raw_checked(0).unwrap();
+                let val = val.as_u64().unwrap();
+                query_ret.push(val);
+            }
+            assert_eq!(1, query_ret.len());
+            assert!(query_ret[0] > 1);
+        }
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}

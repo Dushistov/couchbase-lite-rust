@@ -470,6 +470,11 @@ fn test_like_performance() {
         }
         trans.commit().unwrap();
 
+        db.create_index("field1", "[[\".field1\"]]", IndexType::ValueIndex, None)
+            .unwrap();
+        db.create_index("field2", "[[\".field2\"]]", IndexType::ValueIndex, None)
+            .unwrap();
+
         for i in 0..N {
             let pat = format!("{}", i);
             let query = db

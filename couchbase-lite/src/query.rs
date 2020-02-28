@@ -39,6 +39,24 @@ impl Query<'_> {
             .ok_or_else(|| c4err.into())
     }
 
+    pub(crate) fn new_n1ql<'a, 'b>(db: &'a Database, query_n1ql: &'b str) -> Result<Query<'a>> {
+        let mut c4err = c4error_init();
+        let mut out_error_pos: std::os::raw::c_int = -1;
+        let query = unsafe {
+            c4query_new2(
+                db.inner.0.as_ptr(),
+                kC4N1QLQuery,
+                query_n1ql.as_bytes().as_flslice(),
+                &mut out_error_pos,
+                &mut c4err,
+            )
+        };
+
+        NonNull::new(query)
+            .map(|inner| Query { _db: db, inner })
+            .ok_or_else(|| c4err.into())
+    }
+
     pub fn run(&self) -> Result<Enumerator> {
         let mut c4err = c4error_init();
         let it = unsafe {

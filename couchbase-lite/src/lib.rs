@@ -204,6 +204,10 @@ impl Database {
     pub fn query(&self, query_json: &str) -> Result<Query> {
         Query::new(self, query_json)
     }
+    /// Compiles a query from an expression given as N1QL.
+    pub fn n1ql_query(&self, query: &str) -> Result<Query> {
+        Query::new_n1ql(self, query)
+    }
 
     /// Creates an enumerator ordered by docID.
     pub fn enumerate_all_docs(&self, flags: DocEnumeratorFlags) -> Result<DocEnumerator> {

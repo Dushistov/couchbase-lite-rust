@@ -1,15 +1,16 @@
 use crate::{
     error::{c4error_init, Error},
     ffi::{
-        c4query_free, c4query_new, c4query_run, c4queryenum_free, c4queryenum_next,
+        c4query_free, c4query_new, c4query_new2, c4query_run, c4queryenum_free, c4queryenum_next,
         kC4DefaultQueryOptions, C4Query, C4QueryEnumerator, FLArrayIterator_GetCount,
-        FLArrayIterator_GetValueAt,
+        FLArrayIterator_GetValueAt, kC4N1QLQuery, c4query_setParameters
     },
     fl_slice::{fl_slice_empty, AsFlSlice},
     value::{FromValueRef, ValueRef},
     Database, Result,
 };
 use fallible_streaming_iterator::FallibleStreamingIterator;
+use serde::Serialize;
 use std::ptr::NonNull;
 
 pub struct Query<'db> {
@@ -55,6 +56,19 @@ impl Query<'_> {
         NonNull::new(query)
             .map(|inner| Query { _db: db, inner })
             .ok_or_else(|| c4err.into())
+    }
+
+    pub fn set_json_parameters<T>(&self, parameters: &T) -> Result<()> where T: Serialize {
+        let param_string = serde_json::to_string(parameters)?;
+        let param_slice = param_string.as_bytes().as_flslice();
+        unsafe {
+            c4query_setParameters(
+                self.inner.as_ptr(),
+                param_slice
+            );
+        }
+        std::mem::forget(param_string);
+        Ok(())
     }
 
     pub fn run(&self) -> Result<Enumerator> {

@@ -1,11 +1,11 @@
 use crate::{
     error::{c4error_init, Error},
     ffi::{
-        c4query_free, c4query_new, c4query_new2, c4query_run, c4queryenum_free, c4queryenum_next,
-        kC4DefaultQueryOptions, C4Query, C4QueryEnumerator, FLArrayIterator_GetCount,
-        FLArrayIterator_GetValueAt, kC4N1QLQuery, c4query_setParameters
+        c4query_free, c4query_new, c4query_new2, c4query_run, c4query_setParameters,
+        c4queryenum_free, c4queryenum_next, kC4DefaultQueryOptions, kC4N1QLQuery, C4Query,
+        C4QueryEnumerator, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt, FLSlice_Copy,
     },
-    fl_slice::{fl_slice_empty, AsFlSlice},
+    fl_slice::{fl_slice_empty, AsFlSlice, FlSliceOwner},
     value::{FromValueRef, ValueRef},
     Database, Result,
 };
@@ -58,16 +58,18 @@ impl Query<'_> {
             .ok_or_else(|| c4err.into())
     }
 
-    pub fn set_json_parameters<T>(&self, parameters: &T) -> Result<()> where T: Serialize {
+    pub fn set_json_parameters<T>(&self, parameters: &T) -> Result<()>
+    where
+        T: Serialize,
+    {
         let param_string = serde_json::to_string(parameters)?;
         let param_slice = param_string.as_bytes().as_flslice();
+        let param_copy = unsafe { FLSlice_Copy(param_slice) };
+        let param_copy: FlSliceOwner = param_copy.into();
+
         unsafe {
-            c4query_setParameters(
-                self.inner.as_ptr(),
-                param_slice
-            );
+            c4query_setParameters(self.inner.as_ptr(), param_copy.as_flslice());
         }
-        std::mem::forget(param_string);
         Ok(())
     }
 

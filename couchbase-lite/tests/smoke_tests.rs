@@ -546,3 +546,46 @@ fn test_n1ql_query() {
     }
     tmp_dir.close().expect("Can not close tmp_dir");
 }
+
+#[test]
+fn test_n1ql_query_with_parameter() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open(&db_path, DatabaseConfig::default()).unwrap();
+        let mut trans = db.transaction().unwrap();
+        for i in 0..10_000 {
+            let foo = Foo {
+                i,
+                s: format!("Hello {}", i),
+            };
+            let mut doc = Document::new(&foo).unwrap();
+            trans.save(&mut doc).unwrap();
+        }
+        trans.commit().unwrap();
+
+        let query = db
+            .n1ql_query("SELECT s WHERE s LIKE $pattern ORDER BY s LIMIT 2 OFFSET 1")
+            .unwrap();
+        query
+            .set_json_parameters(&serde_json::json!({
+                "pattern": "%555",
+            }))
+            .unwrap();
+        let expected = vec!["Hello 2555", "Hello 3555"];
+
+        let mut iter = query.run().unwrap();
+        let mut query_ret = Vec::with_capacity(10);
+        while let Some(item) = iter.next().unwrap() {
+            let val = item.get_raw_checked(0).unwrap();
+            let val = val.as_str().unwrap();
+            query_ret.push(val.to_string());
+        }
+        query_ret.sort();
+
+        assert_eq!(expected, query_ret);
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}

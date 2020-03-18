@@ -82,6 +82,15 @@ impl AsFlSlice for FlSliceOwner {
     }
 }
 
+impl AsFlSlice for FLSliceResult {
+    fn as_flslice(&self) -> FLSlice {
+        FLSlice {
+            buf: self.buf,
+            size: self.size,
+        }
+    }
+}
+
 #[inline]
 pub(crate) unsafe fn fl_slice_to_str_unchecked<'a>(s: FLSlice) -> &'a str {
     let bytes: &[u8] = slice::from_raw_parts(s.buf as *const u8, s.size);

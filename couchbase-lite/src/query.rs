@@ -58,7 +58,7 @@ impl Query<'_> {
             .ok_or_else(|| c4err.into())
     }
 
-    pub fn set_json_parameters<T>(&self, parameters: &T) -> Result<()>
+    pub fn set_parameters<T>(&self, parameters: &T) -> Result<()>
     where
         T: Serialize,
     {

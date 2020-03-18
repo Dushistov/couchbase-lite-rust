@@ -570,7 +570,7 @@ fn test_n1ql_query_with_parameter() {
             .n1ql_query("SELECT s WHERE s LIKE $pattern ORDER BY s LIMIT 2 OFFSET 1")
             .unwrap();
         query
-            .set_json_parameters(&serde_json::json!({
+            .set_parameters(&serde_json::json!({
                 "pattern": "%555",
             }))
             .unwrap();

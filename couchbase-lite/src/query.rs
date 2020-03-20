@@ -3,7 +3,7 @@ use crate::{
     ffi::{
         c4query_free, c4query_new, c4query_new2, c4query_run, c4query_setParameters,
         c4queryenum_free, c4queryenum_next, kC4DefaultQueryOptions, kC4N1QLQuery, C4Query,
-        C4QueryEnumerator, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt, FLSlice_Copy,
+        C4QueryEnumerator, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt,
     },
     fl_slice::{fl_slice_empty, AsFlSlice},
     value::{FromValueRef, ValueRef},
@@ -64,10 +64,8 @@ impl Query<'_> {
     {
         let param_string = serde_json::to_string(parameters)?;
         let param_slice = param_string.as_bytes().as_flslice();
-        let param_copy = unsafe { FLSlice_Copy(param_slice) };
-
         unsafe {
-            c4query_setParameters(self.inner.as_ptr(), param_copy.as_flslice());
+            c4query_setParameters(self.inner.as_ptr(), param_slice);
         }
         Ok(())
     }

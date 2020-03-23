@@ -192,7 +192,7 @@ fn print_all_messages(db: &Database) -> Result<(), Box<dyn std::error::Error>> {
         let id = item.get_raw_checked(0)?;
         let id = id.as_str()?;
         println!("iteration id {}", id);
-        let doc = db.get_existsing(id)?;
+        let doc = db.get_existing(id)?;
         println!("doc id {}", doc.id());
 
         let db_msg: Message = doc.decode_data()?;
@@ -217,7 +217,7 @@ fn print_external_changes(db: &mut Option<Database>) -> Result<(), Box<dyn std::
         }
     }
     for doc_id in &doc_ids {
-        let doc = match db.get_existsing(doc_id.as_str()) {
+        let doc = match db.get_existing(doc_id.as_str()) {
             Ok(x) => x,
             Err(err) => {
                 eprintln!("Can not get {}: {}", doc_id, err);

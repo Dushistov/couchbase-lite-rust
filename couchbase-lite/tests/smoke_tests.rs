@@ -53,7 +53,7 @@ fn test_write_read() {
         }
         assert_eq!(ids_and_data.len() as u64, db.document_count());
         for (doc_id, foo) in &ids_and_data {
-            let doc = db.get_existsing(doc_id).unwrap();
+            let doc = db.get_existing(doc_id).unwrap();
             let loaded_foo: Foo = doc.decode_data().unwrap();
             assert_eq!(*foo, loaded_foo);
         }
@@ -63,7 +63,7 @@ fn test_write_read() {
         let mut db = Database::open(&db_path, DatabaseConfig::default()).unwrap();
         assert_eq!(ids_and_data.len() as u64, db.document_count());
         for (doc_id, foo) in &ids_and_data {
-            let doc = db.get_existsing(doc_id).unwrap();
+            let doc = db.get_existing(doc_id).unwrap();
             let loaded_foo: Foo = doc.decode_data().unwrap();
             assert_eq!(*foo, loaded_foo);
         }
@@ -71,7 +71,7 @@ fn test_write_read() {
         {
             let mut trans = db.transaction().unwrap();
             for (doc_id, foo) in &ids_and_data {
-                let mut doc = trans.get_existsing(doc_id).unwrap();
+                let mut doc = trans.get_existing(doc_id).unwrap();
                 let mut foo_updated = foo.clone();
                 foo_updated.i += 1;
                 doc.update_data(&foo_updated).unwrap();
@@ -81,7 +81,7 @@ fn test_write_read() {
         }
         assert_eq!(ids_and_data.len() as u64, db.document_count());
         for (doc_id, foo) in &ids_and_data {
-            let doc = db.get_existsing(doc_id).unwrap();
+            let doc = db.get_existing(doc_id).unwrap();
             let loaded_foo: Foo = doc.decode_data().unwrap();
             assert_eq!(
                 Foo {
@@ -123,7 +123,7 @@ fn test_write_read() {
         {
             let mut trans = db.transaction().unwrap();
             for doc_id in ids_and_data.iter().take(n).map(|x| x.0.as_str()) {
-                let mut doc = trans.get_existsing(doc_id).unwrap();
+                let mut doc = trans.get_existing(doc_id).unwrap();
                 trans.delete(&mut doc).unwrap();
             }
             trans.commit().unwrap();
@@ -170,7 +170,7 @@ fn test_observed_changes() {
 
         {
             let mut trans = db.transaction().unwrap();
-            let mut doc = trans.get_existsing(&doc_id).unwrap();
+            let mut doc = trans.get_existing(&doc_id).unwrap();
             trans.delete(&mut doc).unwrap();
             trans.commit().unwrap();
         }
@@ -182,7 +182,7 @@ fn test_observed_changes() {
         assert!(!changes[0].external());
         assert_eq!(2, changes[0].body_size());
 
-        let doc = db.get_existsing(&doc_id).unwrap();
+        let doc = db.get_existing(&doc_id).unwrap();
         println!("doc {:?}", doc);
         doc.decode_data::<Empty>().unwrap();
     }
@@ -208,7 +208,7 @@ fn test_save_float() {
         let doc_id: String = doc.id().into();
         drop(doc);
 
-        let doc = db.get_existsing(&doc_id).unwrap();
+        let doc = db.get_existing(&doc_id).unwrap();
         let loaded_s: S = doc.decode_data().unwrap();
         assert_eq!(s, loaded_s);
     }
@@ -238,7 +238,7 @@ fn test_save_several_times() {
         drop(doc);
         assert_eq!(1, db.document_count());
 
-        let doc = db.get_existsing(&doc_id).unwrap();
+        let doc = db.get_existing(&doc_id).unwrap();
         assert_eq!(s, doc.decode_data::<S>().unwrap());
 
         let s = create_s(501);
@@ -249,7 +249,7 @@ fn test_save_several_times() {
         drop(doc);
         assert_eq!(1, db.document_count());
 
-        let doc = db.get_existsing(&doc_id).unwrap();
+        let doc = db.get_existing(&doc_id).unwrap();
         assert_eq!(s, doc.decode_data::<S>().unwrap());
 
         let s = create_s(400);
@@ -261,7 +261,7 @@ fn test_save_several_times() {
         drop(doc);
         assert_eq!(1, db.document_count());
 
-        let doc = db.get_existsing(&doc_id).unwrap();
+        let doc = db.get_existing(&doc_id).unwrap();
         assert_eq!(s, doc.decode_data::<S>().unwrap());
     }
     tmp_dir.close().expect("Can not close tmp_dir");
@@ -324,7 +324,7 @@ fn test_indices() {
             let id = item.get_raw_checked(0).unwrap();
             let id = id.as_str().unwrap();
             println!("iteration id {}", id);
-            let doc = db.get_existsing(id).unwrap();
+            let doc = db.get_existing(id).unwrap();
             println!("doc id {}", doc.id());
 
             let foo: Foo = doc.decode_data().unwrap();

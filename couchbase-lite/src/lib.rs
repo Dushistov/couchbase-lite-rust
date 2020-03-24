@@ -30,7 +30,7 @@
 //!     while let Some(item) = iter.next()? {
 //!         let id = item.get_raw_checked(0)?;
 //!         let id = id.as_str()?;
-//!         let doc = db.get_existsing(id)?;
+//!         let doc = db.get_existing(id)?;
 //!         println!("doc id {}", doc.id());
 //!         let db_msg: Message = doc.decode_data()?;
 //!         println!("db_msg: {:?}", db_msg);
@@ -192,12 +192,12 @@ impl Database {
     pub fn document_count(&self) -> u64 {
         unsafe { c4db_getDocumentCount(self.inner.0.as_ptr()) }
     }
+
     /// Return existing document from database
-    pub fn get_existsing(&self, doc_id: &str) -> Result<Document> {
+    pub fn get_existing(&self, doc_id: &str) -> Result<Document> {
         self.internal_get(doc_id, true)
             .map(|x| Document::new_internal(x, doc_id))
     }
-
     /// Compiles a query from an expression given as JSON.
     /// The expression is a predicate that describes which documents should be returned.
     /// A separate, optional sort expression describes the ordering of the results.

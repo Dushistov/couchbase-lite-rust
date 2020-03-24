@@ -192,15 +192,7 @@ impl Database {
     pub fn document_count(&self) -> u64 {
         unsafe { c4db_getDocumentCount(self.inner.0.as_ptr()) }
     }
-    /// Return existing document from database
-    #[deprecated(
-        since = "0.1.0",
-        note = "Please use get_existing (note the removed 's' after the 't')."
-    )]
-    pub fn get_existsing(&self, doc_id: &str) -> Result<Document> {
-        self.internal_get(doc_id, true)
-            .map(|x| Document::new_internal(x, doc_id))
-    }
+
     /// Return existing document from database
     pub fn get_existing(&self, doc_id: &str) -> Result<Document> {
         self.internal_get(doc_id, true)

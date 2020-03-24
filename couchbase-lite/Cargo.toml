@@ -1,6 +1,6 @@
 [package]
 name = "couchbase-lite"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2018"
 

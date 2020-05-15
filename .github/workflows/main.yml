@@ -67,3 +67,27 @@ jobs:
           cd $GITHUB_WORKSPACE
           python ci/build_and_run_tests.py
         shell: bash
+  # Detect cases where documentation links don't resolve and such.
+  doc:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          # Docs.rs uses nightly, which allows for easier syntax for linking to functions.
+          toolchain: nightly
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          # Need to use `cargo rustdoc` to actually get it to respect -D
+          # warnings... Note: this also requires nightly.
+          command: rustdoc
+          args: -p couchbase-lite -- -D warnings
+      - uses: actions-rs/cargo@v1
+        with:
+          command: rustdoc
+          args: -p couchbase-lite-core-sys -- -D warnings

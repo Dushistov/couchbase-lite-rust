@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: '00 01 * * *'
+env:
+  RUST_BACKTRACE: 1
+jobs:
+  test:
+    name: Test
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust: [stable, beta]
+    env:
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+    steps:
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      # We need to disable the existing toolchain to avoid updating rust-docs
+      # which takes a long time. The fastest way to do this is to rename the
+      # existing folder, as deleting it takes about as much time as not doing
+      # anything and just updating rust-docs.
+      - name: Rename existing rust toolchain (Windows)
+        if: matrix.os == 'windows-latest'
+        run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          profile: minimal
+          override: true
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8.2'
+      - uses: jwlawson/actions-setup-cmake@v1.0
+        with:
+          cmake-version: '3.9.6'
+          github-api-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check versions
+        run: |
+          set -e
+          cargo --version
+          rustc --version
+          python --version
+          cmake --version
+          echo "end of versions checking"
+        shell: bash
+      - name: Run tests
+        run: |
+          set -e
+          cd $GITHUB_WORKSPACE
+          python ci/build_and_run_tests.py
+        shell: bash

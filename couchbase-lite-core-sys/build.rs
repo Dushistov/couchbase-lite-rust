@@ -154,6 +154,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         .header(c_file_path.to_str().unwrap())
         .generate_comments(false)
         .prepend_enum_name(true)
+        .size_t_is_usize(true)
         .rustfmt_bindings(false);
     bindings = include_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap())

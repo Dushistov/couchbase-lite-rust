@@ -80,6 +80,7 @@ fn main() {
             .join("fleece")
             .join("API"),
         Path::new("couchbase-lite-core").into(),
+        Path::new(".").into(),
     ];
     let target = getenv_unwrap("TARGET");
     let mut framework_dirs = vec![];
@@ -100,10 +101,23 @@ fn main() {
             "c4Document+Fleece.h",
             "fleece/Fleece.h",
             "Replicator/CivetWebSocket.hh",
+            "couch_lite_log_retrans.hpp",
         ],
         &out_dir.join("c4_header.rs"),
     )
     .expect("bindgen failed");
+
+    let mut cc_builder = cc::Build::new();
+
+    for inc in &includes {
+        cc_builder.include(inc);
+    }
+
+    cc_builder
+        .cpp(true)
+        .flag_if_supported("-std=c++11")
+        .file("couch_lite_log_retrans.cpp")
+        .compile("couch_lite_log_retrans");
 }
 
 /// Convert something like

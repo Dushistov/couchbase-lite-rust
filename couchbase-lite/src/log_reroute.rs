@@ -41,7 +41,7 @@ unsafe extern "C" fn db_logger_callback(
     } else if domain == kC4WebSocketLog {
         "websock"
     } else {
-        "unknown"
+        "unkndmn"
     };
 
     use log::Level::*;

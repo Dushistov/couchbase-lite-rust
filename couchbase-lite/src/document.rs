@@ -1,7 +1,7 @@
 use crate::{
     error::{c4error_init, Error},
     ffi::{
-        c4db_encodeJSON, c4doc_bodyAsJSON, c4doc_free, c4doc_loadRevisionBody, kDocExists,
+        c4db_encodeJSON, c4doc_bodyAsJSON, c4doc_loadRevisionBody, c4doc_release, kDocExists,
         kRevDeleted, C4Document, C4DocumentFlags, C4RevisionFlags,
     },
     fl_slice::{fl_slice_to_str_unchecked, AsFlSlice, FlSliceOwner},
@@ -175,6 +175,6 @@ impl C4DocumentOwner {
 
 impl Drop for C4DocumentOwner {
     fn drop(&mut self) {
-        unsafe { c4doc_free(self.0.as_ptr()) };
+        unsafe { c4doc_release(self.0.as_ptr()) };
     }
 }

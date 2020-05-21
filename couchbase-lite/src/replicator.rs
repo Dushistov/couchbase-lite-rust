@@ -1,12 +1,12 @@
 use crate::{
     error::{c4error_init, Error},
     ffi::{
-        c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_stop, kC4Continuous,
-        kC4ReplicatorOptionCookies, kC4ReplicatorOptionOutgoingConflicts, C4Address, C4Replicator,
-        C4ReplicatorActivityLevel, C4ReplicatorMode, C4ReplicatorParameters, C4ReplicatorStatus,
-        C4ReplicatorStatusChangedCallback, FLEncoder_BeginDict, FLEncoder_EndDict,
-        FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteBool, FLEncoder_WriteKey,
-        FLEncoder_WriteString, FLError_kFLNoError,
+        c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_start, c4repl_stop,
+        kC4Continuous, kC4ReplicatorOptionCookies, kC4ReplicatorOptionOutgoingConflicts, C4Address,
+        C4Replicator, C4ReplicatorActivityLevel, C4ReplicatorMode, C4ReplicatorParameters,
+        C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, FLEncoder_BeginDict,
+        FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteBool,
+        FLEncoder_WriteKey, FLEncoder_WriteString, FLError_kFLNoError,
     },
     fl_slice::{fl_slice_empty, AsFlSlice, FlSliceOwner},
     Database, Result,
@@ -80,6 +80,10 @@ impl Replicator {
         )
     }
 
+    pub(crate) fn start(&mut self) {
+        unsafe { c4repl_start(self.inner.as_ptr(), false) };
+    }
+
     pub(crate) fn restart(self, db: &Database, url: &str, token: Option<&str>) -> Result<Self> {
         let Replicator {
             inner: prev_inner,
@@ -92,14 +96,16 @@ impl Replicator {
             c4repl_stop(prev_inner.as_ptr());
             c4repl_free(prev_inner.as_ptr());
         }
-        Replicator::do_new(
+        let mut repl = Replicator::do_new(
             db,
             url,
             token,
             free_callback_f,
             boxed_callback_f,
             c_callback_on_status_changed,
-        )
+        )?;
+        repl.start();
+        Ok(repl)
     }
 
     fn do_new(
@@ -124,15 +130,17 @@ impl Replicator {
         }
 
         let token_cookie = format!("{}={}", "SyncGatewaySession", token.unwrap_or(""));
-        let option_cookies = &kC4ReplicatorOptionCookies[0..kC4ReplicatorOptionCookies.len() - 1];
-        let option_allow_conflicts = &kC4ReplicatorOptionOutgoingConflicts
-            [0..kC4ReplicatorOptionOutgoingConflicts.len() - 1];
+
+        let option_allow_conflicts = slice_without_nul!(kC4ReplicatorOptionOutgoingConflicts);
         let options: FlSliceOwner = if token.is_some() {
             unsafe {
                 let enc = FLEncoder_New();
 
                 FLEncoder_BeginDict(enc, 2);
-                FLEncoder_WriteKey(enc, option_cookies.as_flslice());
+                FLEncoder_WriteKey(
+                    enc,
+                    slice_without_nul!(kC4ReplicatorOptionCookies).as_flslice(),
+                );
                 FLEncoder_WriteString(enc, token_cookie.as_bytes().as_flslice());
 
                 FLEncoder_WriteKey(enc, option_allow_conflicts.as_flslice());
@@ -177,7 +185,6 @@ impl Replicator {
             onBlobProgress: None,
             callbackContext: boxed_callback_f.as_ptr() as *mut c_void,
             socketFactory: ptr::null_mut(),
-            dontStart: false,
         };
 
         let mut c4err = c4error_init();
@@ -186,7 +193,6 @@ impl Replicator {
                 db.inner.0.as_ptr(),
                 remote_addr,
                 db_name,
-                ptr::null_mut(),
                 repl_params,
                 &mut c4err,
             )

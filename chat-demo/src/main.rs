@@ -1,6 +1,6 @@
 use couchbase_lite::{
-    fallible_streaming_iterator::FallibleStreamingIterator, use_c4_civet_web_socket_factory,
-    Database, DatabaseConfig, Document, ReplicatorState,
+    fallible_streaming_iterator::FallibleStreamingIterator, use_web_sockets, Database,
+    DatabaseConfig, Document, ReplicatorState,
 };
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| "ws://192.168.1.132:4984/demo/".to_string());
     let token: Option<String> = env::args().nth(3);
 
-    use_c4_civet_web_socket_factory();
+    use_web_sockets(runtime.handle().clone());
     let (db_thread, db_exec) = run_db_thread(db_path);
     let db_exec_repl = db_exec.clone();
     db_exec.spawn(move |db| {

@@ -9,6 +9,7 @@ use std::{
 fn main() {
     let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
         .define("DISABLE_LTO_BUILD", "True")
+        .define("SANITIZE_FOR_DEBUG_ENABLED", "False")
         .build_target("LiteCore")
         .build()
         .join("build");
@@ -100,7 +101,6 @@ fn main() {
             "fleece/FLSlice.h",
             "c4Document+Fleece.h",
             "fleece/Fleece.h",
-            "Replicator/CivetWebSocket.hh",
             "couch_lite_log_retrans.hpp",
         ],
         &out_dir.join("c4_header.rs"),

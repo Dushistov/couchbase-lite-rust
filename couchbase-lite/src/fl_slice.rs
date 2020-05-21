@@ -96,3 +96,8 @@ pub(crate) unsafe fn fl_slice_to_str_unchecked<'a>(s: FLSlice) -> &'a str {
     let bytes: &[u8] = slice::from_raw_parts(s.buf as *const u8, s.size);
     str::from_utf8_unchecked(bytes)
 }
+
+#[inline]
+pub(crate) unsafe fn fl_slice_to_slice<'a>(s: FLSlice) -> &'a [u8] {
+    slice::from_raw_parts(s.buf as *const u8, s.size)
+}

@@ -1,2 +1,6 @@
 [workspace]
 members = ["couchbase-lite-core-sys", "couchbase-lite", "chat-demo"]
+
+[patch.'crates-io']
+http = { git = "https://github.com/Dushistov/http", rev = "3ad3b825edc3a0d9048a6af5ab524f2fc51bde30" }
+tungstenite = { git = "https://github.com/Dushistov/tungstenite-rs", rev = "de80b9bced480d407665e46001fc2d7a6874d71e" }

@@ -40,6 +40,12 @@
 //! }
 //! ```
 
+macro_rules! slice_without_nul {
+    ($c:ident) => {
+        &$c[0..($c.len() - 1)]
+    };
+}
+
 mod doc_enumerator;
 mod document;
 mod error;
@@ -47,6 +53,8 @@ mod fl_slice;
 mod log_reroute;
 mod observer;
 mod query;
+#[cfg(feature = "replication")]
+mod repl_transport;
 mod replicator;
 mod transaction;
 mod value;
@@ -60,18 +68,19 @@ pub use crate::{
 };
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;
+#[cfg(feature = "replication")]
+pub use repl_transport::use_web_sockets;
 
 use crate::{
     document::C4DocumentOwner,
     error::{c4error_init, Result},
     ffi::{
-        c4db_createIndex, c4db_free, c4db_getDocumentCount, c4db_getIndexes, c4db_open, c4doc_get,
-        c4socket_registerFactory, kC4ArrayIndex, kC4DB_Create, kC4EncryptionNone, kC4FullTextIndex,
-        kC4PredictiveIndex, kC4RevisionTrees, kC4SQLiteStorageEngine, kC4ValueIndex,
-        C4CivetWebSocketFactory, C4Database, C4DatabaseConfig, C4DatabaseFlags,
-        C4DocumentVersioning, C4EncryptionAlgorithm, C4EncryptionKey, C4IndexOptions, C4String,
-        FLTrust_kFLTrusted, FLValue, FLValueType, FLValue_AsString, FLValue_FromData,
-        FLValue_GetType,
+        c4db_createIndex, c4db_getDocumentCount, c4db_getIndexes, c4db_open, c4db_release,
+        c4doc_get, kC4ArrayIndex, kC4DB_Create, kC4EncryptionNone, kC4FullTextIndex,
+        kC4PredictiveIndex, kC4RevisionTrees, kC4SQLiteStorageEngine, kC4ValueIndex, C4Database,
+        C4DatabaseConfig, C4DatabaseFlags, C4DocumentVersioning, C4EncryptionAlgorithm,
+        C4EncryptionKey, C4IndexOptions, C4String, FLTrust_kFLTrusted, FLValue, FLValueType,
+        FLValue_AsString, FLValue_FromData, FLValue_GetType,
     },
     fl_slice::{fl_slice_to_str_unchecked, AsFlSlice, FlSliceOwner},
     log_reroute::DB_LOGGER,
@@ -114,11 +123,6 @@ impl Default for DatabaseConfig {
     }
 }
 
-/// use embedded web-socket library
-pub fn use_c4_civet_web_socket_factory() {
-    unsafe { c4socket_registerFactory(C4CivetWebSocketFactory) };
-}
-
 /// A connection to a couchbase-lite database.
 pub struct Database {
     inner: DbInner,
@@ -145,7 +149,7 @@ impl Drop for Database {
             repl.stop();
         }
         self.db_observers.clear();
-        unsafe { c4db_free(self.inner.0.as_ptr()) };
+        unsafe { c4db_release(self.inner.0.as_ptr()) };
     }
 }
 
@@ -272,8 +276,8 @@ impl Database {
     where
         F: FnMut(ReplicatorState) + Send + 'static,
     {
-        self.db_replicator =
-            Some(Replicator::new(
+        let mut db_replicator =
+            Replicator::new(
                 self,
                 url,
                 token,
@@ -283,7 +287,9 @@ impl Database {
                         error!("replicator status change: invalid status {}", err);
                     }
                 },
-            )?);
+            )?;
+        db_replicator.start();
+        self.db_replicator = Some(db_replicator);
         self.replicator_params = Some(ReplicatorParams {
             url: url.into(),
             token: token.map(str::to_string),

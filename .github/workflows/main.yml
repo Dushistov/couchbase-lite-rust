@@ -12,8 +12,8 @@ on:
 env:
   RUST_BACKTRACE: 1
 jobs:
-  test:
-    name: Test
+  rust-tests:
+    name: Rust tests
 
     runs-on: ${{ matrix.os }}
     strategy:
@@ -65,7 +65,32 @@ jobs:
         run: |
           set -e
           cd $GITHUB_WORKSPACE
-          python ci/build_and_run_tests.py
+          python ci/build_and_run_tests.py --rust-only
+        shell: bash
+  cpp-tests:
+    name: C++ tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8.2'
+      - uses: jwlawson/actions-setup-cmake@v1.0
+        with:
+          cmake-version: '3.9.6'
+          github-api-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run tests
+        run: |
+          set -e
+          cd $GITHUB_WORKSPACE
+          python ci/build_and_run_tests.py --cpp-only
         shell: bash
   # Detect cases where documentation links don't resolve and such.
   doc:

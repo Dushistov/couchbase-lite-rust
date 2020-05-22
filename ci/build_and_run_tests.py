@@ -47,8 +47,17 @@ def build_and_test_rust_part(src_root: str):
 def main():
     ci_dir = Path(get_src_root_path(sys.argv[0]))
     src_root = ci_dir.parent
-    build_and_test_cpp_part(src_root)
-    build_and_test_rust_part(src_root)
+    CPP_TESTS = "cpp"
+    RUST_TESTS = "rust"
+    tests = set([CPP_TESTS, RUST_TESTS])
+    if len(sys.argv) >= 2 and sys.argv[1] == "--rust-only":
+        tests = set([RUST_TESTS])
+    if len(sys.argv) >= 2 and sys.argv[1] == "--cpp-only":
+        tests = set([CPP_TESTS])
+    if CPP_TESTS in tests:
+        build_and_test_cpp_part(src_root)
+    if RUST_TESTS in tests:
+        build_and_test_rust_part(src_root)
 
 if __name__ == "__main__":
     main()

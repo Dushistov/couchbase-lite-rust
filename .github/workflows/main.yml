@@ -86,6 +86,13 @@ jobs:
         with:
           cmake-version: '3.9.6'
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Add fr_FR locale
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          set -e
+          sudo locale-gen fr_FR
+          sudo update-locale
+        shell: bash
       - name: Run tests
         run: |
           set -e

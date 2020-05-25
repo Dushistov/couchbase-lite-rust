@@ -26,7 +26,6 @@ jobs:
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
     steps:
-
       - uses: actions/checkout@v2
         with:
           submodules: 'recursive'
@@ -67,12 +66,56 @@ jobs:
           cd $GITHUB_WORKSPACE
           python ci/build_and_run_tests.py --rust-only
         shell: bash
+  ios-tests:
+    name: Check work with iOS
+    runs-on:
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [macos-latest]
+        rust: [stable, beta]
+    env:
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          profile: minimal
+          override: true
+          target: "aarch64-apple-ios"
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8.2'
+      - uses: jwlawson/actions-setup-cmake@v1.0
+        with:
+          cmake-version: '3.15.4'
+          github-api-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check versions
+        run: |
+          set -e
+          cargo --version
+          rustc --version
+          python --version
+          cmake --version
+          echo "end of versions checking"
+        shell: bash
+      - name: Run tests
+        run: |
+          set -e
+          cd $GITHUB_WORKSPACE
+          python ci/build_and_run_tests.py --rust-ios-only
+        shell: bash
+  # Rebuild C++ part here, because of in build.rs we don't build unit tests
   cpp-tests:
     name: C++ tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:

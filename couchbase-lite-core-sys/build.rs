@@ -7,6 +7,7 @@ use std::{
 };
 
 fn main() {
+    env_logger::init();
     let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
         .define("DISABLE_LTO_BUILD", "True")
         .define("SANITIZE_FOR_DEBUG_ENABLED", "False")
@@ -170,6 +171,14 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         .prepend_enum_name(true)
         .size_t_is_usize(true)
         .rustfmt_bindings(false);
+
+    //see https://github.com/rust-lang/rust-bindgen/issues/1211
+    bindings = if target == "aarch64-apple-ios" {
+        bindings.clang_arg("--target=arm64-apple-ios")
+    } else {
+        bindings
+    };
+
     bindings = include_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap())
     });

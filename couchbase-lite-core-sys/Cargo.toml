@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-cmake = "0.1.42"
+cmake = "=0.1.43"
 bindgen = "0.53.2"
 cc = "1.0.53"
+env_logger = "0.7"

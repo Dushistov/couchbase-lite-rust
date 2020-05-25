@@ -9,6 +9,7 @@ use std::{
 fn main() {
     let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
         .define("DISABLE_LTO_BUILD", "True")
+        .define("SANITIZE_FOR_DEBUG_ENABLED", "False")
         .build_target("LiteCore")
         .build()
         .join("build");
@@ -80,6 +81,7 @@ fn main() {
             .join("fleece")
             .join("API"),
         Path::new("couchbase-lite-core").into(),
+        Path::new(".").into(),
     ];
     let target = getenv_unwrap("TARGET");
     let mut framework_dirs = vec![];
@@ -99,11 +101,23 @@ fn main() {
             "fleece/FLSlice.h",
             "c4Document+Fleece.h",
             "fleece/Fleece.h",
-            "Replicator/CivetWebSocket.hh",
+            "couch_lite_log_retrans.hpp",
         ],
         &out_dir.join("c4_header.rs"),
     )
     .expect("bindgen failed");
+
+    let mut cc_builder = cc::Build::new();
+
+    for inc in &includes {
+        cc_builder.include(inc);
+    }
+
+    cc_builder
+        .cpp(true)
+        .flag_if_supported("-std=c++11")
+        .file("couch_lite_log_retrans.cpp")
+        .compile("couch_lite_log_retrans");
 }
 
 /// Convert something like
@@ -154,6 +168,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         .header(c_file_path.to_str().unwrap())
         .generate_comments(false)
         .prepend_enum_name(true)
+        .size_t_is_usize(true)
         .rustfmt_bindings(false);
     bindings = include_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap())

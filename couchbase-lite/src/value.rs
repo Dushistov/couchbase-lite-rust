@@ -1,10 +1,10 @@
 use crate::{
     error::Error,
     ffi::{
-        FLArray, FLArray_Count, FLArray_Get, FLArray_IsEmpty, FLValue, FLValueType,
-        FLValue_AsArray, FLValue_AsBool, FLValue_AsDouble, FLValue_AsInt, FLValue_AsString,
-        FLValue_AsUnsigned, FLValue_GetType, FLValue_IsDouble, FLValue_IsInteger,
-        FLValue_IsUnsigned,
+        FLArray, FLArray_Count, FLArray_Get, FLArray_IsEmpty, FLDict, FLDict_Count, FLDict_IsEmpty,
+        FLValue, FLValueType, FLValue_AsArray, FLValue_AsBool, FLValue_AsDict, FLValue_AsDouble,
+        FLValue_AsInt, FLValue_AsString, FLValue_AsUnsigned, FLValue_GetType, FLValue_IsDouble,
+        FLValue_IsInteger, FLValue_IsUnsigned,
     },
     fl_slice::fl_slice_to_str_unchecked,
     Result,
@@ -20,6 +20,7 @@ pub enum ValueRef<'a> {
     Double(f64),
     String(&'a str),
     Array(ValueRefArray),
+    Dict(ValueRefDict),
 }
 
 impl ValueRef<'_> {
@@ -37,28 +38,29 @@ impl ValueRef<'_> {
     }
 }
 
-impl<'a> Into<ValueRef<'a>> for FLValue {
-    fn into(self) -> ValueRef<'a> {
+impl<'a> From<FLValue> for ValueRef<'a> {
+    fn from(value: FLValue) -> ValueRef<'a> {
         use FLValueType::*;
-        match unsafe { FLValue_GetType(self) } {
+        match unsafe { FLValue_GetType(value) } {
             kFLUndefined | kFLNull => ValueRef::Null,
-            kFLBoolean => ValueRef::Bool(unsafe { FLValue_AsBool(self) }),
+            kFLBoolean => ValueRef::Bool(unsafe { FLValue_AsBool(value) }),
             kFLNumber => {
-                if unsafe { FLValue_IsInteger(self) } {
-                    ValueRef::SignedInt(unsafe { FLValue_AsInt(self) })
-                } else if unsafe { FLValue_IsUnsigned(self) } {
-                    ValueRef::UnsignedInt(unsafe { FLValue_AsUnsigned(self) })
+                if unsafe { FLValue_IsInteger(value) } {
+                    ValueRef::SignedInt(unsafe { FLValue_AsInt(value) })
+                } else if unsafe { FLValue_IsUnsigned(value) } {
+                    ValueRef::UnsignedInt(unsafe { FLValue_AsUnsigned(value) })
                 } else {
-                    assert!(unsafe { FLValue_IsDouble(self) });
-                    ValueRef::Double(unsafe { FLValue_AsDouble(self) })
+                    assert!(unsafe { FLValue_IsDouble(value) });
+                    ValueRef::Double(unsafe { FLValue_AsDouble(value) })
                 }
             }
             kFLString => {
-                let s = unsafe { fl_slice_to_str_unchecked(FLValue_AsString(self)) };
+                let s = unsafe { fl_slice_to_str_unchecked(FLValue_AsString(value)) };
                 ValueRef::String(s)
             }
-            kFLArray => ValueRef::Array(ValueRefArray(unsafe { FLValue_AsArray(self) })),
-            kFLData | kFLDict => unimplemented!(),
+            kFLArray => ValueRef::Array(ValueRefArray(unsafe { FLValue_AsArray(value) })),
+            kFLDict => ValueRef::Dict(ValueRefDict(unsafe { FLValue_AsDict(value) })),
+            kFLData => unimplemented!(),
         }
     }
 }
@@ -79,6 +81,19 @@ impl ValueRefArray {
     }
     pub fn get<'a>(&'a self, idx: u32) -> ValueRef<'a> {
         unsafe { self.get_raw(idx) }.into()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct ValueRefDict(FLDict);
+
+impl ValueRefDict {
+    pub fn len(&self) -> u32 {
+        unsafe { FLDict_Count(self.0) }
+    }
+    pub fn is_empty(&self) -> bool {
+        unsafe { FLDict_IsEmpty(self.0) }
     }
 }
 

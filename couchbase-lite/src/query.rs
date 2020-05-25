@@ -1,8 +1,8 @@
 use crate::{
     error::{c4error_init, Error},
     ffi::{
-        c4query_free, c4query_new, c4query_new2, c4query_run, c4query_setParameters,
-        c4queryenum_free, c4queryenum_next, kC4DefaultQueryOptions, kC4N1QLQuery, C4Query,
+        c4query_new, c4query_new2, c4query_release, c4query_run, c4query_setParameters,
+        c4queryenum_next, c4queryenum_release, kC4DefaultQueryOptions, kC4N1QLQuery, C4Query,
         C4QueryEnumerator, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt,
     },
     fl_slice::{fl_slice_empty, AsFlSlice},
@@ -20,7 +20,7 @@ pub struct Query<'db> {
 
 impl Drop for Query<'_> {
     fn drop(&mut self) {
-        unsafe { c4query_free(self.inner.as_ptr()) };
+        unsafe { c4query_release(self.inner.as_ptr()) };
     }
 }
 
@@ -99,7 +99,7 @@ pub struct Enumerator<'query> {
 
 impl Drop for Enumerator<'_> {
     fn drop(&mut self) {
-        unsafe { c4queryenum_free(self.inner.as_ptr()) };
+        unsafe { c4queryenum_release(self.inner.as_ptr()) };
     }
 }
 

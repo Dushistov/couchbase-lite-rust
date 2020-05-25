@@ -35,6 +35,10 @@ def build_and_test_cpp_part(src_root: str):
     check_call(["ls"], cwd = cmake_build_dir)
     check_call(["cmake", "--build", ".", "--", "-j%d" % (cpu_count() + 1)],
                cwd = cmake_build_dir)
+    os.environ["LiteCoreTestsQuiet"] = "1"
+    check_call(["./CppTests", "-r", "list"], cwd = os.path.join(cmake_build_dir, "LiteCore", "tests"))
+    check_call(["./C4Tests", "-r", "list"], cwd = os.path.join(cmake_build_dir, "C", "tests"))
+
 
 @show_timing
 def build_and_test_rust_part(src_root: str):

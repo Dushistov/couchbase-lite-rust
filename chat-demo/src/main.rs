@@ -4,7 +4,7 @@ use couchbase_lite::{
 };
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, env, path::Path};
+use std::{collections::HashSet, env, path::Path, sync::mpsc};
 use tokio::prelude::*;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -56,11 +56,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let db_exec2 = db_exec.clone();
+    let db_exec_repl = db_exec.clone();
     db_exec.spawn(move |db| {
         if let Some(db) = db.as_mut() {
             db.register_observer(move || {
-                db_exec2
+                db_exec_repl
                     .spawn(|db| print_external_changes(db).expect("read external changes failed"));
             })
             .expect("register observer failed");
@@ -69,10 +69,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let db_exec3 = db_exec.clone();
     let mut stdin = tokio::io::BufReader::new(tokio::io::stdin());
     static EDIT_PREFIX: &'static str = "edit ";
 
+    let db_exec_repl = db_exec.clone();
     runtime.block_on(async move {
         let mut buf = String::new();
         let mut edit_id = None;
@@ -84,7 +84,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let msg = &buf;
             let msg = msg.trim_end();
             if !msg.is_empty() {
-                if msg.starts_with(EDIT_PREFIX) {
+                if msg == "quit" {
+                    println!("Time to quit");
+                    break;
+                } else if msg.starts_with(EDIT_PREFIX) {
                     edit_id = Some((&msg[EDIT_PREFIX.len()..]).to_string());
                     println!("ready to edit message {:?}", edit_id);
                 } else {
@@ -93,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     {
                         let msg = msg.to_string();
                         let edit_id = edit_id.take();
-                        db_exec.spawn(move |db| {
+                        db_exec_repl.spawn(move |db| {
                             if let Some(mut db) = db.as_mut() {
                                 save_msg(&mut db, &msg, edit_id.as_ref().map(String::as_str))
                                     .expect("save to db failed");
@@ -108,14 +111,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    db_exec3.spawn(|db| {
+    db_exec.spawn(|db| {
         if let Some(db) = db.as_mut() {
             db.clear_observers();
+            db.stop_replicator();
         } else {
             eprintln!("db is NOT open");
         }
     });
-    drop(db_exec3);
+    drop(db_exec);
     db_thread.join().unwrap();
     println!("exiting");
     Ok(())
@@ -125,7 +129,7 @@ type Job<T> = Box<dyn FnOnce(&mut Option<T>) + Send>;
 
 #[derive(Clone)]
 struct DbQueryExecutor {
-    inner: std::sync::mpsc::Sender<Job<Database>>,
+    inner: mpsc::Sender<Job<Database>>,
 }
 
 impl DbQueryExecutor {

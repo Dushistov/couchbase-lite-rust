@@ -68,11 +68,10 @@ jobs:
         shell: bash
   ios-tests:
     name: Check work with iOS
-    runs-on:
+    runs-on: macos-latest
     strategy:
       fail-fast: true
       matrix:
-        os: [macos-latest]
         rust: [stable, beta]
     env:
       RUSTUP_MAX_RETRIES: 10

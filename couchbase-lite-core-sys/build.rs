@@ -240,6 +240,8 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
     let cc_process = cc_build
         .get_compiler()
         .to_command()
+        .env("LANG", "C")
+        .env("LC_MESSAGES", "C")
         .args(&["-v", "-x", "c", "-E", "-"])
         .stderr(Stdio::piped())
         .stdin(Stdio::piped())

@@ -87,12 +87,11 @@ fn main() {
     let target = getenv_unwrap("TARGET");
     let mut framework_dirs = vec![];
 
-    if cfg!(target_os = "macos") || cfg!(target_os = "ios") {
-        let (mut addon_include_dirs, mut addon_framework_dirs) =
-            cc_system_include_dirs().expect("get system include directories from cc failed");
-        includes.append(&mut addon_include_dirs);
-        framework_dirs.append(&mut addon_framework_dirs);
-    }
+    let (mut addon_include_dirs, mut addon_framework_dirs) =
+        cc_system_include_dirs().expect("get system include directories from cc failed");
+    includes.append(&mut addon_include_dirs);
+    framework_dirs.append(&mut addon_framework_dirs);
+
     run_bindgen_for_c_headers(
         &target,
         &includes,
@@ -240,6 +239,8 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
     let cc_process = cc_build
         .get_compiler()
         .to_command()
+        .env("LANG", "C")
+        .env("LC_MESSAGES", "C")
         .args(&["-v", "-x", "c", "-E", "-"])
         .stderr(Stdio::piped())
         .stdin(Stdio::piped())

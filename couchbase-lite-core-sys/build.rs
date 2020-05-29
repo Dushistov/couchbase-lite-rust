@@ -1,6 +1,6 @@
 use bindgen::{Builder, RustTarget};
 use std::{
-    env, fs,
+    env,
     io::{Read, Write},
     path::{Path, PathBuf},
     process::Stdio,
@@ -11,69 +11,51 @@ fn main() {
     let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
         .define("DISABLE_LTO_BUILD", "True")
         .define("SANITIZE_FOR_DEBUG_ENABLED", "False")
-        .build_target("LiteCore")
+        .define("ENABLE_TESTING", "False")
+        .define("LITECORE_BUILD_TESTS", "False")
+        .build_target("all")
         .build()
         .join("build");
 
-    let out_dir = getenv_unwrap("OUT_DIR");
-    let out_dir = Path::new(&out_dir);
+    println!("cargo:rustc-link-search=native={}", dst.display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("vendor").join("fleece").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("Networking").join("BLIP").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("vendor").join("sqlite3-unicodesn").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("vendor")
+            .join("mbedtls")
+            .join("crypto")
+            .join("library")
+            .display()
+    );
+    println!("cargo:rustc-link-lib=static=FleeceStatic");
+    println!("cargo:rustc-link-lib=static=LiteCoreStatic");
+    println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
+    println!("cargo:rustc-link-lib=static=BLIPStatic");
+    println!("cargo:rustc-link-lib=static=Support");
+    println!("cargo:rustc-link-lib=static=mbedcrypto");
 
-    let lib_name = if cfg!(target_os = "windows") {
-        "LiteCore.dll"
-    } else if cfg!(target_os = "macos") || cfg!(target_os = "ios") {
-        "libLiteCore.dylib"
-    } else {
-        "libLiteCore.so"
-    };
-    // so it is possible to use from project that uses Rust library,
-    // but not on Rust language
-    let target_dir = target_directory(out_dir);
-
-    if cfg!(target_os = "windows") {
-        let msvc_cmake_profile = match &getenv_unwrap("PROFILE")[..] {
-            "debug" => "Debug",
-            "release" | "bench" => "Release",
-            unknown => {
-                eprintln!(
-                    "Warning: unknown Rust profile={}; defaulting to a release build.",
-                    unknown
-                );
-                "Release"
-            }
-        };
-        let dst = dst.join(msvc_cmake_profile);
-        if let Err(err) = fs::copy(dst.join(lib_name), target_dir.join(lib_name)) {
-            panic!(
-                "copy {} from '{}' to '{}' faied: {}",
-                lib_name,
-                dst.display(),
-                target_dir.display(),
-                err
-            );
-        }
-        let lib_lib_name = "LiteCore.lib";
-        if let Err(err) = fs::copy(dst.join(lib_lib_name), target_dir.join(lib_lib_name)) {
-            panic!(
-                "copy {} from '{}' to '{}' faied: {}",
-                lib_lib_name,
-                dst.display(),
-                target_dir.display(),
-                err
-            );
-        }
-    } else {
-        if let Err(err) = fs::copy(dst.join(lib_name), target_dir.join(lib_name)) {
-            panic!(
-                "copy {} from '{}' to '{}' faied: {}",
-                lib_name,
-                dst.display(),
-                target_dir.display(),
-                err
-            );
-        }
+    if cfg!(target_os = "linux") {
+        println!("cargo:rustc-link-lib=icuuc");
+        println!("cargo:rustc-link-lib=icui18n");
+        println!("cargo:rustc-link-lib=icudata");
+        println!("cargo:rustc-link-lib=z");
+    } else if cfg!(target_os = "macos") {
+        println!("cargo:rustc-link-lib=z");
+        //TODO: remove this dependicies
+        println!("cargo:rustc-link-lib=framework=CoreFoundation");
+        println!("cargo:rustc-link-lib=framework=Foundation");
     }
-    println!("cargo:rustc-link-search=native={}", target_dir.display());
-    println!("cargo:rustc-link-lib=dylib=LiteCore");
 
     let mut includes = vec![
         Path::new("couchbase-lite-core").join("C").join("include"),
@@ -91,6 +73,9 @@ fn main() {
         cc_system_include_dirs().expect("get system include directories from cc failed");
     includes.append(&mut addon_include_dirs);
     framework_dirs.append(&mut addon_framework_dirs);
+
+    let out_dir = getenv_unwrap("OUT_DIR");
+    let out_dir = Path::new(&out_dir);
 
     run_bindgen_for_c_headers(
         &target,
@@ -118,18 +103,6 @@ fn main() {
         .flag_if_supported("-std=c++11")
         .file("couch_lite_log_retrans.cpp")
         .compile("couch_lite_log_retrans");
-}
-
-/// Convert something like
-/// project/target/release/build/lib-couchbase-lite-core-sys-9daa760ee41fe7b8/out
-/// to
-/// project/target/release
-/// Waiting https://github.com/rust-lang/cargo/issues/5457 for proper mechanizm
-fn target_directory(out_dir: &Path) -> &Path {
-    out_dir
-        .ancestors()
-        .nth(3)
-        .expect("Can not find ancestor during cargo_target_dir search")
 }
 
 fn run_bindgen_for_c_headers<P: AsRef<Path>>(

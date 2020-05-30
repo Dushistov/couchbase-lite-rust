@@ -17,6 +17,8 @@ fn main() {
         .build()
         .join("build");
 
+    println!("cargo:rerun-if-changed=couchbase-lite-core");
+
     println!("cargo:rustc-link-search=native={}", dst.display());
     println!(
         "cargo:rustc-link-search=native={}",

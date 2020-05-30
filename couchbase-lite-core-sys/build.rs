@@ -13,6 +13,7 @@ fn main() {
         .define("SANITIZE_FOR_DEBUG_ENABLED", "False")
         .define("ENABLE_TESTING", "False")
         .define("LITECORE_BUILD_TESTS", "False")
+        .define("SQLITE_ENABLE_RTREE", "True")
         .build_target("all")
         .build()
         .join("build");

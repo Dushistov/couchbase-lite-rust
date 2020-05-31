@@ -43,12 +43,18 @@ fn main() {
             .join("library")
             .display()
     );
-    println!("cargo:rustc-link-lib=static=FleeceStatic");
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("vendor").join("mbedtls").join("library").display()
+    );
     println!("cargo:rustc-link-lib=static=LiteCoreStatic");
+    println!("cargo:rustc-link-lib=static=FleeceStatic");
+    println!("cargo:rustc-link-lib=static=Support");
     println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
     println!("cargo:rustc-link-lib=static=BLIPStatic");
-    println!("cargo:rustc-link-lib=static=Support");
     println!("cargo:rustc-link-lib=static=mbedcrypto");
+    println!("cargo:rustc-link-lib=static=mbedtls");
+    println!("cargo:rustc-link-lib=static=mbedx509");
 
     if cfg!(target_os = "linux") {
         println!("cargo:rustc-link-lib=icuuc");

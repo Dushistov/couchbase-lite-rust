@@ -10,7 +10,7 @@ fn main() {
     env_logger::init();
     let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
         .define("DISABLE_LTO_BUILD", "True")
-        .define("SANITIZE_FOR_DEBUG_ENABLED", "False")
+        .define("MAINTAINER_MODE", "False")
         .define("ENABLE_TESTING", "False")
         .define("LITECORE_BUILD_TESTS", "False")
         .define("SQLITE_ENABLE_RTREE", "True")
@@ -19,6 +19,8 @@ fn main() {
         .join("build");
 
     println!("cargo:rerun-if-changed=couchbase-lite-core");
+    println!("cargo:rerun-if-env-changed=CC");
+    println!("cargo:rerun-if-env-changed=CXX");
 
     println!("cargo:rustc-link-search=native={}", dst.display());
     println!(

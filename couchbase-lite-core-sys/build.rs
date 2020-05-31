@@ -63,9 +63,11 @@ fn main() {
         println!("cargo:rustc-link-lib=z");
     } else if cfg!(target_os = "macos") {
         println!("cargo:rustc-link-lib=z");
-        //TODO: remove this dependicies
+        //TODO: remove this dependicies: CoreFoundation + Foundation
         println!("cargo:rustc-link-lib=framework=CoreFoundation");
         println!("cargo:rustc-link-lib=framework=Foundation");
+        println!("cargo:rustc-link-lib=framework=SystemConfiguration");
+        println!("cargo:rustc-link-lib=framework=Security");
     }
 
     let mut includes = vec![

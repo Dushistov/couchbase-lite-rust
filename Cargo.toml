@@ -6,3 +6,4 @@ http = { git = "https://github.com/Dushistov/http", rev = "3ad3b825edc3a0d9048a6
 tungstenite = { git = "https://github.com/Dushistov/tungstenite-rs", rev = "de80b9bced480d407665e46001fc2d7a6874d71e" }
 couchbase-lite = { path = "couchbase-lite" }
 couchbase-lite-core-sys = { path = "couchbase-lite-core-sys" }
+cmake = { git = "https://github.com/Dushistov/cmake-rs", rev = "125fe65e123f9bd4ceaf91924b0a381d473f2d97" }

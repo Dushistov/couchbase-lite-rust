@@ -62,7 +62,7 @@ pub fn use_web_sockets(handle: Handle) {
 
 type WsWriter = futures_util::stream::SplitSink<
     tokio_tungstenite::WebSocketStream<
-        tokio_tungstenite::stream::Stream<TcpStream, tokio_tls::TlsStream<TcpStream>>,
+        tokio_tungstenite::stream::Stream<TcpStream, tokio_native_tls::TlsStream<TcpStream>>,
     >,
     Message,
 >;

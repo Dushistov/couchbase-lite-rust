@@ -6,7 +6,7 @@ edition = "2018"
 
 [features]
 default = ["replication", "tls"]
-replication = ["tokio-tungstenite", "http", "tokio", "futures-util",  "tokio-tls"]
+replication = ["tokio-tungstenite", "http", "tokio", "futures-util",  "tokio-native-tls"]
 tls = ["tokio-tungstenite/tls"]
 
 [dependencies]
@@ -23,7 +23,7 @@ tokio-tungstenite = { version = "0.10.1", optional = true }
 http = { version = "0.2.1", optional = true }
 tokio = { version = "0.2", default-features = false, features = ["sync", "macros"], optional = true }
 futures-util = { version = "0.3.5", optional = true }
-tokio-tls = { version = "0.3.1", optional = true }
+tokio-native-tls = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tempfile = "3.0"

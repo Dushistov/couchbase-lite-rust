@@ -8,7 +8,7 @@ on:
     branches:
       - master
   schedule:
-    - cron: '00 01 * * *'
+    - cron: '00 02 */4 * *'
 env:
   RUST_BACKTRACE: 1
 jobs:

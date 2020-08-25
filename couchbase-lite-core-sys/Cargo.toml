@@ -8,6 +8,6 @@ edition = "2018"
 
 [build-dependencies]
 cmake = "0.1.43"
-bindgen = "0.54.1"
+bindgen = "0.54.0"
 cc = "1.0.53"
 env_logger = "0.7"

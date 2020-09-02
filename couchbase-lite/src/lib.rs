@@ -202,6 +202,13 @@ impl Database {
         self.internal_get(doc_id, true)
             .map(|x| Document::new_internal(x, doc_id))
     }
+
+    /// Return existing document from database or create new empty one
+    pub fn get_or_empty(&self, doc_id: &str) -> Result<Document> {
+        self.internal_get(doc_id, false)
+            .map(|x| Document::new_internal(x, doc_id))
+    }
+
     /// Compiles a query from an expression given as JSON.
     /// The expression is a predicate that describes which documents should be returned.
     /// A separate, optional sort expression describes the ordering of the results.

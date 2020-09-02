@@ -127,7 +127,7 @@ impl Document {
         Ok(())
     }
 
-    pub(crate) fn exists(&self) -> bool {
+    pub fn exists(&self) -> bool {
         self.inner.as_ref().map(|x| x.exists()).unwrap_or(false)
     }
 }

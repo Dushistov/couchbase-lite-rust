@@ -4,12 +4,14 @@ use crate::{
         FLArray, FLArray_Count, FLArray_Get, FLArray_IsEmpty, FLDict, FLDict_Count, FLDict_IsEmpty,
         FLValue, FLValueType, FLValue_AsArray, FLValue_AsBool, FLValue_AsDict, FLValue_AsDouble,
         FLValue_AsInt, FLValue_AsString, FLValue_AsUnsigned, FLValue_GetType, FLValue_IsDouble,
-        FLValue_IsInteger, FLValue_IsUnsigned,
+        FLValue_IsInteger, FLValue_IsUnsigned, FLValue_ToJSON
     },
     fl_slice::fl_slice_to_str_unchecked,
     Result,
 };
 use std::convert::TryFrom;
+use serde::de::DeserializeOwned;
+use crate::fl_slice::FlSliceOwner;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ValueRef<'a> {
@@ -94,6 +96,17 @@ impl ValueRefDict {
     }
     pub fn is_empty(&self) -> bool {
         unsafe { FLDict_IsEmpty(self.0) }
+    }
+    pub fn decode<T>(self) -> Result<T> where T: DeserializeOwned {
+        let json_string = unsafe {
+            let json_slice: FlSliceOwner = FLValue_ToJSON(self.0 as FLValue).into();
+            let bytes = json_slice.as_bytes().to_owned();
+            match String::from_utf8(bytes) {
+                Ok(value) => value,
+                Err(_error) => return Err(Error::Utf8),
+            }
+        };
+        Ok(serde_json::from_str::<T>(&json_string)?)
     }
 }
 

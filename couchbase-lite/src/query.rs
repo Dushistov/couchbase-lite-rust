@@ -3,7 +3,8 @@ use crate::{
     ffi::{
         c4query_new, c4query_new2, c4query_release, c4query_run, c4query_setParameters,
         c4queryenum_next, c4queryenum_release, kC4DefaultQueryOptions, kC4N1QLQuery, C4Query,
-        C4QueryEnumerator, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt,
+        C4QueryEnumerator, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt, c4query_columnCount,
+        c4query_columnTitle
     },
     fl_slice::{fl_slice_empty, AsFlSlice},
     value::{FromValueRef, ValueRef},
@@ -12,6 +13,8 @@ use crate::{
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use serde::Serialize;
 use std::ptr::NonNull;
+use crate::fl_slice::fl_slice_to_str_unchecked;
+use std::convert::TryFrom;
 
 pub struct Query<'db> {
     _db: &'db Database,
@@ -89,6 +92,21 @@ impl Query<'_> {
             })
             .ok_or_else(|| c4err.into())
     }
+
+    pub fn column_names(&self) -> Result<Vec<String>> {
+        let col_count = unsafe { c4query_columnCount(self.inner.as_ptr()) };
+        let column_count = match usize::try_from(col_count) {
+            Ok(value) => value,
+            Err(_) => return Err(Error::LogicError("column count doesn't fit".to_string())),
+        };
+        let mut names = Vec::with_capacity(column_count);
+        for col_index in 0..col_count {
+            let title = unsafe { c4query_columnTitle(self.inner.as_ptr(), col_index) };
+            let name = unsafe { fl_slice_to_str_unchecked(title).to_owned() };
+            names.push(name);
+        }
+        Ok(names)
+    }
 }
 
 pub struct Enumerator<'query> {
@@ -154,5 +172,9 @@ impl<'a> Enumerator<'a> {
     {
         let value_ref = self.get_raw_checked(i)?;
         FromValueRef::column_result(value_ref)
+    }
+
+    pub fn col_count(&self) -> u32 {
+        unsafe { FLArrayIterator_GetCount(&self.inner.as_ref().columns) }
     }
 }

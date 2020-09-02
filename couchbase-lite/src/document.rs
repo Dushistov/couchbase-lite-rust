@@ -130,6 +130,10 @@ impl Document {
     pub(crate) fn exists(&self) -> bool {
         self.inner.as_ref().map(|x| x.exists()).unwrap_or(false)
     }
+
+    pub fn is_deleted(&self) -> bool {
+        self.inner.as_ref().map(|x| x.is_deleted()).unwrap_or(false)
+    }
 }
 
 fn load_body(inner: NonNull<C4Document>) -> Result<()> {

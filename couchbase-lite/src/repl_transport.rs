@@ -17,30 +17,22 @@ use crate::{
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{HeaderValue, Uri};
 use log::{debug, error, info};
-use std::{
-    borrow::Cow,
-    convert::TryFrom,
-    fmt, mem,
-    os::raw::{c_int, c_void},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
-};
+use std::{borrow::Cow, convert::TryFrom, fmt, mem, os::raw::{c_int, c_void}, sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+}, thread};
 use tokio::{
     net::TcpStream,
     runtime::Handle,
     sync::Mutex as TokioMutex,
     sync::{oneshot, Notify},
 };
-use tokio_tungstenite::{
-    connect_async,
-    tungstenite::{
-        self,
-        handshake::client::{Request, Response},
-        protocol::{frame::coding::CloseCode, CloseFrame, Message},
-    },
-};
+use tokio_tungstenite::{connect_async, tungstenite::{
+    self,
+    handshake::client::{Request, Response},
+    protocol::{frame::coding::CloseCode, CloseFrame, Message},
+}};
+use std::time::{Duration, Instant};
 
 /// use embedded web-socket library
 pub fn use_web_sockets(handle: Handle) {
@@ -75,6 +67,7 @@ struct Socket {
     read_confirmed: Arc<Notify>,
     close_confirmied: Arc<Notify>,
     c4sock: usize,
+    last_activity: Arc<TokioMutex<Instant>>,
 }
 
 impl Socket {
@@ -125,6 +118,7 @@ unsafe extern "C" fn ws_open(
         c4sock: c4sock as *mut C4Socket as usize,
         read_data_avaible: AtomicUsize::new(0),
         close_confirmied: Arc::new(Notify::new()),
+        last_activity: Arc::new(TokioMutex::new(Instant::now()))
     });
     debug!(
         "ws_open({:x}): uri: {:?}",
@@ -132,11 +126,39 @@ unsafe extern "C" fn ws_open(
         request.as_ref().map(Request::uri)
     );
     let client2 = client.clone();
+    let client_for_ping = client.clone();
     c4sock.nativeHandle = Arc::into_raw(client) as *mut c_void;
 
     handle.spawn(async move {
         open_connection(request, client2).await;
     });
+
+    let handle_for_ping = handle.clone();
+
+    thread::spawn(move || {
+        handle_for_ping.block_on(async move {
+            loop {
+                thread::sleep(Duration::from_secs(5));
+                let mut last_activity = client_for_ping.last_activity.lock().await;
+                if last_activity.elapsed().as_secs() > 55 {
+                    let writer = client_for_ping.writer.clone();
+                    let mut writer = writer.lock().await;
+
+                    if let Some(writer) = writer.as_mut() {
+                        if writer.send(Message::Ping(vec![])).await.is_err() {
+                            error!("writer.send error");
+                            break;
+                        }
+                    } else {
+                        error!("Break the loop of ping/hearbeat");
+                        break;
+                    }
+                    *last_activity = Instant::now();
+                }
+            }
+        });
+    });
+
     mem::forget(handle);
 }
 
@@ -157,6 +179,9 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
 
     let writer = socket.writer.clone();
     socket.handle.spawn(async move {
+        let mut last_activity = socket.last_activity.lock().await;
+        *last_activity = Instant::now();
+
         let mut writer = writer.lock().await;
 
         if let Some(writer) = writer.as_mut() {
@@ -421,7 +446,7 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
                             }
                             Ok(Message::Pong(_)) => {
                                 debug!("read loop({:x}): pong", sock_id);
-                                todo!();
+                                //todo!();
                             }
                             Err(err) => {
                                 error!("read loop({:x}) message error: {}", sock_id, err);

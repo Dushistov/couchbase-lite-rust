@@ -445,7 +445,7 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
                                 todo!();
                             }
                             Ok(Message::Pong(_)) => {
-                                debug!("read loop({:x}): pong", sock_id);
+                                //debug!("read loop({:x}): pong", sock_id);
                                 //todo!();
                             }
                             Err(err) => {

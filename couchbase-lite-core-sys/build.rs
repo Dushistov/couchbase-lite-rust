@@ -13,10 +13,24 @@ fn main() {
     let cross_to_windows = target_os == "windows" && !cfg!(target_os = "windows");
     let cross_to_android = target_os == "android";
 
-    if !cross_to_windows {
-        not_cross_compile_case();
-    } else {
+    if cross_to_windows {
         println!("cargo:rustc-link-lib=dylib=LiteCore");
+    } else if cross_to_android {
+        let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
+            .define("ANDROID_ABI", env::var("ANDROID_ABI").unwrap())
+            .define("ANDROID_NDK", env::var("NDK_HOME").unwrap())
+            .define("CMAKE_BUILD_TYPE", "MinSizeRel")
+            .define("ANDROID_NATIVE_API_LEVEL", env::var("ANDROID_NATIVE_API_LEVEL").unwrap())
+            .define("ANDROID_TOOLCHAIN", "clang")
+            .define("CMAKE_TOOLCHAIN_FILE", format!("{}/build/cmake/android.toolchain.cmake", env::var("NDK_HOME").unwrap()))
+            .define("DISABLE_LTO_BUILD", "True")
+            .build_target("LiteCore")
+            .build()
+            .join("build");
+        println!("cargo:rustc-link-search=native={}", dst.display());
+        println!("cargo:rustc-link-lib=dylib=LiteCore");
+    } else {
+       not_cross_compile_case();
     }
 
     let mut includes = vec![

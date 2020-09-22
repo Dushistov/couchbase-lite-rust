@@ -11,7 +11,7 @@ fn main() {
 
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let cross_to_windows = target_os == "windows" && !cfg!(target_os = "windows");
-    let cross_to_macos = target_os == "macos" && !cfg!(target_os = "macosq");
+    let cross_to_macos = target_os == "macos" && !cfg!(target_os = "macos");
     let cross_to_android = target_os == "android";
 
     if cross_to_windows || cross_to_macos {
@@ -65,11 +65,7 @@ fn main() {
         cc_builder.include(inc);
     }
 
-    cc_builder
-        .cpp(true)
-        .flag_if_supported("-std=c++11")
-        .file("couch_lite_log_retrans.cpp")
-        .compile("couch_lite_log_retrans");
+    cc_builder.cpp(true).flag("-std=c++11").file("couch_lite_log_retrans.cpp").compile("couch_lite_log_retrans");
 }
 
 fn not_cross_compile_case() {

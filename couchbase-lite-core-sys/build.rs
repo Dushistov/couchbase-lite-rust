@@ -11,7 +11,7 @@ fn main() {
 
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let cross_to_windows = target_os == "windows" && !cfg!(target_os = "windows");
-    let cross_to_macos = target_os == "darwin" && !cfg!(target_os = "darwin");
+    let cross_to_macos = target_os == "macos" && !cfg!(target_os = "macosq");
     let cross_to_android = target_os == "android";
 
     if cross_to_windows || cross_to_macos {

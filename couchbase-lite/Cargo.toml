@@ -1,16 +1,17 @@
 [package]
 name = "couchbase-lite"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2018"
 
 [features]
-default = ["replication", "tls"]
+default = ["replication", "tls", "couchbase-sqlite"]
 replication = ["tokio-tungstenite", "http", "tokio", "futures-util",  "tokio-native-tls"]
 tls = ["tokio-tungstenite/tls"]
+couchbase-sqlite = ["couchbase-lite-core-sys/couchbase-sqlite"]
 
 [dependencies]
-couchbase-lite-core-sys = "0.2.2"
+couchbase-lite-core-sys = "0.3.0"
 serde = { version = "1.0.104", features = ["derive"] }
 uuid = { version = "0.8.1", features = ["v4", "serde", "v3"] }
 serde_json = "1.0.44"

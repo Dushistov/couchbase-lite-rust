@@ -47,9 +47,12 @@ fn main() {
         "cargo:rustc-link-search=native={}",
         dst.join("vendor").join("mbedtls").join("library").display()
     );
+    if cfg!(feature = "couchbase-sqlite") {
+        println!("cargo:rustc-link-lib=static=CouchbaseSqlite3");
+    }
+
     println!("cargo:rustc-link-lib=static=LiteCoreStatic");
     println!("cargo:rustc-link-lib=static=FleeceStatic");
-    println!("cargo:rustc-link-lib=static=Support");
     println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
     println!("cargo:rustc-link-lib=static=BLIPStatic");
     println!("cargo:rustc-link-lib=static=mbedcrypto");

@@ -6,8 +6,8 @@ use crate::{
         kC4ReplicatorOptionExtraHeaders, kC4SocketOptionWSProtocols,
         kWebSocketCloseBadMessageFormat, kWebSocketCloseFirstAvailable, kWebSocketCloseNormal,
         C4Address, C4Error, C4Slice, C4SliceResult, C4Socket, C4SocketFactory, C4SocketFraming,
-        C4String, FLDict_Count, FLDict_Get, FLEncoder_BeginDict, FLEncoder_EndDict,
-        FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey, FLEncoder_WriteString,
+        C4String, FLDict_Get, FLEncoder_BeginDict, FLEncoder_EndDict, FLEncoder_Finish,
+        FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey, FLEncoder_WriteString,
         FLError_kFLNoError, FLTrust_kFLUntrusted, FLValue_AsDict, FLValue_FromData, FleeceDomain,
         NetworkDomain, WebSocketDomain,
     },
@@ -16,7 +16,7 @@ use crate::{
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{HeaderValue, Uri};
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 use std::{
     borrow::Cow,
     convert::TryFrom,
@@ -80,7 +80,7 @@ struct Socket {
 impl Socket {
     fn close(self: Arc<Self>) {
         let c4sock = self.c4sock;
-        debug!("Socket::close({:x}) BEGIN", c4sock);
+        trace!("Socket::close, c4sock {:x}", c4sock);
         let writer = self.writer.clone();
         let stop_read = self.stop_read.clone();
         self.handle.spawn(async move {
@@ -95,7 +95,7 @@ impl Socket {
             if let Some(stop_read) = stop_read {
                 let _ = stop_read.send(());
             }
-            debug!("Socket::close({:x}) DONE", c4sock);
+            trace!("Socket::close, c4sock {:x} DONE", c4sock);
         });
     }
 }
@@ -126,8 +126,8 @@ unsafe extern "C" fn ws_open(
         read_data_avaible: AtomicUsize::new(0),
         close_confirmied: Arc::new(Notify::new()),
     });
-    debug!(
-        "ws_open({:x}): uri: {:?}",
+    trace!(
+        "ws_open, c4sock {:x}, uri: {:?}",
         client.c4sock,
         request.as_ref().map(Request::uri)
     );
@@ -141,8 +141,11 @@ unsafe extern "C" fn ws_open(
 }
 
 unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResult) {
-    debug!("ws_write({:?}) begin", c4sock);
-
+    trace!(
+        "ws_write: c4sock {:?}, bytes {}",
+        c4sock,
+        allocated_data.size
+    );
     let data: FlSliceOwner = allocated_data.into();
     let data: Vec<u8> = data.as_bytes().to_vec();
 
@@ -151,7 +154,6 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
     assert!(!c4sock.nativeHandle.is_null());
 
     let socket: &Socket = &*(c4sock.nativeHandle as *const Socket);
-    debug!("socket.c4sock {}", socket.c4sock);
     assert_eq!(c4sock as *mut _ as usize, socket.c4sock);
     let c4sock = socket.c4sock;
 
@@ -162,7 +164,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
         if let Some(writer) = writer.as_mut() {
             let n = data.len();
             if let Err(err) = writer.send(Message::Binary(data)).await {
-                error!("ws_write({:x}) writer.send failure: {}", c4sock, err);
+                error!("ws_write: sock {:?}, writer.send failure: {}", c4sock, err);
             } else {
                 c4socket_completedWrite(c4sock as *mut _, n);
             }
@@ -171,7 +173,11 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
 }
 
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
-    debug!("ws_completed_receive({:?}) begin", c4sock);
+    trace!(
+        "ws_completed_receive, c4sock {:?}, bytes {}",
+        c4sock,
+        byte_count
+    );
     assert!(!c4sock.is_null());
     let c4sock: &mut C4Socket = &mut *c4sock;
     assert!(!c4sock.nativeHandle.is_null());
@@ -194,13 +200,12 @@ unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usi
 }
 
 unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, message: C4String) {
-    debug!("ws_request_close({:?}) begin", c4sock);
+    trace!("ws_request_close, c4sock {:?}, status {}", c4sock, status);
     assert!(!c4sock.is_null());
     let c4sock: &mut C4Socket = &mut *c4sock;
     assert!(!c4sock.nativeHandle.is_null());
 
     let socket: &Socket = &*(c4sock.nativeHandle as *const Socket);
-    debug!("socket.c4sock {}", socket.c4sock);
     assert_eq!(c4sock as *mut _ as usize, socket.c4sock);
     let c4sock = socket.c4sock;
 
@@ -275,15 +280,10 @@ unsafe fn c4address_to_request(
         .port(addr.port)
         .path_and_query(fl_slice_to_slice(addr.path))
         .build()?;
-    debug!("c4address_to_request({:x}) uri {:?}", marker, uri);
+    trace!("c4address_to_request, marker {:x}, uri {:?}", marker, uri);
     let mut request = Request::get(uri).body(())?;
 
     let options = FLValue_AsDict(FLValue_FromData(options, FLTrust_kFLUntrusted));
-    debug!(
-        "c4address_to_request({:x} dict {}",
-        marker,
-        FLDict_Count(options)
-    );
     if let ValueRef::Dict(_opts) = ValueRef::from(FLDict_Get(
         options,
         slice_without_nul!(kC4ReplicatorOptionExtraHeaders).as_flslice(),
@@ -351,12 +351,15 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
     };
     match connect_async(request).await {
         Ok((ws_stream, http_resp)) => {
-            debug!("ws_open({:x}): websocket openned", sock_id);
+            trace!("open_connection c4sock {:x}: websocket openned", sock_id);
             unsafe {
                 let headers = match headers_to_dict(&http_resp) {
                     Ok(x) => x,
                     Err(fl_err) => {
-                        error!("ws_open({:x}): flencoder error: {}", sock_id, fl_err);
+                        error!(
+                            "open_connection: c4sock {:x}, flencoder error: {}",
+                            sock_id, fl_err
+                        );
                         let c4err =
                             c4error_make(FleeceDomain, fl_err as c_int, "".as_bytes().as_flslice());
                         c4socket_closed(sock_id as *mut _, c4err);
@@ -436,7 +439,7 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
                     }
 
                     _ = &mut time_to_stop => {
-                        debug!("read loop({:x}): time to stop signal", sock_id);
+                        info!("read loop, c4sock {:x}: time to stop signal", sock_id);
                         break 'read_loop;
                     }
                     else => break 'read_loop,
@@ -445,7 +448,10 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
             }
         }
         Err(err) => unsafe {
-            error!("ws_open({:x}: connection failed: {}", sock_id, err);
+            error!(
+                "open_connection, c4sock {:x}: connection failed: {}",
+                sock_id, err
+            );
             let c4err = tungstenite_err_to_c4_err(err);
             c4socket_closed(sock_id as *mut C4Socket, c4err);
         },

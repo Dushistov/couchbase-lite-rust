@@ -9,5 +9,3 @@ couchbase-lite-core-sys = { path = "couchbase-lite-core-sys" }
 # waiting https://github.com/alexcrichton/cmake-rs/issues/96
 # and https://github.com/alexcrichton/cmake-rs/pull/101
 cmake = { git = "https://github.com/Dushistov/cmake-rs", rev = "125fe65e123f9bd4ceaf91924b0a381d473f2d97" }
-# waiting https://github.com/sfackler/rust-native-tls/issues/192
-native-tls = { git = "https://github.com/sfackler/rust-native-tls", rev = "60a108bd71635f302610b015eeec88a4af276c2a" }

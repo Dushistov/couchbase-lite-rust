@@ -214,7 +214,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
     let reason: Cow<'static, str> = Cow::Owned(String::from(fl_slice_to_str_unchecked(message)));
     let close_confirmied = socket.close_confirmied.clone();
     socket.handle.spawn(async move {
-        close_confirmied.notify();
+        let err = c4error_make(WebSocketDomain, status, reason.as_ref().as_flslice());
         let mut writer = writer.lock().await;
 
         if let Some(writer) = writer.as_mut() {
@@ -223,16 +223,19 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
                 .await
             {
                 error!(
-                    "ws_request_close({:x}) writer.send failure: {}",
+                    "ws_request_close, c4sock {:x} writer.send failure: {}",
                     c4sock, err
                 );
             }
         }
+
+        close_confirmied.notify();
+        c4socket_closed(c4sock as *mut _, err);
     });
 }
 
 unsafe extern "C" fn ws_dispose(c4sock: *mut C4Socket) {
-    debug!("ws_dispose({:?}) begin", c4sock);
+    trace!("ws_dispose, c4sock {:?}", c4sock);
 
     assert!(!c4sock.is_null());
     let c4sock: &mut C4Socket = &mut *c4sock;

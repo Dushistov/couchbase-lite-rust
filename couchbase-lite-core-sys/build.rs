@@ -8,67 +8,6 @@ use std::{
 
 fn main() {
     env_logger::init();
-
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let cross_to_windows = target_os == "windows" && !cfg!(target_os = "windows");
-    let cross_to_macos = target_os == "macos" && !cfg!(target_os = "macos");
-    let cross_to_android = target_os == "android";
-
-    if cross_to_windows || cross_to_macos {
-        println!("cargo:rustc-link-lib=dylib=LiteCore");
-    } else if cross_to_android {
-        let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
-            .define("ANDROID_ABI", env::var("ANDROID_ABI").unwrap())
-            .define("ANDROID_NDK", env::var("NDK_HOME").unwrap())
-            .define("CMAKE_BUILD_TYPE", "MinSizeRel")
-            .define("ANDROID_NATIVE_API_LEVEL", env::var("ANDROID_NATIVE_API_LEVEL").unwrap())
-            .define("ANDROID_TOOLCHAIN", "clang")
-            .define("CMAKE_TOOLCHAIN_FILE", format!("{}/build/cmake/android.toolchain.cmake", env::var("NDK_HOME").unwrap()))
-            .define("DISABLE_LTO_BUILD", "True")
-            .build_target("LiteCore")
-            .build()
-            .join("build");
-        println!("cargo:rustc-link-search=native={}", dst.display());
-        println!("cargo:rustc-link-lib=dylib=LiteCore");
-    } else {
-        not_cross_compile_case();
-    }
-
-    let mut includes = vec![
-        Path::new("couchbase-lite-core").join("C").join("include"),
-        Path::new("couchbase-lite-core").join("vendor").join("fleece").join("API"),
-        Path::new("couchbase-lite-core").into(),
-        Path::new(".").into(),
-    ];
-    let target = getenv_unwrap("TARGET");
-    let mut framework_dirs = vec![];
-
-    let (mut addon_include_dirs, mut addon_framework_dirs) = cc_system_include_dirs().expect("get system include directories from cc failed");
-    includes.append(&mut addon_include_dirs);
-    framework_dirs.append(&mut addon_framework_dirs);
-
-    let out_dir = getenv_unwrap("OUT_DIR");
-    let out_dir = Path::new(&out_dir);
-
-    run_bindgen_for_c_headers(
-        &target,
-        &includes,
-        &framework_dirs,
-        &["c4.h", "fleece/FLSlice.h", "c4Document+Fleece.h", "fleece/Fleece.h", "couch_lite_log_retrans.hpp"],
-        &out_dir.join("c4_header.rs"),
-    )
-    .expect("bindgen failed");
-
-    let mut cc_builder = cc::Build::new();
-
-    for inc in &includes {
-        cc_builder.include(inc);
-    }
-
-    cc_builder.cpp(true).flag("-std=c++11").file("couch_lite_log_retrans.cpp").compile("couch_lite_log_retrans");
-}
-
-fn not_cross_compile_case() {
     let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
         .define("DISABLE_LTO_BUILD", "True")
         .define("MAINTAINER_MODE", "False")
@@ -84,14 +23,36 @@ fn not_cross_compile_case() {
     println!("cargo:rerun-if-env-changed=CXX");
 
     println!("cargo:rustc-link-search=native={}", dst.display());
-    println!("cargo:rustc-link-search=native={}", dst.join("vendor").join("fleece").display());
-    println!("cargo:rustc-link-search=native={}", dst.join("Networking").join("BLIP").display());
-    println!("cargo:rustc-link-search=native={}", dst.join("vendor").join("sqlite3-unicodesn").display());
-    println!("cargo:rustc-link-search=native={}", dst.join("vendor").join("mbedtls").join("crypto").join("library").display());
-    println!("cargo:rustc-link-search=native={}", dst.join("vendor").join("mbedtls").join("library").display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("vendor").join("fleece").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("Networking").join("BLIP").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("vendor").join("sqlite3-unicodesn").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("vendor")
+            .join("mbedtls")
+            .join("crypto")
+            .join("library")
+            .display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("vendor").join("mbedtls").join("library").display()
+    );
+    if cfg!(feature = "couchbase-sqlite") {
+        println!("cargo:rustc-link-lib=static=CouchbaseSqlite3");
+    }
+
     println!("cargo:rustc-link-lib=static=LiteCoreStatic");
     println!("cargo:rustc-link-lib=static=FleeceStatic");
-    println!("cargo:rustc-link-lib=static=Support");
     println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
     println!("cargo:rustc-link-lib=static=BLIPStatic");
     println!("cargo:rustc-link-lib=static=mbedcrypto");
@@ -111,15 +72,70 @@ fn not_cross_compile_case() {
         println!("cargo:rustc-link-lib=framework=SystemConfiguration");
         println!("cargo:rustc-link-lib=framework=Security");
     }
+
+    let mut includes = vec![
+        Path::new("couchbase-lite-core").join("C").join("include"),
+        Path::new("couchbase-lite-core")
+            .join("vendor")
+            .join("fleece")
+            .join("API"),
+        Path::new("couchbase-lite-core").into(),
+        Path::new(".").into(),
+    ];
+    let target = getenv_unwrap("TARGET");
+    let mut framework_dirs = vec![];
+
+    let (mut addon_include_dirs, mut addon_framework_dirs) =
+        cc_system_include_dirs().expect("get system include directories from cc failed");
+    includes.append(&mut addon_include_dirs);
+    framework_dirs.append(&mut addon_framework_dirs);
+
+    let out_dir = getenv_unwrap("OUT_DIR");
+    let out_dir = Path::new(&out_dir);
+
+    run_bindgen_for_c_headers(
+        &target,
+        &includes,
+        &framework_dirs,
+        &[
+            "c4.h",
+            "fleece/FLSlice.h",
+            "c4Document+Fleece.h",
+            "fleece/Fleece.h",
+            "couch_lite_log_retrans.hpp",
+        ],
+        &out_dir.join("c4_header.rs"),
+    )
+        .expect("bindgen failed");
+
+    let mut cc_builder = cc::Build::new();
+
+    for inc in &includes {
+        cc_builder.include(inc);
+    }
+
+    cc_builder
+        .cpp(true)
+        .flag_if_supported("-std=c++11")
+        .file("couch_lite_log_retrans.cpp")
+        .compile("couch_lite_log_retrans");
 }
 
-fn run_bindgen_for_c_headers<P: AsRef<Path>>(target: &str, include_dirs: &[P], framework_dirs: &[P], c_headers: &[&str], output_rust: &Path) -> Result<(), String> {
+fn run_bindgen_for_c_headers<P: AsRef<Path>>(
+    target: &str,
+    include_dirs: &[P],
+    framework_dirs: &[P],
+    c_headers: &[&str],
+    output_rust: &Path,
+) -> Result<(), String> {
     assert!(!c_headers.is_empty());
-    let c_file_path = search_file_in_directory(include_dirs, c_headers[0]).map_err(|_| format!("Can not find {}", c_headers[0]))?;
+    let c_file_path = search_file_in_directory(include_dirs, c_headers[0])
+        .map_err(|_| format!("Can not find {}", c_headers[0]))?;
 
     let mut dependicies = Vec::with_capacity(c_headers.len());
     for header in c_headers.iter() {
-        let c_file_path = search_file_in_directory(include_dirs, header).map_err(|_| format!("Can not find {}", header))?;
+        let c_file_path = search_file_in_directory(include_dirs, header)
+            .map_err(|_| format!("Can not find {}", header))?;
         dependicies.push(c_file_path);
     }
 
@@ -151,16 +167,20 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(target: &str, include_dirs: &[P], f
         bindings
     };
 
-    bindings = include_dirs.iter().fold(bindings, |acc, x| acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap()));
+    bindings = include_dirs.iter().fold(bindings, |acc, x| {
+        acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap())
+    });
 
-    bindings = framework_dirs.iter().fold(bindings, |acc, x| acc.clang_arg("-F".to_string() + x.as_ref().to_str().unwrap()));
+    bindings = framework_dirs.iter().fold(bindings, |acc, x| {
+        acc.clang_arg("-F".to_string() + x.as_ref().to_str().unwrap())
+    });
 
     bindings = bindings
         .rust_target(RustTarget::Stable_1_21)
         .opaque_type("timex")//to big reserved part for Debug
         .blacklist_type("max_align_t")//long double not supported yet,
-                                      // see https://github.com/servo/rust-bindgen/issues/550
-        ;
+    // see https://github.com/servo/rust-bindgen/issues/550
+    ;
     bindings = if target.contains("windows") {
         //see https://github.com/servo/rust-bindgen/issues/578
         bindings.trust_clang_mangling(false)
@@ -168,20 +188,30 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(target: &str, include_dirs: &[P], f
         bindings
     };
 
-    bindings = c_headers[1..].iter().fold(Ok(bindings), |acc: Result<Builder, String>, header| {
-        let c_file_path = search_file_in_directory(include_dirs, header).map_err(|_| format!("Can not find {}", header))?;
-        let c_file_str = c_file_path.to_str().ok_or_else(|| format!("Invalid unicode in path to {}", header))?;
-        Ok(acc.unwrap().clang_arg("-include").clang_arg(c_file_str))
-    })?;
+    bindings =
+        c_headers[1..]
+            .iter()
+            .fold(Ok(bindings), |acc: Result<Builder, String>, header| {
+                let c_file_path = search_file_in_directory(include_dirs, header)
+                    .map_err(|_| format!("Can not find {}", header))?;
+                let c_file_str = c_file_path
+                    .to_str()
+                    .ok_or_else(|| format!("Invalid unicode in path to {}", header))?;
+                Ok(acc.unwrap().clang_arg("-include").clang_arg(c_file_str))
+            })?;
     let bindings = bindings.rustified_enum("FLValueType");
-    let generated_bindings = bindings.generate().map_err(|_| "Failed to generate bindings".to_string())?;
-    generated_bindings.write_to_file(output_rust).map_err(|err| err.to_string())?;
+    let generated_bindings = bindings
+        .generate()
+        .map_err(|_| "Failed to generate bindings".to_string())?;
+    generated_bindings
+        .write_to_file(output_rust)
+        .map_err(|err| err.to_string())?;
     Ok(())
 }
 
 fn search_file_in_directory<P>(dirs: &[P], file: &str) -> Result<PathBuf, ()>
-where
-    P: AsRef<Path>,
+    where
+        P: AsRef<Path>,
 {
     for dir in dirs {
         let file_path = dir.as_ref().join(file);
@@ -207,7 +237,11 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
         .spawn()
         .map_err(|err| err.to_string())?;
 
-    cc_process.stdin.ok_or_else(|| format!("can not get stdin of cc"))?.write_all(b"\n").map_err(|err| err.to_string())?;
+    cc_process
+        .stdin
+        .ok_or_else(|| format!("can not get stdin of cc"))?
+        .write_all(b"\n")
+        .map_err(|err| err.to_string())?;
 
     let mut cc_output = String::new();
 
@@ -219,14 +253,26 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
 
     const BEGIN_PAT: &str = "\n#include <...> search starts here:\n";
     const END_PAT: &str = "\nEnd of search list.\n";
-    let start_includes = cc_output.find(BEGIN_PAT).ok_or_else(|| format!("No '{}' in output from cc", BEGIN_PAT))? + BEGIN_PAT.len();
-    let end_includes = (&cc_output[start_includes..]).find(END_PAT).ok_or_else(|| format!("No '{}' in output from cc", END_PAT))? + start_includes;
+    let start_includes = cc_output
+        .find(BEGIN_PAT)
+        .ok_or_else(|| format!("No '{}' in output from cc", BEGIN_PAT))?
+        + BEGIN_PAT.len();
+    let end_includes = (&cc_output[start_includes..])
+        .find(END_PAT)
+        .ok_or_else(|| format!("No '{}' in output from cc", END_PAT))?
+        + start_includes;
 
     const FRAMEWORK_PAT: &str = " (framework directory)";
 
     let include_dis = (&cc_output[start_includes..end_includes])
         .split('\n')
-        .filter_map(|s| if !s.ends_with(FRAMEWORK_PAT) { Some(PathBuf::from(s.trim().to_string())) } else { None })
+        .filter_map(|s| {
+            if !s.ends_with(FRAMEWORK_PAT) {
+                Some(PathBuf::from(s.trim().to_string()))
+            } else {
+                None
+            }
+        })
         .collect();
     let framework_dirs = (&cc_output[start_includes..end_includes])
         .split('\n')

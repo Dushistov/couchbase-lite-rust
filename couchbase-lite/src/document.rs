@@ -2,7 +2,7 @@ use crate::{
     error::{c4error_init, Error},
     ffi::{
         c4db_encodeJSON, c4doc_bodyAsJSON, c4doc_loadRevisionBody, c4doc_release, kDocExists,
-        kRevDeleted, C4Document, C4DocumentFlags, C4RevisionFlags,
+        kRevDeleted, C4Document, C4DocumentFlags, C4RevisionFlags, c4doc_selectParentRevision
     },
     fl_slice::{fl_slice_to_str_unchecked, AsFlSlice, FlSliceOwner},
     Database, Result,
@@ -133,6 +133,12 @@ impl Document {
     pub fn is_deleted(&self) -> bool {
         self.inner.as_ref().map(|x| x.is_deleted()).unwrap_or(false)
     }
+    pub fn rev_id(&self) -> &str {
+        self.inner.as_ref().map(|x| x.rev_id()).unwrap_or("N/A")
+    }
+    pub fn select_parent(&mut self) -> bool {
+        self.inner.as_mut().map(|x| x.select_parent()).unwrap_or(false)
+    }
 }
 
 fn load_body(inner: NonNull<C4Document>) -> Result<()> {
@@ -173,6 +179,13 @@ impl C4DocumentOwner {
 
     pub(crate) fn id(&self) -> &str {
         unsafe { fl_slice_to_str_unchecked(self.0.as_ref().docID) }
+    }
+
+    pub(crate) fn rev_id(&self) -> &str {
+        unsafe { fl_slice_to_str_unchecked(self.0.as_ref().selectedRev.revID) }
+    }
+    pub(crate) fn select_parent(&mut self) -> bool {
+        unsafe { c4doc_selectParentRevision(self.0.as_mut()) }
     }
 }
 

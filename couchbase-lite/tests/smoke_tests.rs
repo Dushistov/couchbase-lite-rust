@@ -268,6 +268,46 @@ fn test_save_several_times() {
 }
 
 #[test]
+fn test_save_and_select_parent() {
+    fn create_s(i: i32) -> S {
+        S {
+            f: f64::from(i) / 3.6,
+            s: format!("Hello {}", i),
+        }
+    }
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open(&db_path, DatabaseConfig::default()).unwrap();
+        let s = create_s(500);
+        let mut trans = db.transaction().unwrap();
+        let mut doc = Document::new(&s).unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        let prec_rev_id: String = doc.rev_id().into();
+        let doc_id: String = doc.id().into();
+        drop(doc);
+        assert_eq!(1, db.document_count());
+
+        let doc = db.get_existing(&doc_id).unwrap();
+        assert_eq!(s, doc.decode_data::<S>().unwrap());
+
+        let s = create_s(501);
+        let mut doc = Document::new_with_id(doc_id.as_str(), &s).unwrap();
+        let mut trans = db.transaction().unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        assert_eq!(true, doc.select_parent());
+        assert_eq!(prec_rev_id, doc.rev_id());
+        drop(doc);
+        assert_eq!(1, db.document_count());
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+#[test]
 fn test_indices() {
     let _ = env_logger::try_init();
     let tmp_dir = tempdir().expect("Can not create tmp directory");

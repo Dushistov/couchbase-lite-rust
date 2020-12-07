@@ -17,8 +17,8 @@ fn main() {
     if cross_to_windows || cross_to_macos {
         println!("cargo:rustc-link-lib=dylib=LiteCore");
     } else {
-        let dst = if cross_to_android {
-            cmake::Config::new(Path::new("couchbase-lite-core"))
+        if cross_to_android {
+            let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
                 .define("ANDROID_ABI", env::var("ANDROID_ABI").unwrap())
                 .define("ANDROID_NDK", env::var("NDK_HOME").unwrap())
                 .define("CMAKE_BUILD_TYPE", "MinSizeRel")
@@ -28,9 +28,14 @@ fn main() {
                 .define("DISABLE_LTO_BUILD", "True")
                 .build_target("LiteCore")
                 .build()
-                .join("build")
+                .join("build");
+
+            //FIXME When use static also there is a pb of undefined symbol _ZTVN10__cxxabiv120__si_class_type_infoE
+            println!("cargo:rustc-link-search=native={}", dst.display());
+            println!("cargo:rustc-link-lib=dylib=LiteCore");
+
         } else {
-            cmake::Config::new(Path::new("couchbase-lite-core"))
+           let dst =  cmake::Config::new(Path::new("couchbase-lite-core"))
                 .define("DISABLE_LTO_BUILD", "True")
                 .define("MAINTAINER_MODE", "False")
                 .define("ENABLE_TESTING", "False")
@@ -38,49 +43,50 @@ fn main() {
                 .define("SQLITE_ENABLE_RTREE", "True")
                 .build_target("all")
                 .build()
-                .join("build")
+                .join("build");
+
+            println!("cargo:rustc-link-search=native={}", dst.display());
+            println!(
+                "cargo:rustc-link-search=native={}",
+                dst.join("vendor").join("fleece").display()
+            );
+            println!(
+                "cargo:rustc-link-search=native={}",
+                dst.join("Networking").join("BLIP").display()
+            );
+            println!(
+                "cargo:rustc-link-search=native={}",
+                dst.join("vendor").join("sqlite3-unicodesn").display()
+            );
+            println!(
+                "cargo:rustc-link-search=native={}",
+                dst.join("vendor")
+                    .join("mbedtls")
+                    .join("crypto")
+                    .join("library")
+                    .display()
+            );
+            println!(
+                "cargo:rustc-link-search=native={}",
+                dst.join("vendor").join("mbedtls").join("library").display()
+            );
+            if cfg!(feature = "couchbase-sqlite") {
+                println!("cargo:rustc-link-lib=static=CouchbaseSqlite3");
+            }
+
+            println!("cargo:rustc-link-lib=static=LiteCoreStatic");
+            println!("cargo:rustc-link-lib=static=FleeceStatic");
+            println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
+            println!("cargo:rustc-link-lib=static=BLIPStatic");
+            println!("cargo:rustc-link-lib=static=mbedcrypto");
+            println!("cargo:rustc-link-lib=static=mbedtls");
+            println!("cargo:rustc-link-lib=static=mbedx509");
         };
 
         println!("cargo:rerun-if-changed=couchbase-lite-core");
         println!("cargo:rerun-if-env-changed=CC");
         println!("cargo:rerun-if-env-changed=CXX");
 
-        println!("cargo:rustc-link-search=native={}", dst.display());
-        println!(
-            "cargo:rustc-link-search=native={}",
-            dst.join("vendor").join("fleece").display()
-        );
-        println!(
-            "cargo:rustc-link-search=native={}",
-            dst.join("Networking").join("BLIP").display()
-        );
-        println!(
-            "cargo:rustc-link-search=native={}",
-            dst.join("vendor").join("sqlite3-unicodesn").display()
-        );
-        println!(
-            "cargo:rustc-link-search=native={}",
-            dst.join("vendor")
-                .join("mbedtls")
-                .join("crypto")
-                .join("library")
-                .display()
-        );
-        println!(
-            "cargo:rustc-link-search=native={}",
-            dst.join("vendor").join("mbedtls").join("library").display()
-        );
-        if cfg!(feature = "couchbase-sqlite") {
-            println!("cargo:rustc-link-lib=static=CouchbaseSqlite3");
-        }
-
-        println!("cargo:rustc-link-lib=static=LiteCoreStatic");
-        println!("cargo:rustc-link-lib=static=FleeceStatic");
-        println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
-        println!("cargo:rustc-link-lib=static=BLIPStatic");
-        println!("cargo:rustc-link-lib=static=mbedcrypto");
-        println!("cargo:rustc-link-lib=static=mbedtls");
-        println!("cargo:rustc-link-lib=static=mbedx509");
 
         if cfg!(target_os = "linux") {
             println!("cargo:rustc-link-lib=icuuc");
@@ -139,7 +145,7 @@ fn main() {
 
         cc_builder
             .cpp(true)
-            .flag_if_supported("-std=c++11")
+            .flag("-std=c++11")
             .file("couch_lite_log_retrans.cpp")
             .compile("couch_lite_log_retrans");
     }

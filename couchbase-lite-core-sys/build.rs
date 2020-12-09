@@ -33,9 +33,8 @@ fn main() {
             //FIXME When use static also there is a pb of undefined symbol _ZTVN10__cxxabiv120__si_class_type_infoE
             println!("cargo:rustc-link-search=native={}", dst.display());
             println!("cargo:rustc-link-lib=dylib=LiteCore");
-
         } else {
-           let dst =  cmake::Config::new(Path::new("couchbase-lite-core"))
+            let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
                 .define("DISABLE_LTO_BUILD", "True")
                 .define("MAINTAINER_MODE", "False")
                 .define("ENABLE_TESTING", "False")
@@ -101,54 +100,54 @@ fn main() {
             println!("cargo:rustc-link-lib=framework=SystemConfiguration");
             println!("cargo:rustc-link-lib=framework=Security");
         }
-
-        let mut includes = vec![
-            Path::new("couchbase-lite-core").join("C").join("include"),
-            Path::new("couchbase-lite-core")
-                .join("vendor")
-                .join("fleece")
-                .join("API"),
-            Path::new("couchbase-lite-core").into(),
-            Path::new(".").into(),
-        ];
-        let target = getenv_unwrap("TARGET");
-        let mut framework_dirs = vec![];
-
-        let (mut addon_include_dirs, mut addon_framework_dirs) =
-            cc_system_include_dirs().expect("get system include directories from cc failed");
-        includes.append(&mut addon_include_dirs);
-        framework_dirs.append(&mut addon_framework_dirs);
-
-        let out_dir = getenv_unwrap("OUT_DIR");
-        let out_dir = Path::new(&out_dir);
-
-        run_bindgen_for_c_headers(
-            &target,
-            &includes,
-            &framework_dirs,
-            &[
-                "c4.h",
-                "fleece/FLSlice.h",
-                "c4Document+Fleece.h",
-                "fleece/Fleece.h",
-                "couch_lite_log_retrans.hpp",
-            ],
-            &out_dir.join("c4_header.rs"),
-        )
-            .expect("bindgen failed");
-
-        let mut cc_builder = cc::Build::new();
-
-        for inc in &includes {
-            cc_builder.include(inc);
-        }
-
-        cc_builder
-            .cpp(true)
-            .flag("-std=c++11")
-            .file("couch_lite_log_retrans.cpp")
-            .compile("couch_lite_log_retrans");
     }
+
+    let mut includes = vec![
+        Path::new("couchbase-lite-core").join("C").join("include"),
+        Path::new("couchbase-lite-core")
+            .join("vendor")
+            .join("fleece")
+            .join("API"),
+        Path::new("couchbase-lite-core").into(),
+        Path::new(".").into(),
+    ];
+    let target = getenv_unwrap("TARGET");
+    let mut framework_dirs = vec![];
+
+    let (mut addon_include_dirs, mut addon_framework_dirs) =
+        cc_system_include_dirs().expect("get system include directories from cc failed");
+    includes.append(&mut addon_include_dirs);
+    framework_dirs.append(&mut addon_framework_dirs);
+
+    let out_dir = getenv_unwrap("OUT_DIR");
+    let out_dir = Path::new(&out_dir);
+
+    run_bindgen_for_c_headers(
+        &target,
+        &includes,
+        &framework_dirs,
+        &[
+            "c4.h",
+            "fleece/FLSlice.h",
+            "c4Document+Fleece.h",
+            "fleece/Fleece.h",
+            "couch_lite_log_retrans.hpp",
+        ],
+        &out_dir.join("c4_header.rs"),
+    )
+        .expect("bindgen failed");
+
+    let mut cc_builder = cc::Build::new();
+
+    for inc in &includes {
+        cc_builder.include(inc);
+    }
+
+    cc_builder
+        .cpp(true)
+        .flag("-std=c++11")
+        .file("couch_lite_log_retrans.cpp")
+        .compile("couch_lite_log_retrans");
 }
 
 fn run_bindgen_for_c_headers<P: AsRef<Path>>(

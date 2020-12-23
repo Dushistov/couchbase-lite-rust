@@ -16,7 +16,7 @@ use crate::{
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{HeaderValue, Uri};
-use log::{debug, error, info, trace};
+use log::{debug, error, info, trace, warn};
 use std::{
     borrow::Cow,
     convert::TryFrom,
@@ -74,6 +74,7 @@ struct Socket {
     read_data_avaible: AtomicUsize,
     read_confirmed: Arc<Notify>,
     close_confirmied: Arc<Notify>,
+    closed: Arc<TokioMutex<bool>>,
     c4sock: usize,
 }
 
@@ -125,6 +126,7 @@ unsafe extern "C" fn ws_open(
         c4sock: c4sock as *mut C4Socket as usize,
         read_data_avaible: AtomicUsize::new(0),
         close_confirmied: Arc::new(Notify::new()),
+        closed: Arc::new(TokioMutex::new(false))
     });
     trace!(
         "ws_open, c4sock {:x}, uri: {:?}",
@@ -209,11 +211,15 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
     assert_eq!(c4sock as *mut _ as usize, socket.c4sock);
     let c4sock = socket.c4sock;
 
+    let socket_for_closed = socket.clone();
+
     let writer = socket.writer.clone();
     let code: CloseCode = u16::try_from(status).unwrap_or(1).into();
     let reason: Cow<'static, str> = Cow::Owned(String::from(fl_slice_to_str_unchecked(message)));
     let close_confirmied = socket.close_confirmied.clone();
     socket.handle.spawn(async move {
+        let mut closed = socket_for_closed.closed.lock().await;
+        *closed = true;
         let err = c4error_make(WebSocketDomain, status, reason.as_ref().as_flslice());
         let mut writer = writer.lock().await;
 
@@ -355,99 +361,103 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
     match connect_async(request).await {
         Ok((ws_stream, http_resp)) => {
             trace!("open_connection c4sock {:x}: websocket openned", sock_id);
-            unsafe {
-                let headers = match headers_to_dict(&http_resp) {
-                    Ok(x) => x,
-                    Err(fl_err) => {
-                        error!(
-                            "open_connection: c4sock {:x}, flencoder error: {}",
-                            sock_id, fl_err
-                        );
-                        let c4err =
-                            c4error_make(FleeceDomain, fl_err as c_int, "".as_bytes().as_flslice());
-                        c4socket_closed(sock_id as *mut _, c4err);
-                        return;
-                    }
-                };
-                c4socket_gotHTTPResponse(
-                    sock_id as *mut _,
-                    http_resp.status().as_u16() as c_int,
-                    headers.as_flslice(),
-                );
-            }
+            if !*socket.closed.lock().await {
+                unsafe {
+                    let headers = match headers_to_dict(&http_resp) {
+                        Ok(x) => x,
+                        Err(fl_err) => {
+                            error!(
+                                "open_connection: c4sock {:x}, flencoder error: {}",
+                                sock_id, fl_err
+                            );
+                            let c4err =
+                                c4error_make(FleeceDomain, fl_err as c_int, "".as_bytes().as_flslice());
+                            c4socket_closed(sock_id as *mut _, c4err);
+                            return;
+                        }
+                    };
+                    c4socket_gotHTTPResponse(
+                        sock_id as *mut _,
+                        http_resp.status().as_u16() as c_int,
+                        headers.as_flslice(),
+                    );
+                }
 
-            let (ws_writer, mut ws_reader) = ws_stream.split();
+                let (ws_writer, mut ws_reader) = ws_stream.split();
 
-            {
-                let mut lock = socket.writer.lock().await;
-                *lock = Some(ws_writer);
-            }
-            let (stop_read, mut time_to_stop) = oneshot::channel();
-            {
-                let mut lock = socket.stop_read.lock().await;
-                *lock = Some(stop_read);
-            }
-            unsafe {
-                c4socket_opened(sock_id as *mut C4Socket);
-            }
+                {
+                    let mut lock = socket.writer.lock().await;
+                    *lock = Some(ws_writer);
+                }
+                let (stop_read, mut time_to_stop) = oneshot::channel();
+                {
+                    let mut lock = socket.stop_read.lock().await;
+                    *lock = Some(stop_read);
+                }
+                unsafe {
+                    c4socket_opened(sock_id as *mut C4Socket);
+                }
 
-            let read_confirmed = socket.read_confirmed.clone();
-            let close_confirmied = socket.close_confirmied.clone();
+                let read_confirmed = socket.read_confirmed.clone();
+                let close_confirmied = socket.close_confirmied.clone();
 
-            'read_loop: loop {
-                tokio::select! {
-                    message = ws_reader.next() => {
-                        let message = match message {
-                            Some(x) => x,
-                            None => break 'read_loop,
-                        };
-                        match message {
-                            Ok(m @ Message::Text(_)) | Ok(m @ Message::Binary(_)) => {
-                                let data = m.into_data();
-                                socket.read_data_avaible.store(data.len(), Ordering::Release);
-                                unsafe {
-                                    c4socket_received(sock_id as *mut _, data.as_slice().as_flslice());
+                'read_loop: loop {
+                    tokio::select! {
+                        message = ws_reader.next() => {
+                            let message = match message {
+                                Some(x) => x,
+                                None => break 'read_loop,
+                            };
+                            match message {
+                                Ok(m @ Message::Text(_)) | Ok(m @ Message::Binary(_)) => {
+                                    let data = m.into_data();
+                                    socket.read_data_avaible.store(data.len(), Ordering::Release);
+                                    unsafe {
+                                        c4socket_received(sock_id as *mut _, data.as_slice().as_flslice());
+                                    }
+                                    read_confirmed.notified().await;
                                 }
-                                read_confirmed.notified().await;
-                            }
-                            Ok(Message::Close(close_frame)) => {
-                                info!("read loop({:x}): close", sock_id);
-                                let (code, reason) = close_frame.map(|x| (u16::from(&x.code) as c_int, x.reason)).unwrap_or_else(|| {
-                                    (-1, "".into())
-                                });
-                                unsafe {
-                                    c4socket_closeRequested(sock_id as *mut C4Socket, code, reason.as_bytes().as_flslice());
+                                Ok(Message::Close(close_frame)) => {
+                                    info!("read loop({:x}): close", sock_id);
+                                    let (code, reason) = close_frame.map(|x| (u16::from(&x.code) as c_int, x.reason)).unwrap_or_else(|| {
+                                        (-1, "".into())
+                                    });
+                                    unsafe {
+                                        c4socket_closeRequested(sock_id as *mut C4Socket, code, reason.as_bytes().as_flslice());
+                                    }
+                                    close_confirmied.notified().await;
+                                    break 'read_loop;
                                 }
-                                close_confirmied.notified().await;
-                                break 'read_loop;
-                            }
-                            Ok(Message::Ping(_)) => {
-                                debug!("read loop({:x}): ping", sock_id);
-                                todo!();
-                            }
-                            Ok(Message::Pong(_)) => {
-                                debug!("read loop({:x}): pong", sock_id);
-                                todo!();
-                            }
-                            Err(err) => {
-                                error!("read loop({:x}) message error: {}", sock_id, err);
-                                unsafe {
-                                    let c4err = tungstenite_err_to_c4_err(err);
-                                    c4socket_closed(sock_id as *mut C4Socket, c4err);
+                                Ok(Message::Ping(_)) => {
+                                    debug!("read loop({:x}): ping", sock_id);
+                                    todo!();
                                 }
-                                break 'read_loop;
+                                Ok(Message::Pong(_)) => {
+                                    debug!("read loop({:x}): pong", sock_id);
+                                    todo!();
+                                }
+                                Err(err) => {
+                                    error!("read loop({:x}) message error: {}", sock_id, err);
+                                    unsafe {
+                                        let c4err = tungstenite_err_to_c4_err(err);
+                                        c4socket_closed(sock_id as *mut C4Socket, c4err);
+                                    }
+                                    break 'read_loop;
+                                }
                             }
+
                         }
 
-                    }
+                        _ = &mut time_to_stop => {
+                            info!("read loop, c4sock {:x}: time to stop signal", sock_id);
+                            break 'read_loop;
+                        }
+                        else => break 'read_loop,
 
-                    _ = &mut time_to_stop => {
-                        info!("read loop, c4sock {:x}: time to stop signal", sock_id);
-                        break 'read_loop;
-                    }
-                    else => break 'read_loop,
-
-                };
+                    };
+                }
+            } else {
+                warn!("Connection is closed so we cannot open it!");
             }
         }
         Err(err) => unsafe {

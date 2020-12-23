@@ -16,7 +16,7 @@ use crate::{
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{HeaderValue, Uri};
-use log::{debug, error, info, trace};
+use log::{debug, error, info, trace, warn};
 use std::{
     borrow::Cow,
     convert::TryFrom,
@@ -72,6 +72,7 @@ struct Socket {
     read_data_avaible: AtomicUsize,
     read_confirmed: Arc<Notify>,
     close_confirmied: Arc<Notify>,
+    closed: Arc<TokioMutex<bool>>,
     c4sock: usize,
     last_activity: Arc<TokioMutex<Instant>>,
 }
@@ -124,7 +125,8 @@ unsafe extern "C" fn ws_open(
         c4sock: c4sock as *mut C4Socket as usize,
         read_data_avaible: AtomicUsize::new(0),
         close_confirmied: Arc::new(Notify::new()),
-        last_activity: Arc::new(TokioMutex::new(Instant::now()))
+        last_activity: Arc::new(TokioMutex::new(Instant::now())),
+        closed: Arc::new(TokioMutex::new(false))
     });
     trace!(
         "ws_open, c4sock {:x}, uri: {:?}",
@@ -240,11 +242,15 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
     assert_eq!(c4sock as *mut _ as usize, socket.c4sock);
     let c4sock = socket.c4sock;
 
+    let socket_for_closed = socket.clone();
+
     let writer = socket.writer.clone();
     let code: CloseCode = u16::try_from(status).unwrap_or(1).into();
     let reason: Cow<'static, str> = Cow::Owned(String::from(fl_slice_to_str_unchecked(message)));
     let close_confirmied = socket.close_confirmied.clone();
     socket.handle.spawn(async move {
+        let mut closed = socket_for_closed.closed.lock().await;
+        *closed = true;
         let err = c4error_make(WebSocketDomain, status, reason.as_ref().as_flslice());
         let mut writer = writer.lock().await;
 
@@ -386,47 +392,48 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
     match connect_async(request).await {
         Ok((ws_stream, http_resp)) => {
             trace!("open_connection c4sock {:x}: websocket openned", sock_id);
-            unsafe {
-                let headers = match headers_to_dict(&http_resp) {
-                    Ok(x) => x,
-                    Err(fl_err) => {
-                        error!(
-                            "open_connection: c4sock {:x}, flencoder error: {}",
-                            sock_id, fl_err
-                        );
-                        let c4err =
-                            c4error_make(FleeceDomain, fl_err as c_int, "".as_bytes().as_flslice());
-                        c4socket_closed(sock_id as *mut _, c4err);
-                        return;
-                    }
-                };
-                c4socket_gotHTTPResponse(
-                    sock_id as *mut _,
-                    http_resp.status().as_u16() as c_int,
-                    headers.as_flslice(),
-                );
-            }
+            if !*socket.closed.lock().await {
+                unsafe {
+                    let headers = match headers_to_dict(&http_resp) {
+                        Ok(x) => x,
+                        Err(fl_err) => {
+                            error!(
+                                "open_connection: c4sock {:x}, flencoder error: {}",
+                                sock_id, fl_err
+                            );
+                            let c4err =
+                                c4error_make(FleeceDomain, fl_err as c_int, "".as_bytes().as_flslice());
+                            c4socket_closed(sock_id as *mut _, c4err);
+                            return;
+                        }
+                    };
+                    c4socket_gotHTTPResponse(
+                        sock_id as *mut _,
+                        http_resp.status().as_u16() as c_int,
+                        headers.as_flslice(),
+                    );
+                }
 
-            let (ws_writer, mut ws_reader) = ws_stream.split();
+                let (ws_writer, mut ws_reader) = ws_stream.split();
 
-            {
-                let mut lock = socket.writer.lock().await;
-                *lock = Some(ws_writer);
-            }
-            let (stop_read, mut time_to_stop) = oneshot::channel();
-            {
-                let mut lock = socket.stop_read.lock().await;
-                *lock = Some(stop_read);
-            }
-            unsafe {
-                c4socket_opened(sock_id as *mut C4Socket);
-            }
+                {
+                    let mut lock = socket.writer.lock().await;
+                    *lock = Some(ws_writer);
+                }
+                let (stop_read, mut time_to_stop) = oneshot::channel();
+                {
+                    let mut lock = socket.stop_read.lock().await;
+                    *lock = Some(stop_read);
+                }
+                unsafe {
+                    c4socket_opened(sock_id as *mut C4Socket);
+                }
 
-            let read_confirmed = socket.read_confirmed.clone();
-            let close_confirmied = socket.close_confirmied.clone();
+                let read_confirmed = socket.read_confirmed.clone();
+                let close_confirmied = socket.close_confirmied.clone();
 
-            'read_loop: loop {
-                tokio::select! {
+                'read_loop: loop {
+                    tokio::select! {
                     message = ws_reader.next() => {
                         let message = match message {
                             Some(x) => x,
@@ -478,7 +485,11 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
                     }
                     else => break 'read_loop,
 
-                };
+                }
+                    ;
+                }
+            } else {
+                warn!("Connection is closed so we cannot open it!");
             }
         }
         Err(err) => unsafe {

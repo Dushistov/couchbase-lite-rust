@@ -88,9 +88,11 @@ fn main() {
 
 
         if cfg!(target_os = "linux") {
-            println!("cargo:rustc-link-lib=icuuc");
-            println!("cargo:rustc-link-lib=icui18n");
-            println!("cargo:rustc-link-lib=icudata");
+            if !cross_to_android {
+                println!("cargo:rustc-link-lib=icuuc");
+                println!("cargo:rustc-link-lib=icui18n");
+                println!("cargo:rustc-link-lib=icudata");
+            }
             println!("cargo:rustc-link-lib=z");
         } else if cfg!(target_os = "macos") && target_os == "macos" {
             println!("cargo:rustc-link-lib=z");

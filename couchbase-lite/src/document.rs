@@ -52,7 +52,7 @@ impl Document {
             if !encoded.buf.is_null() {
                 Ok(encoded.into())
             } else {
-                return Err(c4err.into());
+                Err(c4err.into())
             }
         } else {
             Ok(FlSliceOwner::default())

@@ -239,7 +239,7 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
 
     cc_process
         .stdin
-        .ok_or_else(|| format!("can not get stdin of cc"))?
+        .ok_or_else(|| "can not get stdin of cc".to_string())?
         .write_all(b"\n")
         .map_err(|err| err.to_string())?;
 
@@ -247,7 +247,7 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
 
     cc_process
         .stderr
-        .ok_or_else(|| format!("can not get stderr of cc"))?
+        .ok_or_else(|| "can not get stderr of cc".to_string())?
         .read_to_string(&mut cc_output)
         .map_err(|err| err.to_string())?;
 

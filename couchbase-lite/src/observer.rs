@@ -65,7 +65,7 @@ impl DatabaseObserver {
             })
             .ok_or_else(|| {
                 unsafe { free_boxed_value::<F>(boxed_f as *mut c_void) };
-                Error::LogicError(format!("c4dbobs_create return null"))
+                Error::LogicError("c4dbobs_create return null".to_string())
             })
     }
 

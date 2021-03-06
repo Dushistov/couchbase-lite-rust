@@ -107,10 +107,8 @@ impl Transaction<'_> {
         }
         let c4_doc: Option<NonNull<C4Document>> = if let Some(x) = base.as_ref() {
             Some(x.0)
-        } else if let Some(x) = doc.inner.as_ref() {
-            Some(x.0)
         } else {
-            None
+            doc.inner.as_ref().map(|x| x.0)
         };
         let mut c4err = c4error_init();
         let new_doc = if let Some(c4_doc) = c4_doc {

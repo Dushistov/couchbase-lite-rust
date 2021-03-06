@@ -313,7 +313,7 @@ impl Database {
         self.db_replicator = Some(repl.restart(
             self,
             &replicator_params.url,
-            replicator_params.token.as_ref().map(String::as_str),
+            replicator_params.token.as_deref(),
         )?);
         Ok(())
     }
@@ -502,11 +502,8 @@ impl FallibleStreamingIterator for DbIndexesListIterator {
     }
 
     fn get(&self) -> Option<&str> {
-        if let Some(val) = self.cur_val {
-            Some(unsafe { fl_slice_to_str_unchecked(FLValue_AsString(val)) })
-        } else {
-            None
-        }
+        self.cur_val
+            .map(|val| unsafe { fl_slice_to_str_unchecked(FLValue_AsString(val)) })
     }
 }
 

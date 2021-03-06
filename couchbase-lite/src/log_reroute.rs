@@ -22,7 +22,6 @@ define_log_level!(kC4LogNone);
 
 pub(crate) static DB_LOGGER: Lazy<()> = Lazy::new(|| {
     unsafe { c4log_setRustCallback(kC4LogDebug as C4LogLevel, Some(db_logger_callback)) };
-    ()
 });
 
 unsafe extern "C" fn db_logger_callback(

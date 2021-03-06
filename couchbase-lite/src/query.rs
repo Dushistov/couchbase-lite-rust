@@ -114,13 +114,11 @@ impl<'en> FallibleStreamingIterator for Enumerator<'en> {
         let mut c4err = c4error_init();
         if unsafe { c4queryenum_next(self.inner.as_ptr(), &mut c4err) } {
             Ok(())
+        } else if c4err.code == 0 {
+            self.reach_end = true;
+            Ok(())
         } else {
-            if c4err.code == 0 {
-                self.reach_end = true;
-                Ok(())
-            } else {
-                Err(c4err.into())
-            }
+            Err(c4err.into())
         }
     }
 

@@ -9,7 +9,7 @@ default = ["couchbase-sqlite"]
 couchbase-sqlite = []
 
 [build-dependencies]
-cmake = "0.1.43"
+cmake = "0.1.45"
 bindgen = "0.54.0"
 cc = "1.0.53"
 env_logger = "0.7"

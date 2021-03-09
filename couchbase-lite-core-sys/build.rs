@@ -18,7 +18,10 @@ fn main() {
         .build()
         .join("build");
 
-    println!("cargo:rerun-if-changed=couchbase-lite-core");
+    // with recent cargo, this cause unnecessary rebuilds
+    // so disable for now
+    // println!("cargo:rerun-if-changed=couchbase-lite-core");
+
     println!("cargo:rerun-if-env-changed=CC");
     println!("cargo:rerun-if-env-changed=CXX");
 

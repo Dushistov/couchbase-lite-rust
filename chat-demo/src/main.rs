@@ -5,7 +5,7 @@ use couchbase_lite::{
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, env, path::Path, sync::mpsc};
-use tokio::prelude::*;
+use tokio::io::AsyncBufReadExt;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
@@ -15,7 +15,7 @@ struct Message {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    let mut runtime = tokio::runtime::Runtime::new()?;
+    let runtime = tokio::runtime::Runtime::new()?;
 
     let db_path = env::args().nth(1).expect("No path to db file");
     let db_path = Path::new(&db_path);

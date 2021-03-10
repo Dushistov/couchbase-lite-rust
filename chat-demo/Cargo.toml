@@ -9,4 +9,4 @@ couchbase-lite = { path = "../couchbase-lite", features = ["replication"] }
 serde = { version = "1.0.104", features = ["derive"] }
 tokio = { version = "0.2.6", features = ["io-std", "io-util"] }
 log = "0.4.8"
-env_logger = "0.7"
+env_logger = "0.8"

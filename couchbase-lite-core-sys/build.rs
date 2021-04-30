@@ -19,6 +19,8 @@ fn main() {
     } else {
         if cross_to_android {
             let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
+                .define("CMAKE_CXX_FLAGS", env::var("CMAKE_CXX_FLAGS").unwrap())
+                .define("CMAKE_C_FLAGS", env::var("CMAKE_C_FLAGS").unwrap())
                 .define("ANDROID_ABI", env::var("ANDROID_ABI").unwrap())
                 .define("ANDROID_NDK", env::var("NDK_HOME").unwrap())
                 .define("CMAKE_BUILD_TYPE", "MinSizeRel")

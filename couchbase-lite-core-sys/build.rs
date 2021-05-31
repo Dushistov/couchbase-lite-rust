@@ -84,11 +84,6 @@ fn main() {
             println!("cargo:rustc-link-lib=static=mbedx509");
         };
 
-        println!("cargo:rerun-if-changed=couchbase-lite-core");
-        println!("cargo:rerun-if-env-changed=CC");
-        println!("cargo:rerun-if-env-changed=CXX");
-
-
         if cfg!(target_os = "linux") {
             if !cross_to_android {
                 println!("cargo:rustc-link-lib=icuuc");

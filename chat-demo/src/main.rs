@@ -21,8 +21,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_path = Path::new(&db_path);
     let sync_url = env::args()
         .nth(2)
-        .unwrap_or_else(|| "ws://192.168.1.132:4984/demo/".to_string());
-    let token: Option<String> = env::args().nth(3);
+        .unwrap_or_else(|| "ws://vps820494.ovh.net:4984/billeo-db".to_string());
+    let token: Option<String> = Some("1b91ed5c6a58efd479c74011b592c86fc43f1c82".into());
 
     use_web_sockets(runtime.handle().clone());
     let (db_thread, db_exec) = run_db_thread(db_path);
@@ -75,39 +75,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_exec_repl = db_exec.clone();
     runtime.block_on(async move {
         let mut buf = String::new();
-        let mut edit_id = None;
         loop {
             stdin
                 .read_line(&mut buf)
                 .await
                 .expect("reading from stdin fail");
-            let msg = &buf;
-            let msg = msg.trim_end();
-            if !msg.is_empty() {
-                if msg == "quit" {
-                    println!("Time to quit");
-                    break;
-                } else if msg.starts_with(EDIT_PREFIX) {
-                    edit_id = Some((&msg[EDIT_PREFIX.len()..]).to_string());
-                    println!("ready to edit message {:?}", edit_id);
-                } else {
-                    println!("Your message is '{}'", msg);
 
-                    {
-                        let msg = msg.to_string();
-                        let edit_id = edit_id.take();
-                        db_exec_repl.spawn(move |db| {
-                            if let Some(mut db) = db.as_mut() {
-                                save_msg(&mut db, &msg, edit_id.as_ref().map(String::as_str))
-                                    .expect("save to db failed");
-                            } else {
-                                eprintln!("db is NOT open");
-                            }
-                        });
-                    }
+            db_exec_repl.spawn(move |db| {
+                if let Some(db) = db.as_mut() {
+                    db.restart_replicator().expect("restart_replicator failed");
                 }
-            }
-            buf.clear();
+            });
+
         }
     });
 

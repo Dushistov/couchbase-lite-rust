@@ -11,6 +11,6 @@ couchbase-sqlite = []
 [build-dependencies]
 cmake = "0.1.45"
 # we don't need clap, because of don't use bindgen as executable
-bindgen = { version = "0.57.0", default-features = false, features = ["logging", "runtime", "which-rustfmt"] }
+bindgen = { version = "0.59.1", default-features = false, features = ["logging", "runtime", "which-rustfmt"] }
 cc = "1.0.53"
-env_logger = "0.8"
+env_logger = "0.9"

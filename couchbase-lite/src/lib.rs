@@ -367,7 +367,7 @@ impl Database {
                     if !list.is_empty() {
                         list.push(' ');
                     }
-                    list.push_str(&word);
+                    list.push_str(word);
                 }
                 Some(CString::new(list)?)
             } else {

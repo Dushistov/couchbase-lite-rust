@@ -103,7 +103,7 @@ impl Transaction<'_> {
             rev_flags = kRevDeleted as C4RevisionFlags;
         }
         if !deletion && !doc.is_empty() {
-            body = doc.encode(&self.db)?;
+            body = doc.encode(self.db)?;
         }
         let c4_doc: Option<NonNull<C4Document>> = if let Some(x) = base.as_ref() {
             Some(x.0)

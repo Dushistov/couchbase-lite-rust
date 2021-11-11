@@ -163,13 +163,6 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         .size_t_is_usize(true)
         .rustfmt_bindings(false);
 
-    //see https://github.com/rust-lang/rust-bindgen/issues/1211
-    bindings = if target == "aarch64-apple-ios" {
-        bindings.clang_arg("--target=arm64-apple-ios")
-    } else {
-        bindings
-    };
-
     bindings = include_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap())
     });
@@ -181,7 +174,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     bindings = bindings
         .rust_target(RustTarget::Stable_1_21)
         .opaque_type("timex")//to big reserved part for Debug
-        .blacklist_type("max_align_t")//long double not supported yet,
+        .blocklist_type("max_align_t")//long double not supported yet,
                                       // see https://github.com/servo/rust-bindgen/issues/550
         ;
     bindings = if target.contains("windows") {

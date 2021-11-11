@@ -55,7 +55,7 @@ unsafe extern "C" fn db_logger_callback(
     };
 
     if !msg.is_null() {
-        fn lifetime_marker<'a>(ptr_ref: &'a *const c_char) -> &'a CStr {
+        fn lifetime_marker(ptr_ref: &*const c_char) -> &CStr {
             unsafe { CStr::from_ptr(*ptr_ref) }
         }
         let msg = lifetime_marker(&msg);

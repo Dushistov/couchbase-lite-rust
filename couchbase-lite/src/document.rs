@@ -65,7 +65,7 @@ impl Document {
 
     pub fn decode_data<T: DeserializeOwned>(self) -> Result<T> {
         if let Some(ref json) = self.unsaved_json5_body {
-            let x: T = json5::from_str(&json)?;
+            let x: T = json5::from_str(json)?;
             return Ok(x);
         }
         let inner: &C4DocumentOwner = self.inner.as_ref().ok_or_else(|| {

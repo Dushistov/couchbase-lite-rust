@@ -31,10 +31,7 @@ impl ValueRef<'_> {
         FromValueRef::column_result(*self)
     }
     pub fn is_null(&self) -> bool {
-        match self {
-            ValueRef::Null => true,
-            _ => false,
-        }
+        matches!(self, ValueRef::Null)
     }
 }
 
@@ -79,7 +76,7 @@ impl ValueRefArray {
     pub(crate) unsafe fn get_raw(&self, idx: u32) -> FLValue {
         FLArray_Get(self.0, idx)
     }
-    pub fn get<'a>(&'a self, idx: u32) -> ValueRef<'a> {
+    pub fn get(&self, idx: u32) -> ValueRef {
         unsafe { self.get_raw(idx) }.into()
     }
 }

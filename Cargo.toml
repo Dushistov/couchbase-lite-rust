@@ -8,4 +8,4 @@ couchbase-lite = { path = "couchbase-lite" }
 couchbase-lite-core-sys = { path = "couchbase-lite-core-sys" }
 # waiting https://github.com/alexcrichton/cmake-rs/issues/96
 # and https://github.com/alexcrichton/cmake-rs/pull/101
-cmake = { git = "https://github.com/Dushistov/cmake-rs", rev = "698e893da7e094e1d7c5275592761454986d7a4c" }
+cmake = { git = "https://github.com/Dushistov/cmake-rs", rev = "dcdead05083829a7917368fa1873e707b769573a" }

@@ -1,9 +1,7 @@
-use bindgen::{Builder, RustTarget};
+use bindgen::{Builder, CargoCallbacks, RustTarget};
 use std::{
     env,
-    io::{Read, Write},
     path::{Path, PathBuf},
-    process::Stdio,
 };
 
 fn main() {
@@ -17,10 +15,6 @@ fn main() {
         .build_target("all")
         .build()
         .join("build");
-
-    // with recent cargo, this cause unnecessary rebuilds
-    // so disable for now
-    // println!("cargo:rerun-if-changed=couchbase-lite-core");
 
     println!("cargo:rerun-if-env-changed=CC");
     println!("cargo:rerun-if-env-changed=CXX");
@@ -86,12 +80,10 @@ fn main() {
         Path::new(".").into(),
     ];
     let target = getenv_unwrap("TARGET");
-    let mut framework_dirs = vec![];
 
-    let (mut addon_include_dirs, mut addon_framework_dirs) =
+    let (mut addon_include_dirs, framework_dirs) =
         cc_system_include_dirs().expect("get system include directories from cc failed");
     includes.append(&mut addon_include_dirs);
-    framework_dirs.append(&mut addon_framework_dirs);
 
     let out_dir = getenv_unwrap("OUT_DIR");
     let out_dir = Path::new(&out_dir);
@@ -161,18 +153,27 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         .generate_comments(false)
         .prepend_enum_name(true)
         .size_t_is_usize(true)
-        .rustfmt_bindings(false);
+        .rustfmt_bindings(false)
+        // Tell cargo to invalidate the built crate whenever any of the
+        // included header files changed
+        .parse_callbacks(Box::new(CargoCallbacks));
+
+    //see https://github.com/rust-lang/rust-bindgen/issues/1211
+    bindings = if target == "aarch64-apple-ios" {
+        bindings.clang_arg("--target=arm64-apple-ios")
+    } else {
+        bindings
+    };
 
     bindings = include_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap())
     });
-
     bindings = framework_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-F".to_string() + x.as_ref().to_str().unwrap())
     });
 
     bindings = bindings
-        .rust_target(RustTarget::Stable_1_21)
+        .rust_target(RustTarget::Stable_1_47)
         .opaque_type("timex")//to big reserved part for Debug
         .blocklist_type("max_align_t")//long double not supported yet,
                                       // see https://github.com/servo/rust-bindgen/issues/550
@@ -205,20 +206,13 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     Ok(())
 }
 
-fn search_file_in_directory<P>(dirs: &[P], file: &str) -> Result<PathBuf, ()>
-where
-    P: AsRef<Path>,
-{
-    for dir in dirs {
-        let file_path = dir.as_ref().join(file);
-        if file_path.exists() && file_path.is_file() {
-            return Ok(file_path);
-        }
-    }
-    Err(())
-}
-
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
+    use std::{
+        io::{Read, Write},
+        process::Stdio,
+    };
+
     let cc_build = cc::Build::new();
 
     let cc_process = cc_build
@@ -283,6 +277,24 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
         })
         .collect();
     Ok((include_dis, framework_dirs))
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
+    Ok((vec![], vec![]))
+}
+
+fn search_file_in_directory<P>(dirs: &[P], file: &str) -> Result<PathBuf, ()>
+where
+    P: AsRef<Path>,
+{
+    for dir in dirs {
+        let file_path = dir.as_ref().join(file);
+        if file_path.exists() && file_path.is_file() {
+            return Ok(file_path);
+        }
+    }
+    Err(())
 }
 
 fn getenv_unwrap(v: &str) -> String {

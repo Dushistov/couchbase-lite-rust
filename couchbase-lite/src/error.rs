@@ -1,7 +1,5 @@
 use crate::{
-    ffi::{
-        c4error_getDescription, c4error_getMessage, kC4MaxErrorDomainPlus1, C4Error, C4ErrorDomain,
-    },
+    ffi::{c4error_getDescription, c4error_getMessage, C4Error, C4ErrorDomain, FLError},
     fl_slice::FlSliceOwner,
 };
 use std::fmt;
@@ -19,7 +17,7 @@ pub enum Error {
     /// `json5::Error`
     Json5(json5::Error),
     /// fleece library errors
-    FlError(u32),
+    FlError(FLError),
     /// argument contains 0 character
     NulError(std::ffi::NulError),
 }
@@ -44,7 +42,7 @@ impl fmt::Display for Error {
             Error::Json5(err) => write!(fmt, "Json5: {}", err),
             Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
             Error::SerdeJson(err) => write!(fmt, "SerdeJson: {}", err),
-            Error::FlError(err) => write!(fmt, "FlError: {}", err),
+            Error::FlError(err) => write!(fmt, "FlError: {}", err.0),
             Error::NulError(err) => write!(fmt, "NulError: {}", err),
         }
     }
@@ -67,7 +65,7 @@ impl fmt::Debug for Error {
             Error::Json5(err) => write!(fmt, "Json5: {:?}", err),
             Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
             Error::SerdeJson(err) => write!(fmt, "SerdeJson: {:?}", err),
-            Error::FlError(err) => write!(fmt, "FlError: {}", err),
+            Error::FlError(err) => write!(fmt, "FlError: {}", err.0),
             Error::NulError(err) => write!(fmt, "NulError: {:?}", err),
         }
     }
@@ -88,7 +86,7 @@ fn into_msg_desc(err: C4Error) -> (FlSliceOwner, FlSliceOwner) {
 #[inline]
 pub(crate) fn c4error_init() -> C4Error {
     C4Error {
-        domain: kC4MaxErrorDomainPlus1 as C4ErrorDomain,
+        domain: C4ErrorDomain::kC4MaxErrorDomainPlus1,
         code: 0,
         internal_info: 0,
     }

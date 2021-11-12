@@ -6,43 +6,42 @@ use std::{
 
 fn main() {
     env_logger::init();
-    let dst = cmake::Config::new(Path::new("couchbase-lite-core"))
+    let target = getenv_unwrap("TARGET");
+    let is_msvc = target.contains("msvc");
+    let mut cmake_config = cmake::Config::new(Path::new("couchbase-lite-core"));
+    cmake_config
         .define("DISABLE_LTO_BUILD", "True")
         .define("MAINTAINER_MODE", "False")
         .define("ENABLE_TESTING", "False")
         .define("LITECORE_BUILD_TESTS", "False")
         .define("SQLITE_ENABLE_RTREE", "True")
-        .build_target("all")
-        .build()
-        .join("build");
+        .build_target(if !is_msvc { "all" } else { "ALL_BUILD" });
+    let cmake_profile = cmake_config.get_profile().to_string();
+    let dst = cmake_config.build().join("build");
 
     println!("cargo:rerun-if-env-changed=CC");
     println!("cargo:rerun-if-env-changed=CXX");
 
-    println!("cargo:rustc-link-search=native={}", dst.display());
-    println!(
-        "cargo:rustc-link-search=native={}",
-        dst.join("vendor").join("fleece").display()
+    native_library_dir_for_cargo(&cmake_profile, is_msvc, dst.clone());
+    native_library_dir_for_cargo(&cmake_profile, is_msvc, dst.join("vendor").join("fleece"));
+    native_library_dir_for_cargo(&cmake_profile, is_msvc, dst.join("Networking").join("BLIP"));
+    native_library_dir_for_cargo(
+        &cmake_profile,
+        is_msvc,
+        dst.join("vendor").join("sqlite3-unicodesn"),
     );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        dst.join("Networking").join("BLIP").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        dst.join("vendor").join("sqlite3-unicodesn").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
+    native_library_dir_for_cargo(
+        &cmake_profile,
+        is_msvc,
         dst.join("vendor")
             .join("mbedtls")
             .join("crypto")
-            .join("library")
-            .display()
+            .join("library"),
     );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        dst.join("vendor").join("mbedtls").join("library").display()
+    native_library_dir_for_cargo(
+        &cmake_profile,
+        is_msvc,
+        dst.join("vendor").join("mbedtls").join("library"),
     );
     if cfg!(feature = "couchbase-sqlite") {
         println!("cargo:rustc-link-lib=static=CouchbaseSqlite3");
@@ -68,6 +67,8 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rustc-link-lib=framework=SystemConfiguration");
         println!("cargo:rustc-link-lib=framework=Security");
+    } else if is_msvc {
+        println!("cargo:rustc-link-lib=ws2_32");
     }
 
     let mut includes = vec![
@@ -79,7 +80,6 @@ fn main() {
         Path::new("couchbase-lite-core").into(),
         Path::new(".").into(),
     ];
-    let target = getenv_unwrap("TARGET");
 
     let (mut addon_include_dirs, framework_dirs) =
         cc_system_include_dirs().expect("get system include directories from cc failed");
@@ -133,7 +133,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
             .map_err(|_| format!("Can not find {}", header))?;
         dependicies.push(c_file_path);
     }
-
+    /*
     if let Ok(out_meta) = output_rust.metadata() {
         let mut res_recent_enough = true;
         for c_file_path in &dependicies {
@@ -146,14 +146,26 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         if res_recent_enough {
             return Ok(());
         }
-    }
-
+    }*/
     let mut bindings: Builder = bindgen::builder()
         .header(c_file_path.to_str().unwrap())
         .generate_comments(false)
         .prepend_enum_name(true)
         .size_t_is_usize(true)
-        .rustfmt_bindings(false)
+        .allowlist_type("C4.*")
+        .allowlist_var("k.*")
+        .allowlist_function("c4.*")
+        .allowlist_function("k?C4.*")
+        .allowlist_type("FL.*")
+        .allowlist_function("_?FL.*")
+        .newtype_enum("FLError")
+        .newtype_enum("C4.*")
+        .rustified_enum("FLValueType")
+        .rustfmt_bindings(true)
+        // clang args to deal with C4_ENUM/C4_OPTIONS
+        .clang_arg("-x")
+        .clang_arg("c++")
+        .clang_arg("-std=c++11")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed
         .parse_callbacks(Box::new(CargoCallbacks));
@@ -196,7 +208,6 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
                     .ok_or_else(|| format!("Invalid unicode in path to {}", header))?;
                 Ok(acc.unwrap().clang_arg("-include").clang_arg(c_file_str))
             })?;
-    let bindings = bindings.rustified_enum("FLValueType");
     let generated_bindings = bindings
         .generate()
         .map_err(|_| "Failed to generate bindings".to_string())?;
@@ -306,4 +317,14 @@ fn getenv_unwrap(v: &str) -> String {
 
 fn fail(s: &str) -> ! {
     panic!("\n{}\n\nbuild script failed, must exit now", s)
+}
+
+fn native_library_dir_for_cargo<P: Into<PathBuf>>(cmake_profile: &str, is_msvc: bool, path: P) {
+    let path: PathBuf = path.into();
+    let path = if !is_msvc {
+        path
+    } else {
+        path.join(cmake_profile)
+    };
+    println!("cargo:rustc-link-search=native={}", path.display());
 }

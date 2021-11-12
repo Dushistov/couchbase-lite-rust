@@ -169,7 +169,7 @@ impl C4DocumentOwner {
     }
 
     pub(crate) fn id(&self) -> &str {
-        unsafe { fl_slice_to_str_unchecked(self.0.as_ref().docID) }
+        unsafe { fl_slice_to_str_unchecked(self.0.as_ref().docID.into()) }
     }
 }
 

@@ -2,11 +2,11 @@ use crate::{
     error::{c4error_init, Error},
     ffi::{
         c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_start, c4repl_stop,
-        kC4Continuous, kC4ReplicatorOptionCookies, kC4ReplicatorOptionOutgoingConflicts, C4Address,
-        C4Replicator, C4ReplicatorActivityLevel, C4ReplicatorMode, C4ReplicatorParameters,
-        C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, FLEncoder_BeginDict,
-        FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteBool,
-        FLEncoder_WriteKey, FLEncoder_WriteString, FLError_kFLNoError,
+        kC4ReplicatorOptionCookies, kC4ReplicatorOptionOutgoingConflicts, C4Address, C4Replicator,
+        C4ReplicatorActivityLevel, C4ReplicatorMode, C4ReplicatorParameters, C4ReplicatorStatus,
+        C4ReplicatorStatusChangedCallback, FLEncoder_BeginDict, FLEncoder_EndDict,
+        FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteBool, FLEncoder_WriteKey,
+        FLEncoder_WriteString, FLError,
     },
     fl_slice::{fl_slice_empty, AsFlSlice, FlSliceOwner},
     Database, Result,
@@ -147,10 +147,10 @@ impl Replicator {
                 FLEncoder_WriteBool(enc, true);
                 FLEncoder_EndDict(enc);
 
-                let mut fl_err = FLError_kFLNoError;
+                let mut fl_err = FLError::kFLNoError;
                 let res = FLEncoder_Finish(enc, &mut fl_err);
                 FLEncoder_Free(enc);
-                if fl_err != FLError_kFLNoError {
+                if fl_err != FLError::kFLNoError {
                     return Err(Error::FlError(fl_err));
                 }
                 res.into()
@@ -164,10 +164,10 @@ impl Replicator {
                 FLEncoder_WriteBool(enc, true);
                 FLEncoder_EndDict(enc);
 
-                let mut fl_err = FLError_kFLNoError;
+                let mut fl_err = FLError::kFLNoError;
                 let res = FLEncoder_Finish(enc, &mut fl_err);
                 FLEncoder_Free(enc);
-                if fl_err != FLError_kFLNoError {
+                if fl_err != FLError::kFLNoError {
                     return Err(Error::FlError(fl_err));
                 }
                 res.into()
@@ -175,8 +175,8 @@ impl Replicator {
         };
 
         let repl_params = C4ReplicatorParameters {
-            push: kC4Continuous as C4ReplicatorMode,
-            pull: kC4Continuous as C4ReplicatorMode,
+            push: C4ReplicatorMode::kC4Continuous,
+            pull: C4ReplicatorMode::kC4Continuous,
             optionsDictFleece: options.as_bytes().as_flslice(),
             pushFilter: None,
             validationFunc: None,
@@ -241,28 +241,14 @@ unsafe fn free_boxed_value<T>(p: *mut c_void) {
 impl TryFrom<C4ReplicatorStatus> for ReplicatorState {
     type Error = Error;
     fn try_from(status: C4ReplicatorStatus) -> Result<Self> {
-        #![allow(non_upper_case_globals)]
-        macro_rules! define_activity_level {
-            ($const_name:ident) => {
-                const $const_name: C4ReplicatorActivityLevel =
-                    crate::ffi::$const_name as C4ReplicatorActivityLevel;
-            };
-        }
-
-        //TODO: use bindgen and https://github.com/rust-lang/rust/issues/44109
-        //when it becomes stable
-        define_activity_level!(kC4Stopped);
-        define_activity_level!(kC4Offline);
-        define_activity_level!(kC4Connecting);
-        define_activity_level!(kC4Idle);
-        define_activity_level!(kC4Busy);
-
         match status.level {
-            kC4Stopped => Ok(ReplicatorState::Stopped(status.error.into())),
-            kC4Offline => Ok(ReplicatorState::Offline),
-            kC4Connecting => Ok(ReplicatorState::Connecting),
-            kC4Idle => Ok(ReplicatorState::Idle),
-            kC4Busy => Ok(ReplicatorState::Busy),
+            C4ReplicatorActivityLevel::kC4Stopped => {
+                Ok(ReplicatorState::Stopped(status.error.into()))
+            }
+            C4ReplicatorActivityLevel::kC4Offline => Ok(ReplicatorState::Offline),
+            C4ReplicatorActivityLevel::kC4Connecting => Ok(ReplicatorState::Connecting),
+            C4ReplicatorActivityLevel::kC4Idle => Ok(ReplicatorState::Idle),
+            C4ReplicatorActivityLevel::kC4Busy => Ok(ReplicatorState::Busy),
             _ => Err(Error::LogicError(format!("unknown level for {:?}", status))),
         }
     }

@@ -98,11 +98,11 @@ impl DbChange {
     }
     #[inline]
     pub fn doc_id(&self) -> &str {
-        unsafe { fl_slice_to_str_unchecked(self.inner.docID) }
+        unsafe { fl_slice_to_str_unchecked(self.inner.docID.into()) }
     }
     #[inline]
     pub fn revision_id(&self) -> &str {
-        unsafe { fl_slice_to_str_unchecked(self.inner.revID) }
+        unsafe { fl_slice_to_str_unchecked(self.inner.revID.into()) }
     }
     #[inline]
     pub fn body_size(&self) -> u32 {

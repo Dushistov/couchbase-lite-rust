@@ -2,8 +2,8 @@ use crate::{
     error::{c4error_init, Error},
     ffi::{
         c4query_new, c4query_new2, c4query_release, c4query_run, c4query_setParameters,
-        c4queryenum_next, c4queryenum_release, kC4DefaultQueryOptions, kC4N1QLQuery, C4Query,
-        C4QueryEnumerator, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt,
+        c4queryenum_next, c4queryenum_release, kC4DefaultQueryOptions, C4Query, C4QueryEnumerator,
+        C4QueryLanguage, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt,
     },
     fl_slice::{fl_slice_empty, AsFlSlice},
     value::{FromValueRef, ValueRef},
@@ -46,7 +46,7 @@ impl Query<'_> {
         let query = unsafe {
             c4query_new2(
                 db.inner.0.as_ptr(),
-                kC4N1QLQuery,
+                C4QueryLanguage::kC4N1QLQuery,
                 query_n1ql.as_bytes().as_flslice(),
                 &mut out_error_pos,
                 &mut c4err,

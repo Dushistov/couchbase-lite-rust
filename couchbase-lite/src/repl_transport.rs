@@ -2,18 +2,16 @@ use crate::{
     ffi::{
         c4error_make, c4socket_closeRequested, c4socket_closed, c4socket_completedWrite,
         c4socket_gotHTTPResponse, c4socket_opened, c4socket_received, c4socket_registerFactory,
-        kC4NetErrInvalidURL, kC4NetErrTLSHandshakeFailed, kC4NoFraming, kC4NumNetErrorCodesPlus1,
         kC4ReplicatorOptionCookies, kC4ReplicatorOptionExtraHeaders, kC4SocketOptionWSProtocols,
-        kWebSocketCloseBadMessageFormat, kWebSocketCloseFirstAvailable, kWebSocketCloseNormal,
-        C4Address, C4Error, C4Slice, C4SliceResult, C4Socket, C4SocketFactory, C4SocketFraming,
-        C4String, FLDict_Get, FLEncoder_BeginDict, FLEncoder_EndDict, FLEncoder_Finish,
-        FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey, FLEncoder_WriteString,
-        FLError_kFLNoError, FLTrust_kFLUntrusted, FLValue_AsDict, FLValue_FromData, FleeceDomain,
-        NetworkDomain, WebSocketDomain,
+        C4Address, C4Error, C4NetworkErrorCode, C4Slice, C4SliceResult, C4Socket, C4SocketFactory,
+        C4SocketFraming, C4String, C4WebSocketCloseCode, FLDict_Get, FLEncoder_BeginDict,
+        FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey,
+        FLEncoder_WriteString, FLError, FLTrust_kFLUntrusted, FLValue_AsDict, FLValue_FromData,
     },
     fl_slice::{fl_slice_to_slice, fl_slice_to_str_unchecked, AsFlSlice, FlSliceOwner},
     value::ValueRef,
 };
+use couchbase_lite_core_sys::C4ErrorDomain;
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{HeaderValue, Uri};
 use log::{debug, error, info, trace};
@@ -47,8 +45,7 @@ pub fn use_web_sockets(handle: Handle) {
     let handle = Arc::new(handle);
     let sock_factory = C4SocketFactory {
         context: Arc::into_raw(handle) as *mut c_void,
-        framing: kC4NoFraming as C4SocketFraming,
-
+        framing: C4SocketFraming::kC4NoFraming,
         open: Some(ws_open),
         write: Some(ws_write),
         completedReceive: Some(ws_completed_receive),
@@ -212,7 +209,11 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
     let reason: Cow<'static, str> = Cow::Owned(String::from(fl_slice_to_str_unchecked(message)));
     let close_confirmied = socket.close_confirmied.clone();
     socket.handle.spawn(async move {
-        let err = c4error_make(WebSocketDomain, status, reason.as_ref().as_flslice());
+        let err = c4error_make(
+            C4ErrorDomain::WebSocketDomain,
+            status,
+            reason.as_ref().as_flslice(),
+        );
         let mut writer = writer.lock().await;
 
         if let Some(writer) = writer.as_mut() {
@@ -313,7 +314,7 @@ unsafe fn c4address_to_request(
     Ok(request)
 }
 
-unsafe fn headers_to_dict(http_resp: &Response) -> Result<FlSliceOwner, u32> {
+unsafe fn headers_to_dict(http_resp: &Response) -> Result<FlSliceOwner, FLError> {
     let enc = FLEncoder_New();
     FLEncoder_BeginDict(enc, http_resp.headers().len());
     for (key, value) in http_resp.headers().iter() {
@@ -321,10 +322,10 @@ unsafe fn headers_to_dict(http_resp: &Response) -> Result<FlSliceOwner, u32> {
         FLEncoder_WriteString(enc, value.as_bytes().as_flslice());
     }
     FLEncoder_EndDict(enc);
-    let mut fl_err = FLError_kFLNoError;
+    let mut fl_err = FLError::kFLNoError;
     let res = FLEncoder_Finish(enc, &mut fl_err);
     FLEncoder_Free(enc);
-    if fl_err == FLError_kFLNoError {
+    if fl_err == FLError::kFLNoError {
         Ok(res.into())
     } else {
         Err(fl_err)
@@ -341,8 +342,8 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
             error!("ws_open({:x}): Can not parse URI: {}", sock_id, msg);
             unsafe {
                 let c4err = c4error_make(
-                    NetworkDomain,
-                    kC4NetErrInvalidURL as c_int,
+                    C4ErrorDomain::NetworkDomain,
+                    C4NetworkErrorCode::kC4NetErrInvalidURL.0,
                     msg.as_bytes().as_flslice(),
                 );
                 c4socket_closed(sock_id as *mut _, c4err);
@@ -359,10 +360,13 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
                     Err(fl_err) => {
                         error!(
                             "open_connection: c4sock {:x}, flencoder error: {}",
-                            sock_id, fl_err
+                            sock_id, fl_err.0
                         );
-                        let c4err =
-                            c4error_make(FleeceDomain, fl_err as c_int, "".as_bytes().as_flslice());
+                        let c4err = c4error_make(
+                            C4ErrorDomain::FleeceDomain,
+                            fl_err.0 as c_int,
+                            "".as_bytes().as_flslice(),
+                        );
                         c4socket_closed(sock_id as *mut _, c4err);
                         return;
                     }
@@ -463,19 +467,55 @@ unsafe fn tungstenite_err_to_c4_err(err: tungstenite::Error) -> C4Error {
     use tungstenite::error::Error::*;
     let msg = err.to_string();
     let (domain, code) = match err {
-        ConnectionClosed => (WebSocketDomain, kWebSocketCloseNormal),
-        AlreadyClosed => (WebSocketDomain, kWebSocketCloseFirstAvailable),
-        Io(_) => (NetworkDomain, kC4NumNetErrorCodesPlus1),
+        ConnectionClosed => (
+            C4ErrorDomain::WebSocketDomain,
+            C4WebSocketCloseCode::kWebSocketCloseNormal.0,
+        ),
+        AlreadyClosed => (
+            C4ErrorDomain::WebSocketDomain,
+            C4WebSocketCloseCode::kWebSocketCloseFirstAvailable.0,
+        ),
+        Io(_) => (
+            C4ErrorDomain::NetworkDomain,
+            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
+        ),
         #[cfg(feature = "tls")]
-        Tls(_) => (NetworkDomain, kC4NumNetErrorCodesPlus1),
-        Capacity(_) => (NetworkDomain, kC4NumNetErrorCodesPlus1),
-        Protocol(_) => (NetworkDomain, kC4NumNetErrorCodesPlus1),
-        SendQueueFull(_) => (NetworkDomain, kC4NumNetErrorCodesPlus1),
-        Utf8 => (WebSocketDomain, kWebSocketCloseBadMessageFormat),
-        Url(_) => (NetworkDomain, kC4NetErrInvalidURL),
-        Http(ref code) => (WebSocketDomain, u32::from(code.status().as_u16())),
-        HttpFormat(_) => (WebSocketDomain, kWebSocketCloseBadMessageFormat),
-        Tls(_) => (NetworkDomain, kC4NetErrTLSHandshakeFailed),
+        Tls(_) => (
+            C4ErrorDomain::NetworkDomain,
+            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
+        ),
+        Capacity(_) => (
+            C4ErrorDomain::NetworkDomain,
+            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
+        ),
+        Protocol(_) => (
+            C4ErrorDomain::NetworkDomain,
+            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
+        ),
+        SendQueueFull(_) => (
+            C4ErrorDomain::NetworkDomain,
+            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
+        ),
+        Utf8 => (
+            C4ErrorDomain::WebSocketDomain,
+            C4WebSocketCloseCode::kWebSocketCloseBadMessageFormat.0,
+        ),
+        Url(_) => (
+            C4ErrorDomain::NetworkDomain,
+            C4NetworkErrorCode::kC4NetErrInvalidURL.0,
+        ),
+        Http(ref code) => (
+            C4ErrorDomain::WebSocketDomain,
+            code.status().as_u16().into(),
+        ),
+        HttpFormat(_) => (
+            C4ErrorDomain::WebSocketDomain,
+            C4WebSocketCloseCode::kWebSocketCloseBadMessageFormat.0,
+        ),
+        Tls(_) => (
+            C4ErrorDomain::NetworkDomain,
+            C4NetworkErrorCode::kC4NetErrTLSHandshakeFailed.0,
+        ),
     };
     c4error_make(domain, code as c_int, msg.as_bytes().as_flslice())
 }

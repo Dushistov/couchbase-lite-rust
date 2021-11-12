@@ -21,3 +21,9 @@ pub unsafe fn FLSliceResult_Release(s: FLSliceResult) {
 pub unsafe fn c4query_release(r: *mut C4Query) {
     c4base_release(r as *mut c_void)
 }
+
+impl From<FLHeapSlice> for FLSlice {
+    fn from(x: FLHeapSlice) -> Self {
+        x._base
+    }
+}

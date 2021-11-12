@@ -7,21 +7,8 @@ use crate::ffi::{
 use once_cell::sync::Lazy;
 use std::{ffi::CStr, os::raw::c_char};
 
-macro_rules! define_log_level {
-    ($const_name:ident) => {
-        const $const_name: C4LogLevel = crate::ffi::$const_name as C4LogLevel;
-    };
-}
-
-define_log_level!(kC4LogDebug);
-define_log_level!(kC4LogVerbose);
-define_log_level!(kC4LogInfo);
-define_log_level!(kC4LogWarning);
-define_log_level!(kC4LogError);
-define_log_level!(kC4LogNone);
-
 pub(crate) static DB_LOGGER: Lazy<()> = Lazy::new(|| {
-    unsafe { c4log_setRustCallback(kC4LogDebug as C4LogLevel, Some(db_logger_callback)) };
+    unsafe { c4log_setRustCallback(C4LogLevel::kC4LogDebug, Some(db_logger_callback)) };
 });
 
 unsafe extern "C" fn db_logger_callback(
@@ -46,11 +33,11 @@ unsafe extern "C" fn db_logger_callback(
     use log::Level::*;
 
     let level = match level {
-        kC4LogDebug => Trace,
-        kC4LogVerbose => Debug,
-        kC4LogInfo => Info,
-        kC4LogWarning => Warn,
-        kC4LogError | kC4LogNone => Error,
+        C4LogLevel::kC4LogDebug => Trace,
+        C4LogLevel::kC4LogVerbose => Debug,
+        C4LogLevel::kC4LogInfo => Info,
+        C4LogLevel::kC4LogWarning => Warn,
+        C4LogLevel::kC4LogError | C4LogLevel::kC4LogNone => Error,
         _ => Info,
     };
 

@@ -76,10 +76,9 @@ use crate::{
     error::{c4error_init, Result},
     ffi::{
         c4db_createIndex, c4db_getDocumentCount, c4db_getIndexes, c4db_open, c4db_release,
-        c4doc_get, kC4ArrayIndex, kC4DB_Create, kC4EncryptionNone, kC4FullTextIndex,
-        kC4PredictiveIndex, kC4RevisionTrees, kC4SQLiteStorageEngine, kC4ValueIndex, C4Database,
-        C4DatabaseConfig, C4DatabaseFlags, C4DocumentVersioning, C4EncryptionAlgorithm,
-        C4EncryptionKey, C4IndexOptions, C4String, FLTrust_kFLTrusted, FLValue, FLValueType,
+        c4doc_get, kC4DB_Create, kC4SQLiteStorageEngine, C4Database, C4DatabaseConfig,
+        C4DatabaseFlags, C4DocumentVersioning, C4EncryptionAlgorithm, C4EncryptionKey,
+        C4IndexOptions, C4IndexType, C4String, FLTrust_kFLTrusted, FLValue, FLValueType,
         FLValue_AsString, FLValue_FromData, FLValue_GetType,
     },
     fl_slice::{fl_slice_to_str_unchecked, AsFlSlice, FlSliceOwner},
@@ -113,9 +112,9 @@ impl Default for DatabaseConfig {
             inner: C4DatabaseConfig {
                 flags: kC4DB_Create as C4DatabaseFlags,
                 storageEngine: unsafe { kC4SQLiteStorageEngine },
-                versioning: kC4RevisionTrees as C4DocumentVersioning,
+                versioning: C4DocumentVersioning::kC4RevisionTrees,
                 encryptionKey: C4EncryptionKey {
-                    algorithm: kC4EncryptionNone as C4EncryptionAlgorithm,
+                    algorithm: C4EncryptionAlgorithm::kC4EncryptionNone,
                     bytes: [0; 32],
                 },
             },
@@ -353,10 +352,10 @@ impl Database {
     ) -> Result<()> {
         use IndexType::*;
         let index_type = match index_type {
-            ValueIndex => kC4ValueIndex,
-            FullTextIndex => kC4FullTextIndex,
-            ArrayIndex => kC4ArrayIndex,
-            PredictiveIndex => kC4PredictiveIndex,
+            ValueIndex => C4IndexType::kC4ValueIndex,
+            FullTextIndex => C4IndexType::kC4FullTextIndex,
+            ArrayIndex => C4IndexType::kC4ArrayIndex,
+            PredictiveIndex => C4IndexType::kC4PredictiveIndex,
         };
         let mut c4err = c4error_init();
         let result = if let Some(index_options) = index_options {

@@ -2,8 +2,8 @@ use crate::{
     document::{C4DocumentOwner, Document},
     error::{c4error_init, Error},
     ffi::{
-        c4db_beginTransaction, c4db_endTransaction, c4doc_create, c4doc_update, kC4ErrorConflict,
-        kC4ErrorNotFound, kRevDeleted, C4Document, C4RevisionFlags, LiteCoreDomain,
+        c4db_beginTransaction, c4db_endTransaction, c4doc_create, c4doc_update, kRevDeleted,
+        C4Document, C4ErrorCode, C4ErrorDomain, C4RevisionFlags,
     },
     fl_slice::{AsFlSlice, FlSliceOwner},
     Database, Result,
@@ -60,7 +60,8 @@ impl Transaction<'_> {
         let mut new_doc = match self.internal_save(doc, None, deletion) {
             Ok(x) => Some(x),
             Err(Error::DbError(c4err))
-                if c4err.domain == LiteCoreDomain && c4err.code == (kC4ErrorConflict as i32) =>
+                if c4err.domain == C4ErrorDomain::LiteCoreDomain
+                    && c4err.code == C4ErrorCode::kC4ErrorConflict.0 =>
             {
                 None
             }
@@ -73,8 +74,8 @@ impl Transaction<'_> {
                 Ok(x) => x,
                 Err(Error::DbError(c4err))
                     if deletion
-                        && c4err.domain == LiteCoreDomain
-                        && c4err.code == (kC4ErrorNotFound as i32) =>
+                        && c4err.domain == C4ErrorDomain::LiteCoreDomain
+                        && c4err.code == C4ErrorCode::kC4ErrorNotFound.0 =>
                 {
                     return Ok(());
                 }

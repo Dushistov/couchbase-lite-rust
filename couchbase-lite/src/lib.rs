@@ -16,7 +16,10 @@
 //! }
 //!
 //! fn main() -> Result<(), couchbase_lite::Error> {
-//!     let mut db = Database::open(Path::new("a.cblite2"), DatabaseConfig::default())?;
+//!     let mut db = Database::open(
+//!         &std::env::temp_dir().join("a.cblite2"),
+//!         DatabaseConfig::default(),
+//!     )?;
 //!     {
 //!         let msg = Message { msg: "Test message".into() };
 //!         let mut trans = db.transaction()?;

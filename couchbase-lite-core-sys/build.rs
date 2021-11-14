@@ -170,13 +170,6 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         // included header files changed
         .parse_callbacks(Box::new(CargoCallbacks));
 
-    //see https://github.com/rust-lang/rust-bindgen/issues/1211
-    bindings = if target == "aarch64-apple-ios" {
-        bindings.clang_arg("--target=arm64-apple-ios")
-    } else {
-        bindings
-    };
-
     bindings = include_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap())
     });

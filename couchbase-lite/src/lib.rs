@@ -78,7 +78,7 @@ use crate::{
     error::{c4error_init, Result},
     ffi::{
         c4db_createIndex, c4db_getDocumentCount, c4db_getIndexes, c4db_open, c4db_release,
-        c4doc_get, kC4ArrayIndex, kC4DB_Create, kC4EncryptionNone, kC4FullTextIndex,
+        c4doc_get, kC4ArrayIndex, kC4DB_Create, kC4DB_AutoCompact, kC4EncryptionNone, kC4FullTextIndex,
         kC4PredictiveIndex, kC4RevisionTrees, kC4SQLiteStorageEngine, kC4ValueIndex, C4Database,
         C4DatabaseConfig, C4DatabaseFlags, C4DocumentVersioning, C4EncryptionAlgorithm,
         C4EncryptionKey, C4IndexOptions, C4String, FLTrust_kFLTrusted, FLValue, FLValueType,
@@ -114,6 +114,22 @@ impl Default for DatabaseConfig {
         Self {
             inner: C4DatabaseConfig {
                 flags: kC4DB_Create as C4DatabaseFlags,
+                storageEngine: unsafe { kC4SQLiteStorageEngine },
+                versioning: kC4RevisionTrees as C4DocumentVersioning,
+                encryptionKey: C4EncryptionKey {
+                    algorithm: kC4EncryptionNone as C4EncryptionAlgorithm,
+                    bytes: [0; 32],
+                },
+            },
+        }
+    }
+}
+
+impl DatabaseConfig {
+    pub fn with_auto_compact() -> Self {
+        Self {
+            inner: C4DatabaseConfig {
+                flags: kC4DB_Create as C4DatabaseFlags | kC4DB_AutoCompact as C4DatabaseFlags,
                 storageEngine: unsafe { kC4SQLiteStorageEngine },
                 versioning: kC4RevisionTrees as C4DocumentVersioning,
                 encryptionKey: C4EncryptionKey {

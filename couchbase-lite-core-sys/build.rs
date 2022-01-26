@@ -60,6 +60,7 @@ fn main() {
         println!("cargo:rustc-link-lib=icui18n");
         println!("cargo:rustc-link-lib=icudata");
         println!("cargo:rustc-link-lib=z");
+        println!("cargo:rustc-link-lib=stdc++");
     } else if cfg!(target_os = "macos") {
         println!("cargo:rustc-link-lib=z");
         //TODO: remove this dependicies: CoreFoundation + Foundation
@@ -67,6 +68,7 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rustc-link-lib=framework=SystemConfiguration");
         println!("cargo:rustc-link-lib=framework=Security");
+        println!("cargo:rustc-link-lib=c++");
     } else if is_msvc {
         println!("cargo:rustc-link-lib=ws2_32");
     }
@@ -148,6 +150,11 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         .newtype_enum("FLError")
         .newtype_enum("C4.*")
         .rustified_enum("FLValueType")
+        // we not use string_view, and there is bindgen's bug:
+        // https://github.com/rust-lang/rust-bindgen/issues/2152
+        .layout_tests(false)
+        .opaque_type("std::string_view")
+        .opaque_type("std::string")
         .rustfmt_bindings(true)
         // clang args to deal with C4_ENUM/C4_OPTIONS
         .clang_arg("-x")

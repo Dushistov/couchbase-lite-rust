@@ -97,23 +97,10 @@ fn main() {
             "fleece/FLSlice.h",
             "c4Document+Fleece.h",
             "fleece/Fleece.h",
-            "couch_lite_log_retrans.hpp",
         ],
         &out_dir.join("c4_header.rs"),
     )
     .expect("bindgen failed");
-
-    let mut cc_builder = cc::Build::new();
-
-    for inc in &includes {
-        cc_builder.include(inc);
-    }
-
-    cc_builder
-        .cpp(true)
-        .flag_if_supported("-std=c++11")
-        .file("couch_lite_log_retrans.cpp")
-        .compile("couch_lite_log_retrans");
 }
 
 fn run_bindgen_for_c_headers<P: AsRef<Path>>(
@@ -165,7 +152,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         // clang args to deal with C4_ENUM/C4_OPTIONS
         .clang_arg("-x")
         .clang_arg("c++")
-        .clang_arg("-std=c++11")
+        .clang_arg("-std=c++17")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed
         .parse_callbacks(Box::new(CargoCallbacks));

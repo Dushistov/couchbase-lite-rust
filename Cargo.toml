@@ -2,10 +2,5 @@
 members = ["couchbase-lite-core-sys", "couchbase-lite", "chat-demo"]
 
 [patch.'crates-io']
-# waiting https://github.com/hyperium/http/pull/422
-http = { git = "https://github.com/Dushistov/http", rev = "c07bac4a5f81b8b2e5cd89d2e1f805d6694282c7" }
 couchbase-lite = { path = "couchbase-lite" }
 couchbase-lite-core-sys = { path = "couchbase-lite-core-sys" }
-# waiting https://github.com/alexcrichton/cmake-rs/issues/96
-# and https://github.com/alexcrichton/cmake-rs/pull/101
-cmake = { git = "https://github.com/Dushistov/cmake-rs", rev = "dcdead05083829a7917368fa1873e707b769573a" }

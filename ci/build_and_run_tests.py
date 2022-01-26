@@ -15,7 +15,7 @@ def show_timing(function):
         return ret
     return _wrapper
 
-def mkdir_if_not_exists(dir_path: str):
+def mkdir_if_not_exists(dir_path: str) -> None:
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
@@ -24,7 +24,7 @@ def get_src_root_path(my_path: str) -> str:
     return my_path
 
 @show_timing
-def build_and_test_cpp_part(src_root: str):
+def build_and_test_cpp_part(src_root: str) -> None:
     cmake_build_dir = os.path.join(src_root, "build-cmake")
     cmake_src_dir = os.path.join(src_root, "couchbase-lite-core-sys",
                                  "couchbase-lite-core")
@@ -41,7 +41,7 @@ def build_and_test_cpp_part(src_root: str):
 
 
 @show_timing
-def build_and_test_rust_part(src_root: str):
+def build_and_test_rust_part(src_root: str) -> None:
     print("running tests in debug mode")
     check_call(["cargo", "test", "--all", "-vv"], cwd = src_root)
     print("running tests in release mode")
@@ -49,12 +49,12 @@ def build_and_test_rust_part(src_root: str):
     check_call(["cargo", "build", "-p", "chat-demo"], cwd = src_root)
 
 @show_timing
-def build_and_test_rust_part_for_ios(src_root: str):
+def build_and_test_rust_part_for_ios(src_root: str) -> None:
     print("build for iOS")
     check_call(["cargo", "build", "--target=aarch64-apple-ios", "-p", "chat-demo"], cwd = src_root)
 
 @show_timing
-def main():
+def main() -> None:
     ci_dir = Path(get_src_root_path(sys.argv[0]))
     src_root = ci_dir.parent
     CPP_TESTS = "cpp"

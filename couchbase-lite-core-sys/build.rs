@@ -147,6 +147,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         .newtype_enum("FLError")
         .newtype_enum("C4.*")
         .rustified_enum("FLValueType")
+        .no_copy("FLSliceResult")
         // we not use string_view, and there is bindgen's bug:
         // https://github.com/rust-lang/rust-bindgen/issues/2152
         .layout_tests(false)

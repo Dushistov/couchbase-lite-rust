@@ -8,42 +8,43 @@ fn main() {
     env_logger::init();
     let target = getenv_unwrap("TARGET");
     let is_msvc = target.contains("msvc");
-    let mut cmake_config = cmake::Config::new(Path::new("couchbase-lite-core"));
-    cmake_config
-        .define("DISABLE_LTO_BUILD", "True")
-        .define("MAINTAINER_MODE", "False")
-        .define("ENABLE_TESTING", "False")
-        .define("LITECORE_BUILD_TESTS", "False")
-        .define("SQLITE_ENABLE_RTREE", "True")
-        .build_target(if !is_msvc { "all" } else { "ALL_BUILD" });
-    let cmake_profile = cmake_config.get_profile().to_string();
-    let dst = cmake_config.build().join("build");
 
-    println!("cargo:rerun-if-env-changed=CC");
-    println!("cargo:rerun-if-env-changed=CXX");
+    if cfg!(feature = "bundled-sqlite") && !cfg!(feature = "bundled") {
+        panic!("Invalid set of options: bundled-sqlite should be used with bundled");
+    }
 
-    native_library_dir_for_cargo(&cmake_profile, is_msvc, dst.clone());
-    native_library_dir_for_cargo(&cmake_profile, is_msvc, dst.join("vendor").join("fleece"));
-    native_library_dir_for_cargo(&cmake_profile, is_msvc, dst.join("Networking").join("BLIP"));
-    native_library_dir_for_cargo(
-        &cmake_profile,
-        is_msvc,
-        dst.join("vendor").join("sqlite3-unicodesn"),
+    let (bdir, sdir) = cmake_build_src_dir(is_msvc);
+
+    println!("cargo:rustc-link-search=native={}", bdir.display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("vendor").join("fleece").display()
     );
-    native_library_dir_for_cargo(
-        &cmake_profile,
-        is_msvc,
-        dst.join("vendor")
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("Networking").join("BLIP").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("vendor").join("sqlite3-unicodesn").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("vendor")
             .join("mbedtls")
             .join("crypto")
-            .join("library"),
+            .join("library")
+            .display()
     );
-    native_library_dir_for_cargo(
-        &cmake_profile,
-        is_msvc,
-        dst.join("vendor").join("mbedtls").join("library"),
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("vendor")
+            .join("mbedtls")
+            .join("library")
+            .display()
     );
-    if cfg!(feature = "couchbase-sqlite") {
+
+    if cfg!(feature = "bundled-sqlite") {
         println!("cargo:rustc-link-lib=static=CouchbaseSqlite3");
     }
 
@@ -74,13 +75,9 @@ fn main() {
     }
 
     let mut includes = vec![
-        Path::new("couchbase-lite-core").join("C").join("include"),
-        Path::new("couchbase-lite-core")
-            .join("vendor")
-            .join("fleece")
-            .join("API"),
-        Path::new("couchbase-lite-core").into(),
-        Path::new(".").into(),
+        sdir.join("C").join("include"),
+        sdir.join("vendor").join("fleece").join("API"),
+        sdir.into(),
     ];
 
     let (mut addon_include_dirs, framework_dirs) =
@@ -204,6 +201,41 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     Ok(())
 }
 
+#[cfg(feature = "bundled")]
+fn cmake_build_src_dir(is_msvc: bool) -> (PathBuf, PathBuf) {
+    let src_dir = Path::new("couchbase-lite-core");
+    let mut cmake_config = cmake::Config::new(src_dir);
+    cmake_config
+        .define("DISABLE_LTO_BUILD", "True")
+        .define("MAINTAINER_MODE", "False")
+        .define("ENABLE_TESTING", "False")
+        .define("LITECORE_BUILD_TESTS", "False")
+        .define("SQLITE_ENABLE_RTREE", "True")
+        .build_target(if !is_msvc { "all" } else { "ALL_BUILD" });
+    let cmake_profile = cmake_config.get_profile().to_string();
+    let dst = cmake_config.build().join("build");
+
+    println!("cargo:rerun-if-env-changed=CC");
+    println!("cargo:rerun-if-env-changed=CXX");
+
+    (
+        if !is_msvc {
+            dst
+        } else {
+            dst.join(cmake_profile)
+        },
+        src_dir.into(),
+    )
+}
+
+#[cfg(not(feature = "bundled"))]
+fn cmake_build_src_dir(_is_msvc: bool) -> (PathBuf, PathBuf) {
+    (
+        getenv_unwrap("COUCHBASE_LITE_CORE_BUILD_DIR").into(),
+        getenv_unwrap("COUCHBASE_LITE_CORE_SRC_DIR").into(),
+    )
+}
+
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
     use std::{
@@ -304,14 +336,4 @@ fn getenv_unwrap(v: &str) -> String {
 
 fn fail(s: &str) -> ! {
     panic!("\n{}\n\nbuild script failed, must exit now", s)
-}
-
-fn native_library_dir_for_cargo<P: Into<PathBuf>>(cmake_profile: &str, is_msvc: bool, path: P) {
-    let path: PathBuf = path.into();
-    let path = if !is_msvc {
-        path
-    } else {
-        path.join(cmake_profile)
-    };
-    println!("cargo:rustc-link-search=native={}", path.display());
 }

@@ -5,11 +5,14 @@ authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
 
 [features]
-default = ["couchbase-sqlite"]
-couchbase-sqlite = []
+default = ["bundled", "bundled-sqlite"]
+# use bundled couchbase-lite-core
+bundled = ["cmake"]
+# use bundled sqlite in bundled couchbase-lite-core
+bundled-sqlite = []
 
 [build-dependencies]
-cmake = "0.1.45"
+cmake = { version = "0.1.45", optional = true }
 cc = { version = "1.0.53", default-features = false }
 # we don't need clap, because of don't use bindgen as executable
 bindgen = { version = "0.59.2", default-features = false, features = ["runtime", "which-rustfmt"] }

@@ -12,6 +12,7 @@ default = ["bundled", "bundled-sqlite"]
 # couchbase-sqlite = ["couchbase-lite-core-sys/couchbase-sqlite"]
 bundled = ["couchbase-lite-core-sys/bundled"]
 bundled-sqlite = ["couchbase-lite-core-sys/bundled-sqlite"]
+with-asan = ["couchbase-lite-core-sys/with-asan"]
 
 [dependencies]
 couchbase-lite-core-sys = { version = "0.5.0", default-features = false }

@@ -75,6 +75,16 @@ jobs:
           cd $GITHUB_WORKSPACE
           python ci/build_and_run_tests.py --rust-only
         shell: bash
+      - name: Run tests with valgrind
+        if: matrix.os == 'ubuntu-latest' && matrix.rust == 'stable'
+        run: |
+          set -e
+          sudo snap install --classic valgrind
+          sudo apt install -y libc6-dbg
+          valgrind --version
+          cargo install cargo-valgrind
+          python ci/build_and_run_tests.py --rust-only-with-valigrind
+        shell: bash
   ios-tests:
     name: Check work with iOS
     runs-on: macos-latest

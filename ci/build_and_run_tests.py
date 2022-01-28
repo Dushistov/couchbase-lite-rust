@@ -39,13 +39,18 @@ def build_and_test_cpp_part(src_root: str) -> None:
     check_call(["./CppTests", "-r", "list"], cwd = os.path.join(cmake_build_dir, "LiteCore", "tests"))
     check_call(["./C4Tests", "-r", "list"], cwd = os.path.join(cmake_build_dir, "C", "tests"))
 
-
 @show_timing
-def build_and_test_rust_part(src_root: str) -> None:
+def build_and_test_rust_part(src_root: str, use_valgrind: bool) -> None:
     print("running tests in debug mode")
-    check_call(["cargo", "test", "--all", "-vv"], cwd = src_root)
+    cmd = ["cargo", "test", "--all", "-vv"]
+    if use_valgrind:
+       cmd.insert(1, "valgrind")
+    check_call(cmd, cwd = src_root)
     print("running tests in release mode")
-    check_call(["cargo", "test", "--all", "--release", "-vv"], cwd = src_root)
+    cmd = ["cargo", "test", "--all", "--release", "-vv"]
+    if use_valgrind:
+       cmd.insert(1, "valgrind")
+    check_call(cmd, cwd = src_root)
     check_call(["cargo", "build", "-p", "chat-demo"], cwd = src_root)
 
 @show_timing
@@ -60,6 +65,7 @@ def main() -> None:
     CPP_TESTS = "cpp"
     RUST_TESTS = "rust"
     RUST_IOS_TESTS = "rust-ios"
+    VALGRIND_TESTS = "valgrind"
     tests = set([CPP_TESTS, RUST_TESTS])
     if len(sys.argv) >= 2:
         if sys.argv[1] == "--rust-only":
@@ -68,11 +74,15 @@ def main() -> None:
             tests = set([CPP_TESTS])
         elif sys.argv[1] == "--rust-ios-only":
             tests = set([RUST_IOS_TESTS])
+        elif sys.argv[1] == "--rust-only-with-valigrind":
+            tests = set([VALGRIND_TESTS, RUST_TESTS])
+        else:
+            raise Exception("Unknown option %s" % sys.argv[1])
 
     if CPP_TESTS in tests:
         build_and_test_cpp_part(src_root)
     if RUST_TESTS in tests:
-        build_and_test_rust_part(src_root)
+        build_and_test_rust_part(src_root, VALGRIND_TESTS in tests)
     if RUST_IOS_TESTS in tests:
         build_and_test_rust_part_for_ios(src_root)
 

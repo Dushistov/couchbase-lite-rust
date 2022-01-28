@@ -12,6 +12,9 @@ fn main() {
     if cfg!(feature = "bundled-sqlite") && !cfg!(feature = "bundled") {
         panic!("Invalid set of options: bundled-sqlite should be used with bundled");
     }
+    if cfg!(feature = "with-asan") && !cfg!(feature = "bundled") {
+        panic!("Invalid set of options: with-asan should be used with bundled");
+    }
 
     let (bdir, sdir) = cmake_build_src_dir(is_msvc);
 
@@ -206,13 +209,23 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
 fn cmake_build_src_dir(is_msvc: bool) -> (PathBuf, PathBuf) {
     let src_dir = Path::new("couchbase-lite-core");
     let mut cmake_config = cmake::Config::new(src_dir);
-    cmake_config
+    let cmake_config = cmake_config
         .define("DISABLE_LTO_BUILD", "True")
         .define("MAINTAINER_MODE", "False")
         .define("ENABLE_TESTING", "False")
         .define("LITECORE_BUILD_TESTS", "False")
-        .define("SQLITE_ENABLE_RTREE", "True")
-        .build_target(if !is_msvc { "all" } else { "ALL_BUILD" });
+        .define("SQLITE_ENABLE_RTREE", "True");
+    if cfg!(feature = "with-asan") {
+        let cc_flags = "-fno-omit-frame-pointer -fsanitize=address";
+        let ld_flags = "-fsanitize=address";
+        cmake_config
+            .define("CMAKE_C_FLAGS", cc_flags)
+            .define("CMAKE_CXX_FLAGS", cc_flags)
+            .define("CMAKE_MODULE_LINKER_FLAGS", ld_flags)
+            .define("CMAKE_SHARED_LINKER_FLAGS", ld_flags);
+    }
+
+    cmake_config.build_target(if !is_msvc { "all" } else { "ALL_BUILD" });
     let cmake_profile = cmake_config.get_profile().to_string();
     let dst = cmake_config.build().join("build");
 

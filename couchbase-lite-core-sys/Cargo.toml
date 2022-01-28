@@ -10,6 +10,7 @@ default = ["bundled", "bundled-sqlite"]
 bundled = ["cmake"]
 # use bundled sqlite in bundled couchbase-lite-core
 bundled-sqlite = []
+with-asan = []
 
 [build-dependencies]
 cmake = { version = "0.1.45", optional = true }

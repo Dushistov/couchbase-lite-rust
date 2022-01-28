@@ -161,8 +161,8 @@ jobs:
           python ci/build_and_run_tests.py --cpp-only
         shell: bash
   # Detect cases where documentation links don't resolve and such.
-  doc:
-    name: Docs
+  nightly-only-tools:
+    name: Checks with rustc/nightly
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -174,6 +174,7 @@ jobs:
           # Docs.rs uses nightly, which allows for easier syntax for linking to functions.
           toolchain: nightly
           override: true
+          components: rust-src,rustfmt,clippy
       - uses: actions-rs/cargo@v1
         with:
           # Need to use `cargo rustdoc` to actually get it to respect -D
@@ -184,3 +185,14 @@ jobs:
         with:
           command: rustdoc
           args: -p couchbase-lite-core-sys -- -D warnings
+      - name: Tests with asan
+        env:
+          RUSTFLAGS: -Zsanitizer=address -Cdebuginfo=0
+          RUSTDOCFLAGS: -Zsanitizer=address
+          ASAN_OPTIONS: "detect_stack_use_after_return=1:detect_leaks=0"
+          # Work around https://github.com/rust-lang/rust/issues/59125 by
+          # disabling backtraces. In an ideal world we'd probably suppress the
+          # leak sanitization, but we don't care about backtraces here, so long
+          # as the other tests have them.
+          RUST_BACKTRACE: "0"
+        run: cargo -Z build-std test --features="bundled,bundled-sqlite,with-asan" --target x86_64-unknown-linux-gnu

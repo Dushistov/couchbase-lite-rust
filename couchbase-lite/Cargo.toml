@@ -16,6 +16,11 @@ with-asan = ["couchbase-lite-core-sys/with-asan"]
 
 [dependencies]
 couchbase-lite-core-sys = { version = "0.5.0", default-features = false }
+lazy_static = "1.4"
+log = "0.4"
+# TODO: remove deps when https://github.com/rust-lang/rust/issues/44930
+# was merged
+va_list = "0.1"
 
 [dev-dependencies]
 tempfile = "3.0"

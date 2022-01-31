@@ -1,12 +1,14 @@
-use couchbase_lite_core_sys::c4db_openNamed;
-
 use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4db_release, C4Database, C4DatabaseConfig2, C4DatabaseFlags, C4EncryptionAlgorithm,
         C4EncryptionKey,
     },
+    log_reroute::c4log_to_log_init,
 };
+use couchbase_lite_core_sys::c4db_openNamed;
+use lazy_static::lazy_static;
+use log::debug;
 use std::{marker::PhantomData, path::Path, ptr::NonNull};
 
 /// Database configuration, used during open
@@ -59,6 +61,7 @@ impl Drop for DbInner {
 
 impl Database {
     pub fn open_named(name: &str, cfg: DatabaseConfig) -> Result<Self> {
+        lazy_static::initialize(&DB_LOG_HANDLER);
         let cfg = cfg.inner?;
         let mut error = c4error_init();
         let db_ptr = unsafe { c4db_openNamed(name.into(), &cfg, &mut error) };
@@ -88,4 +91,12 @@ impl Database {
 
         Database::open_named(db_name, cfg)
     }
+}
+
+lazy_static! {
+    static ref DB_LOG_HANDLER: () = {
+        debug!("init couchbase log to rust log rerouting");
+        c4log_to_log_init();
+        ()
+    };
 }

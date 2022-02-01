@@ -1,6 +1,6 @@
 mod c4_header;
 
-use std::{borrow::Cow, os::raw::c_void, ptr, slice};
+use std::{borrow::Cow, mem, os::raw::c_void, ptr, slice, str};
 
 pub use c4_header::*;
 
@@ -14,6 +14,25 @@ impl<'a> From<&'a str> for FLSlice {
             },
             size: s.len(),
         }
+    }
+}
+
+impl<'a> From<&'a [u8]> for FLSlice {
+    fn from(s: &'a [u8]) -> Self {
+        Self {
+            buf: if !s.is_empty() {
+                s.as_ptr() as *const c_void
+            } else {
+                ptr::null()
+            },
+            size: s.len(),
+        }
+    }
+}
+
+impl<'a> From<FLSlice> for &'a [u8] {
+    fn from(s: FLSlice) -> Self {
+        unsafe { slice::from_raw_parts(s.buf as *const u8, s.size) }
     }
 }
 
@@ -37,6 +56,25 @@ impl FLSliceResult {
     pub fn as_utf8_lossy(&self) -> Cow<str> {
         String::from_utf8_lossy(self.as_bytes())
     }
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.size == 0
+    }
+    pub fn as_fl_slice(&self) -> FLSlice {
+        FLSlice {
+            buf: self.buf,
+            size: self.size,
+        }
+    }
+}
+
+impl<'a> TryFrom<FLString> for &'a str {
+    type Error = str::Utf8Error;
+
+    fn try_from(value: FLString) -> Result<Self, Self::Error> {
+        let bytes: &'a [u8] = value.into();
+        str::from_utf8(bytes)
+    }
 }
 
 // bindgen can not handle inline functions,
@@ -51,4 +89,5 @@ pub unsafe fn c4db_release(db: *mut C4Database) {
 #[allow(non_snake_case)]
 pub unsafe fn FLSliceResult_Release(s: FLSliceResult) {
     _FLBuf_Release(s.buf);
+    mem::forget(s);
 }

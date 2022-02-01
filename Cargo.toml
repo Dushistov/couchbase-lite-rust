@@ -1,5 +1,5 @@
 [workspace]
-members = ["couchbase-lite-core-sys", "couchbase-lite", "chat-demo"]
+members = ["couchbase-lite-core-sys", "couchbase-lite", "chat-demo", "serde-fleece"]
 
 [patch.'crates-io']
 couchbase-lite = { path = "couchbase-lite" }

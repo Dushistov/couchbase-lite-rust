@@ -80,7 +80,7 @@ fn main() {
     let mut includes = vec![
         sdir.join("C").join("include"),
         sdir.join("vendor").join("fleece").join("API"),
-        sdir.into(),
+        sdir,
     ];
 
     let (mut addon_include_dirs, framework_dirs) =

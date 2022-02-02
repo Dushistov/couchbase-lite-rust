@@ -12,11 +12,10 @@ fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let cross_to_windows = target_os == "windows"
         && !cfg!(target_os = "windows")
-        && !env::var("PKG_CONFIG_ALLOW_CROSS").unwrap();
-    let cross_to_macos = target_os == "macos"
-        && !cfg!(target_os = "macos")
-        && !env::var("PKG_CONFIG_ALLOW_CROSS").unwrap();
-    let cross_to_android = target_os == "android" && !env::var("PKG_CONFIG_ALLOW_CROSS").unwrap();
+        && !env::var("ONLY_CARGO_CHECK").is_ok();
+    let cross_to_macos =
+        target_os == "macos" && !cfg!(target_os = "macos") && !env::var("ONLY_CARGO_CHECK").is_ok();
+    let cross_to_android = target_os == "android" && !env::var("ONLY_CARGO_CHECK").is_ok();
 
     if cross_to_windows || cross_to_macos {
         println!("cargo:rustc-link-lib=dylib=LiteCore");

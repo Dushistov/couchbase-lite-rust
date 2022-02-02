@@ -1,4 +1,5 @@
 use couchbase_lite_core_sys::{FLTrust, FLValue_FromData, FLValue_ToJSON};
+use ffi::{FLEncoder_Free, FLEncoder_New, _FLEncoder};
 use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_fleece::*;
@@ -25,6 +26,37 @@ fn test_ser_primitive() {
     assert_eq!("17", to_fleece_to_json(&Some(17)));
     assert_eq!("null", to_fleece_to_json(&()));
     assert_eq!("\"ж\"", to_fleece_to_json(&'ж'));
+}
+
+#[test]
+fn test_ser_primitive_with_shared_encoder() {
+    let mut enc = Encoder::new();
+    assert_eq!("true", to_fleece_to_json_enc(&true, enc.session()));
+    assert_eq!("false", to_fleece_to_json_enc(&false, enc.session()));
+    assert_eq!(
+        "-9223372036854775808",
+        to_fleece_to_json_enc(&i64::min_value(), enc.session())
+    );
+    assert_eq!(
+        "9223372036854775807",
+        to_fleece_to_json_enc(&i64::max_value(), enc.session())
+    );
+    assert_eq!("0", to_fleece_to_json_enc(&0_i64, enc.session()));
+    assert_eq!(
+        "\"This is text, привет\"",
+        to_fleece_to_json_enc(&"This is text, привет", enc.session())
+    );
+    assert_eq!(
+        r#"[false,17,"Как","Ч"]"#,
+        to_fleece_to_json_enc(&(false, 17, "Как", 'Ч'), enc.session())
+    );
+    assert_eq!(
+        "null",
+        to_fleece_to_json_enc(&Option::<i32>::None, enc.session())
+    );
+    assert_eq!("17", to_fleece_to_json_enc(&Some(17), enc.session()));
+    assert_eq!("null", to_fleece_to_json_enc(&(), enc.session()));
+    assert_eq!("\"ж\"", to_fleece_to_json_enc(&'ж', enc.session()));
 }
 
 #[test]
@@ -232,6 +264,42 @@ fn test_de_collections() {
 
 fn to_fleece_to_json<T: Serialize>(value: &T) -> String {
     let data = to_fl_slice_result(value).unwrap();
+    let val = unsafe { FLValue_FromData(data.as_fl_slice(), FLTrust::kFLUntrusted) };
+    assert!(!val.is_null());
+    let json = unsafe { FLValue_ToJSON(val) };
+    let json: &str = json.as_fl_slice().try_into().unwrap();
+    json.to_string()
+}
+
+struct Encoder<'a> {
+    inner: &'a mut _FLEncoder,
+}
+
+impl<'a> Encoder<'a> {
+    fn new() -> Self {
+        let enc = unsafe {
+            let enc = FLEncoder_New();
+            if enc.is_null() {
+                panic!("FLEncoder_New failed");
+            }
+            &mut *enc
+        };
+        Encoder { inner: enc }
+    }
+
+    fn session(&mut self) -> FlEncoderSession {
+        FlEncoderSession::new(&mut *self.inner)
+    }
+}
+
+impl<'a> Drop for Encoder<'a> {
+    fn drop(&mut self) {
+        unsafe { FLEncoder_Free(self.inner) };
+    }
+}
+
+fn to_fleece_to_json_enc<T: Serialize>(value: &T, enc: FlEncoderSession) -> String {
+    let data = to_fl_slice_result_with_encoder(value, enc).unwrap();
     let val = unsafe { FLValue_FromData(data.as_fl_slice(), FLTrust::kFLUntrusted) };
     assert!(!val.is_null());
     let json = unsafe { FLValue_ToJSON(val) };

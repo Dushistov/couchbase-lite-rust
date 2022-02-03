@@ -16,10 +16,6 @@ pub struct Document {
 }
 
 impl Document {
-    /// return the document's ID
-    pub fn id(&self) -> &str {
-        &self.id
-    }
     pub fn new<T>(data: &T, enc: FlEncoderSession) -> Result<Self>
     where
         T: Serialize,
@@ -31,10 +27,12 @@ impl Document {
             id: Uuid::new_v4().to_hyphenated().to_string(),
         })
     }
-    pub(crate) fn replace_c4doc(&mut self, doc: Option<C4DocumentOwner>) {
-        self.inner = doc;
+    /// return the document's ID
+    pub fn id(&self) -> &str {
+        &self.id
     }
-    pub fn decode_data<T: DeserializeOwned>(self) -> Result<T> {
+    /// Decode body of document
+    pub fn decode_body<T: DeserializeOwned>(self) -> Result<T> {
         if let Some(slice) = self.unsaved_body.as_ref().map(FLSliceResult::as_fl_slice) {
             let x: T = serde_fleece::from_slice(slice.into())?;
             return Ok(x);
@@ -50,6 +48,17 @@ impl Document {
         let x: T = serde_fleece::from_slice(body.into())?;
         Ok(x)
     }
+    /// Update internal buffer with data, you need save document
+    /// to database to make this change permanent
+    pub fn update_body<T>(&mut self, data: &T, enc: FlEncoderSession) -> Result<()>
+    where
+        T: Serialize,
+    {
+        let body = to_fl_slice_result_with_encoder(data, enc)?;
+        self.unsaved_body = Some(body);
+        Ok(())
+    }
+
     pub(crate) fn new_internal<S>(inner: C4DocumentOwner, doc_id: S) -> Self
     where
         S: Into<String>,
@@ -59,6 +68,9 @@ impl Document {
             id: doc_id.into(),
             unsaved_body: None,
         }
+    }
+    pub(crate) fn replace_c4doc(&mut self, doc: Option<C4DocumentOwner>) {
+        self.inner = doc;
     }
     pub(crate) fn exists(&self) -> bool {
         self.inner.as_ref().map(|x| x.exists()).unwrap_or(false)
@@ -91,6 +103,17 @@ impl C4DocumentOwner {
     #[inline]
     fn selected_flags(&self) -> C4RevisionFlags {
         unsafe { self.0.as_ref().selectedRev.flags }
+    }
+    #[inline]
+    pub(crate) fn id(&self) -> Result<&str> {
+        unsafe {
+            self.0
+                .as_ref()
+                .docID
+                .as_fl_slice()
+                .try_into()
+                .map_err(|_| Error::InvalidUtf8)
+        }
     }
 }
 

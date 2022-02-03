@@ -1,6 +1,6 @@
 //! Code to help deal with C API
 
-use crate::{FLSlice, FLSliceResult, FLSliceResult_Release, FLString};
+use crate::{FLHeapSlice, FLSlice, FLSliceResult, FLSliceResult_Release, FLString};
 use std::{borrow::Cow, os::raw::c_void, ptr, slice, str};
 
 impl Default for FLSlice {
@@ -77,6 +77,7 @@ impl FLSliceResult {
     pub fn is_empty(&self) -> bool {
         self.size == 0
     }
+    #[inline]
     pub fn as_fl_slice(&self) -> FLSlice {
         FLSlice {
             buf: self.buf,
@@ -91,5 +92,12 @@ impl<'a> TryFrom<FLString> for &'a str {
     fn try_from(value: FLString) -> Result<Self, Self::Error> {
         let bytes: &'a [u8] = value.into();
         str::from_utf8(bytes)
+    }
+}
+
+impl FLHeapSlice {
+    #[inline]
+    pub fn as_fl_slice(&self) -> FLSlice {
+        self._base
     }
 }

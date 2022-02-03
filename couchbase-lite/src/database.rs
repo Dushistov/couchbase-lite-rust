@@ -1,4 +1,5 @@
 use crate::{
+    doc_enumerator::{DocEnumerator, DocEnumeratorFlags},
     document::{C4DocumentOwner, Document},
     error::{c4error_init, Error, Result},
     ffi::{
@@ -107,6 +108,10 @@ impl Database {
     pub fn get_existing(&self, doc_id: &str) -> Result<Document> {
         self.internal_get(doc_id, true)
             .map(|x| Document::new_internal(x, doc_id))
+    }
+    /// Creates an enumerator ordered by docID.
+    pub fn enumerate_all_docs(&self, flags: DocEnumeratorFlags) -> Result<DocEnumerator> {
+        DocEnumerator::enumerate_all_docs(self, flags)
     }
 
     pub(crate) fn internal_get(&self, doc_id: &str, must_exists: bool) -> Result<C4DocumentOwner> {

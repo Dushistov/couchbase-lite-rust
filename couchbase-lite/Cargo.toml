@@ -10,18 +10,22 @@ default = ["bundled", "bundled-sqlite"]
 # replication = ["tokio-tungstenite", "http", "tokio", "futures-util",  "tokio-native-tls"]
 # native-tls = ["tokio-tungstenite/native-tls"]
 # couchbase-sqlite = ["couchbase-lite-core-sys/couchbase-sqlite"]
-bundled = ["couchbase-lite-core-sys/bundled"]
-bundled-sqlite = ["couchbase-lite-core-sys/bundled-sqlite"]
-with-asan = ["couchbase-lite-core-sys/with-asan"]
+bundled = ["couchbase-lite-core-sys/bundled", "serde-fleece/bundled"]
+bundled-sqlite = ["couchbase-lite-core-sys/bundled-sqlite", "serde-fleece/bundled-sqlite"]
+with-asan = ["couchbase-lite-core-sys/with-asan", "serde-fleece/with-asan"]
 
 [dependencies]
 couchbase-lite-core-sys = { version = "0.5.0", default-features = false }
+serde-fleece = { version = "0.1.0", default-features = false }
 lazy_static = "1.4"
 log = "0.4"
 # TODO: remove deps when https://github.com/rust-lang/rust/issues/44930
 # was merged
 va_list = "0.1"
+serde = { version = "1.0", default-features = false, features = ["std"] }
+uuid = { version = "0.8", default-features = false, features = ["v4", "serde"] }
 
 [dev-dependencies]
 tempfile = "3.0"
 env_logger = "0.9"
+serde = { version = "1.0.104", default-features = false, features = ["derive", "std"] }

@@ -1,4 +1,7 @@
-use ffi::{FLEncoder_Free, FLEncoder_New, FLTrust, FLValue_FromData, FLValue_ToJSON, _FLEncoder};
+use ffi::{
+    FLEncoder_Free, FLEncoder_New, FLMutableDict_New, FLMutableDict_Release, FLMutableDict_SetInt,
+    FLMutableDict_SetString, FLTrust, FLValue_FromData, FLValue_ToJSON, _FLEncoder,
+};
 use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_fleece::*;
@@ -260,6 +263,31 @@ fn test_de_collections() {
     m.insert(Millimeters(5), 35);
     m.insert(Millimeters(6), 42);
     assert_eq!(m, ser_deser(&m).unwrap());
+}
+
+#[test]
+fn test_de_fleece_dict() {
+    #[derive(Deserialize, PartialEq, Debug)]
+    struct JsonData {
+        a: i32,
+        b: String,
+    }
+    unsafe {
+        let md = FLMutableDict_New();
+        let md = NonNull::new(md).unwrap();
+        FLMutableDict_SetInt(md.as_ptr(), "a".into(), 5);
+        FLMutableDict_SetString(md.as_ptr(), "b".into(), "16".into());
+        let md: NonNullConst<_> = md.into();
+        let data: JsonData = from_fl_dict(md).unwrap();
+        assert_eq!(
+            JsonData {
+                a: 5,
+                b: "16".into()
+            },
+            data
+        );
+        FLMutableDict_Release(md.as_ptr() as *mut _);
+    }
 }
 
 fn to_fleece_to_json<T: Serialize>(value: &T) -> String {

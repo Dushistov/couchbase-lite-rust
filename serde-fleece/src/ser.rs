@@ -57,9 +57,8 @@ pub fn to_fl_slice_result<T>(value: &T) -> Result<FLSliceResult, Error>
 where
     T: Serialize,
 {
-    let enc = unsafe {
-        NonNull::new(FLEncoder_New()).ok_or_else(|| Error::Fleece(FLError::kFLMemoryError))?
-    };
+    let enc =
+        unsafe { NonNull::new(FLEncoder_New()).ok_or(Error::Fleece(FLError::kFLMemoryError))? };
     let ret = to_fl_slice_result_with_encoder(value, enc);
     unsafe { FLEncoder_Free(enc.as_ptr()) };
     ret

@@ -1,10 +1,8 @@
-use std::ptr::NonNull;
-
-use couchbase_lite_core_sys::{FLTrust, FLValue_FromData, FLValue_ToJSON};
-use ffi::{FLEncoder_Free, FLEncoder_New, _FLEncoder};
+use ffi::{FLEncoder_Free, FLEncoder_New, FLTrust, FLValue_FromData, FLValue_ToJSON, _FLEncoder};
 use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_fleece::*;
+use std::ptr::NonNull;
 
 #[derive(Serialize, Debug, PartialEq, Deserialize, Hash, Eq)]
 struct Millimeters(u8);

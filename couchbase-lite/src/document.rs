@@ -28,6 +28,28 @@ impl Document {
             id: Uuid::new_v4().to_hyphenated().to_string(),
         })
     }
+    pub fn new_with_id<S, T>(doc_id: S, data: &T, enc: FlEncoderSession) -> Result<Self>
+    where
+        S: Into<String>,
+        T: Serialize,
+    {
+        let unsaved_body = Some(to_fl_slice_result_with_encoder(data, enc)?);
+        Ok(Self {
+            inner: None,
+            id: doc_id.into(),
+            unsaved_body,
+        })
+    }
+    pub fn new_with_id_fleece<S: Into<String>>(
+        doc_id: S,
+        fleece_data: FLSliceResult,
+    ) -> Result<Self> {
+        Ok(Self {
+            inner: None,
+            id: doc_id.into(),
+            unsaved_body: Some(fleece_data),
+        })
+    }
     /// return the document's ID
     pub fn id(&self) -> &str {
         &self.id

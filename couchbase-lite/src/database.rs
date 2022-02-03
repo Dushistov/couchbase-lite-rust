@@ -10,9 +10,10 @@ use crate::{
     observer::{DatabaseObserver, ObserverdChangesIter},
     transaction::Transaction,
 };
-use couchbase_lite_core_sys::c4db_openNamed;
+use couchbase_lite_core_sys::{c4db_getSharedFleeceEncoder, c4db_openNamed};
 use lazy_static::lazy_static;
 use log::{debug, error};
+use serde_fleece::FlEncoderSession;
 use std::{
     collections::HashSet,
     marker::PhantomData,
@@ -164,6 +165,17 @@ impl Database {
             db: self,
             obs_it: None,
         }
+    }
+
+    /// Get shared "fleece" encoder, `&mut self` to make possible
+    /// exists only one session
+    pub fn shared_encoder_session(&mut self) -> Result<FlEncoderSession> {
+        let enc = unsafe { c4db_getSharedFleeceEncoder(self.inner.0.as_ptr()) };
+        NonNull::new(enc)
+            .ok_or_else(|| {
+                Error::LogicError("c4db_getSharedFleeceEncoder return null.into()".into())
+            })
+            .map(FlEncoderSession::new)
     }
 
     pub(crate) fn internal_get(&self, doc_id: &str, must_exists: bool) -> Result<C4DocumentOwner> {

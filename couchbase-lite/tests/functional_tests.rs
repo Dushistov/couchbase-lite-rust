@@ -216,3 +216,59 @@ fn test_save_float() {
     }
     tmp_dir.close().expect("Can not close tmp_dir");
 }
+
+#[test]
+fn test_save_several_times() {
+    fn create_s(i: i32) -> S {
+        S {
+            f: f64::from(i) / 3.6,
+            s: format!("Hello {}", i),
+        }
+    }
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let s = create_s(500);
+        let mut trans = db.transaction().unwrap();
+        let mut doc = Document::new(&s, trans.shared_encoder_session().unwrap()).unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        let doc_id: String = doc.id().into();
+        drop(doc);
+        assert_eq!(1, db.document_count());
+
+        let doc = db.get_existing(&doc_id).unwrap();
+        assert_eq!(s, doc.decode_body::<S>().unwrap());
+
+        let s = create_s(501);
+        let mut doc =
+            Document::new_with_id(doc_id.as_str(), &s, db.shared_encoder_session().unwrap())
+                .unwrap();
+        let mut trans = db.transaction().unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        drop(doc);
+        assert_eq!(1, db.document_count());
+
+        let doc = db.get_existing(&doc_id).unwrap();
+        assert_eq!(s, doc.decode_body::<S>().unwrap());
+
+        let s = create_s(400);
+        let fleece_data =
+            serde_fleece::to_fl_slice_result_with_encoder(&s, db.shared_encoder_session().unwrap())
+                .unwrap();
+        let mut doc = Document::new_with_id_fleece(&doc_id, fleece_data).unwrap();
+        let mut trans = db.transaction().unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        drop(doc);
+        assert_eq!(1, db.document_count());
+
+        let doc = db.get_existing(&doc_id).unwrap();
+        assert_eq!(s, doc.decode_body::<S>().unwrap());
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}

@@ -61,10 +61,11 @@ impl Transaction<'_> {
     /// exists only one session
     pub fn shared_encoder_session(&mut self) -> Result<FlEncoderSession> {
         let enc = unsafe { c4db_getSharedFleeceEncoder(self.db.inner.0.as_ptr()) };
-        let enc = NonNull::new(enc).ok_or_else(|| {
-            Error::LogicError("c4db_getSharedFleeceEncoder return null.into()".into())
-        })?;
-        Ok(FlEncoderSession::new(enc))
+        NonNull::new(enc)
+            .ok_or_else(|| {
+                Error::LogicError("c4db_getSharedFleeceEncoder return null.into()".into())
+            })
+            .map(FlEncoderSession::new)
     }
 
     fn main_save(&mut self, doc: &mut Document, deletion: bool) -> Result<()> {

@@ -1,5 +1,8 @@
-use crate::{ser::Serializer, Error};
-use couchbase_lite_core_sys::{FLEncoder_EndDict, FLEncoder_GetError, FLEncoder_WriteKey};
+use crate::{
+    ffi::{FLEncoder_EndDict, FLEncoder_GetError, FLEncoder_WriteKey},
+    ser::Serializer,
+    Error,
+};
 use itoa::Integer;
 use ryu::Float;
 use serde::{ser, Serialize};

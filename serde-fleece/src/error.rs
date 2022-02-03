@@ -1,4 +1,4 @@
-use couchbase_lite_core_sys::FLError;
+use crate::ffi::FLError;
 use std::{
     borrow::Cow,
     char::ParseCharError,

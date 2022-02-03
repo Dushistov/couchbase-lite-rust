@@ -13,6 +13,19 @@ struct Foo {
 #[derive(Deserialize, Debug)]
 struct Empty {}
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+struct S {
+    f: f64,
+    s: String,
+}
+
+impl PartialEq for S {
+    fn eq(&self, o: &S) -> bool {
+        (self.f - o.f).abs() < 1e-13 && self.s == o.s
+    }
+}
+
 #[test]
 fn test_write_read() {
     let _ = env_logger::try_init();
@@ -173,6 +186,33 @@ fn test_observed_changes() {
         let doc = db.get_existing(&doc_id).unwrap();
         println!("doc {:?}", doc);
         doc.decode_body::<Empty>().unwrap();
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+#[test]
+fn test_save_float() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut trans = db.transaction().unwrap();
+        let s = S {
+            f: 17.48,
+            s: "ABCD".into(),
+        };
+        let enc = trans.shared_encoder_session().unwrap();
+        let mut doc = Document::new(&s, enc).unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+        let doc_id: String = doc.id().into();
+        drop(doc);
+
+        let doc = db.get_existing(&doc_id).unwrap();
+        let loaded_s: S = doc.decode_body().unwrap();
+        assert_eq!(s, loaded_s);
     }
     tmp_dir.close().expect("Can not close tmp_dir");
 }

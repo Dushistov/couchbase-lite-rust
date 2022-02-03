@@ -1,10 +1,10 @@
 macro_rules! encoder_write {
     ($this:expr, $func:ident $(, $arg:expr)*) => {
         unsafe {
-            if $func($this.inner, $($arg)*) {
+            if $func($this.inner.as_ptr(), $($arg)*) {
                 Ok(())
             } else {
-                Err(Error::from(FLEncoder_GetError($this.inner)))
+                Err(Error::from(FLEncoder_GetError($this.inner.as_ptr())))
             }
         }
     };
@@ -22,40 +22,34 @@ use crate::ffi::{
     FLSliceResult, _FLEncoder,
 };
 use serde::{ser, Serialize};
+use std::borrow::Borrow;
 use std::fmt::Display;
-use std::ops::{Deref, DerefMut};
+use std::ptr::NonNull;
 
-pub(crate) struct Serializer<'a> {
-    inner: &'a mut _FLEncoder,
+pub(crate) struct Serializer {
+    inner: NonNull<_FLEncoder>,
 }
 
 /// Helper struct for multiple uses of `FLEncoder`
-pub struct FlEncoderSession<'a> {
-    inner: &'a mut _FLEncoder,
+pub struct FlEncoderSession {
+    inner: NonNull<_FLEncoder>,
 }
 
-impl<'a> FlEncoderSession<'a> {
-    pub fn new(inner: &'a mut _FLEncoder) -> Self {
+impl FlEncoderSession {
+    pub fn new(inner: NonNull<_FLEncoder>) -> Self {
         Self { inner }
     }
 }
 
-impl<'a> Drop for FlEncoderSession<'a> {
+impl Drop for FlEncoderSession {
     fn drop(&mut self) {
-        unsafe { FLEncoder_Reset(self.inner) }
+        unsafe { FLEncoder_Reset(self.inner.as_ptr()) }
     }
 }
 
-impl<'a> Deref for FlEncoderSession<'a> {
-    type Target = _FLEncoder;
-    fn deref(&self) -> &Self::Target {
-        self.inner
-    }
-}
-
-impl<'a> DerefMut for FlEncoderSession<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.inner
+impl Borrow<NonNull<_FLEncoder>> for FlEncoderSession {
+    fn borrow(&self) -> &NonNull<_FLEncoder> {
+        &self.inner
     }
 }
 
@@ -64,31 +58,27 @@ where
     T: Serialize,
 {
     let enc = unsafe {
-        let enc = FLEncoder_New();
-        if enc.is_null() {
-            return Err(Error::Fleece(FLError::kFLMemoryError));
-        }
-        &mut *enc
+        NonNull::new(FLEncoder_New()).ok_or_else(|| Error::Fleece(FLError::kFLMemoryError))?
     };
-    let ret = to_fl_slice_result_with_encoder(value, &mut *enc);
-    unsafe { FLEncoder_Free(enc) };
+    let ret = to_fl_slice_result_with_encoder(value, enc);
+    unsafe { FLEncoder_Free(enc.as_ptr()) };
     ret
 }
 
 pub fn to_fl_slice_result_with_encoder<T, FleeceEncoder>(
     value: &T,
-    mut encoder: FleeceEncoder,
+    encoder: FleeceEncoder,
 ) -> Result<FLSliceResult, Error>
 where
     T: Serialize,
-    FleeceEncoder: DerefMut<Target = _FLEncoder>,
+    FleeceEncoder: Borrow<NonNull<_FLEncoder>>,
 {
     let mut serializer = Serializer {
-        inner: encoder.deref_mut(),
+        inner: *encoder.borrow(),
     };
     value.serialize(&mut serializer)?;
     let mut err = FLError::kFLNoError;
-    let ret = unsafe { FLEncoder_Finish(serializer.inner, &mut err) };
+    let ret = unsafe { FLEncoder_Finish(serializer.inner.as_ptr(), &mut err) };
     if !ret.is_empty() {
         Ok(ret)
     } else {
@@ -96,7 +86,7 @@ where
     }
 }
 
-impl<'a, 'b> ser::Serializer for &'a mut Serializer<'b> {
+impl<'a> ser::Serializer for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
@@ -104,7 +94,7 @@ impl<'a, 'b> ser::Serializer for &'a mut Serializer<'b> {
     type SerializeTuple = Self;
     type SerializeTupleStruct = Self;
     type SerializeTupleVariant = Self;
-    type SerializeMap = MapKeySerializer<'a, 'b>;
+    type SerializeMap = MapKeySerializer<'a>;
     type SerializeStruct = Self;
     type SerializeStructVariant = Self;
 
@@ -290,7 +280,7 @@ impl<'a, 'b> ser::Serializer for &'a mut Serializer<'b> {
     }
 }
 
-impl<'a, 'b> ser::SerializeSeq for &'a mut Serializer<'b> {
+impl<'a> ser::SerializeSeq for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
@@ -308,7 +298,7 @@ impl<'a, 'b> ser::SerializeSeq for &'a mut Serializer<'b> {
     }
 }
 
-impl<'a, 'b> ser::SerializeTuple for &'a mut Serializer<'b> {
+impl<'a> ser::SerializeTuple for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
@@ -324,7 +314,7 @@ impl<'a, 'b> ser::SerializeTuple for &'a mut Serializer<'b> {
     }
 }
 
-impl<'a, 'b> ser::SerializeTupleStruct for &'a mut Serializer<'b> {
+impl<'a> ser::SerializeTupleStruct for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
@@ -349,7 +339,7 @@ impl<'a, 'b> ser::SerializeTupleStruct for &'a mut Serializer<'b> {
 ///
 /// So the `end` method in this impl is responsible for closing both the `]` and
 /// the `}`.
-impl<'a, 'b> ser::SerializeTupleVariant for &'a mut Serializer<'b> {
+impl<'a> ser::SerializeTupleVariant for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
@@ -368,7 +358,7 @@ impl<'a, 'b> ser::SerializeTupleVariant for &'a mut Serializer<'b> {
 
 /// Structs are like maps in which the keys are constrained to be compile-time
 /// constant strings.
-impl<'a, 'b> ser::SerializeStruct for &'a mut Serializer<'b> {
+impl<'a> ser::SerializeStruct for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
@@ -387,7 +377,7 @@ impl<'a, 'b> ser::SerializeStruct for &'a mut Serializer<'b> {
 
 /// Similar to `SerializeTupleVariant`, here the `end` method is responsible for
 /// closing both of the curly braces opened by `serialize_struct_variant`.
-impl<'a, 'b> ser::SerializeStructVariant for &'a mut Serializer<'b> {
+impl<'a> ser::SerializeStructVariant for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 

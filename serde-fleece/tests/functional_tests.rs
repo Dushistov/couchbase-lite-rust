@@ -1,3 +1,5 @@
+use std::ptr::NonNull;
+
 use couchbase_lite_core_sys::{FLTrust, FLValue_FromData, FLValue_ToJSON};
 use ffi::{FLEncoder_Free, FLEncoder_New, _FLEncoder};
 use rustc_hash::FxHashMap;
@@ -271,30 +273,25 @@ fn to_fleece_to_json<T: Serialize>(value: &T) -> String {
     json.to_string()
 }
 
-struct Encoder<'a> {
-    inner: &'a mut _FLEncoder,
+struct Encoder {
+    inner: NonNull<_FLEncoder>,
 }
 
-impl<'a> Encoder<'a> {
+impl Encoder {
     fn new() -> Self {
-        let enc = unsafe {
-            let enc = FLEncoder_New();
-            if enc.is_null() {
-                panic!("FLEncoder_New failed");
-            }
-            &mut *enc
-        };
+        let enc = unsafe { FLEncoder_New() };
+        let enc = NonNull::new(enc).unwrap();
         Encoder { inner: enc }
     }
 
     fn session(&mut self) -> FlEncoderSession {
-        FlEncoderSession::new(&mut *self.inner)
+        FlEncoderSession::new(self.inner)
     }
 }
 
-impl<'a> Drop for Encoder<'a> {
+impl Drop for Encoder {
     fn drop(&mut self) {
-        unsafe { FLEncoder_Free(self.inner) };
+        unsafe { FLEncoder_Free(self.inner.as_ptr()) };
     }
 }
 

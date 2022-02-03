@@ -1,6 +1,8 @@
 mod dict;
 mod seq;
 
+use std::marker::PhantomData;
+
 use self::dict::{DictAccess, StructAccess};
 use crate::{
     de::{dict::EnumAccess, seq::ArrayAccess},
@@ -15,29 +17,47 @@ use crate::{
 use itoa::Integer;
 use serde::de::{self, IntoDeserializer};
 
+#[repr(transparent)]
+pub(crate) struct NonNullConst<T>(*const T);
+
+impl<T> NonNullConst<T> {
+    fn new(p: *const T) -> Option<Self> {
+        if !p.is_null() {
+            Some(Self(p))
+        } else {
+            None
+        }
+    }
+    fn as_ptr(&self) -> *const T {
+        self.0
+    }
+}
+
 pub(crate) struct Deserializer<'de> {
-    pub value: &'de _FLValue,
+    pub value: NonNullConst<_FLValue>,
+    marker: PhantomData<&'de [u8]>,
 }
 
 impl<'de> Deserializer<'de> {
+    fn new(value: NonNullConst<_FLValue>) -> Self {
+        Self {
+            value,
+            marker: PhantomData,
+        }
+    }
     fn from_slice(input: &'de [u8]) -> Result<Self, Error> {
         let fl_val = unsafe { FLValue_FromData(input.into(), FLTrust::kFLUntrusted) };
-        if !fl_val.is_null() {
-            Ok(Self {
-                value: unsafe { &*fl_val },
-            })
-        } else {
-            Err(Error::InvalidFormat(
-                "untrusted data validation failed".into(),
-            ))
-        }
+        let fl_val = NonNullConst::new(fl_val)
+            .ok_or_else(|| Error::InvalidFormat("untrusted data validation failed".into()))?;
+        Ok(Self::new(fl_val))
     }
 
     fn parse_signed<T: Integer + TryFrom<i64>>(&self) -> Result<T, Error> {
         if unsafe {
-            FLValue_GetType(self.value) == FLValueType::kFLNumber && FLValue_IsInteger(self.value)
+            FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber
+                && FLValue_IsInteger(self.value.as_ptr())
         } {
-            let ret: T = unsafe { FLValue_AsInt(self.value) }
+            let ret: T = unsafe { FLValue_AsInt(self.value.as_ptr()) }
                 .try_into()
                 .map_err(|_err| {
                     Error::InvalidFormat("Can not shrink i64 to smaller integer".into())
@@ -50,9 +70,10 @@ impl<'de> Deserializer<'de> {
 
     fn parse_unsigned<T: Integer + TryFrom<u64>>(&self) -> Result<T, Error> {
         if unsafe {
-            FLValue_GetType(self.value) == FLValueType::kFLNumber && FLValue_IsInteger(self.value)
+            FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber
+                && FLValue_IsInteger(self.value.as_ptr())
         } {
-            let ret: T = unsafe { FLValue_AsUnsigned(self.value) }
+            let ret: T = unsafe { FLValue_AsUnsigned(self.value.as_ptr()) }
                 .try_into()
                 .map_err(|_err| {
                     Error::InvalidFormat("Can not shrink u64 to smaller unsigned integer".into())
@@ -64,8 +85,8 @@ impl<'de> Deserializer<'de> {
     }
 
     fn parse_str(&self) -> Result<&'de str, Error> {
-        if unsafe { FLValue_GetType(self.value) } == FLValueType::kFLString {
-            let s: &str = unsafe { FLValue_AsString(self.value) }.try_into()?;
+        if unsafe { FLValue_GetType(self.value.as_ptr()) } == FLValueType::kFLString {
+            let s: &str = unsafe { FLValue_AsString(self.value.as_ptr()) }.try_into()?;
             Ok(s)
         } else {
             Err(Error::InvalidFormat("data type is not boolean".into()))
@@ -97,8 +118,8 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value) } == FLValueType::kFLBoolean {
-            visitor.visit_bool(unsafe { FLValue_AsBool(self.value) })
+        if unsafe { FLValue_GetType(self.value.as_ptr()) } == FLValueType::kFLBoolean {
+            visitor.visit_bool(unsafe { FLValue_AsBool(self.value.as_ptr()) })
         } else {
             Err(Error::InvalidFormat("data type is not boolean".into()))
         }
@@ -164,8 +185,8 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value) == FLValueType::kFLNumber } {
-            visitor.visit_f32(unsafe { FLValue_AsFloat(self.value) })
+        if unsafe { FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber } {
+            visitor.visit_f32(unsafe { FLValue_AsFloat(self.value.as_ptr()) })
         } else {
             Err(Error::InvalidFormat("data type is not number".into()))
         }
@@ -175,8 +196,8 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value) == FLValueType::kFLNumber } {
-            visitor.visit_f64(unsafe { FLValue_AsDouble(self.value) })
+        if unsafe { FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber } {
+            visitor.visit_f64(unsafe { FLValue_AsDouble(self.value.as_ptr()) })
         } else {
             Err(Error::InvalidFormat("data type is not f64".into()))
         }
@@ -233,7 +254,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value) } != FLValueType::kFLNull {
+        if unsafe { FLValue_GetType(self.value.as_ptr()) } != FLValueType::kFLNull {
             visitor.visit_some(self)
         } else {
             visitor.visit_none()
@@ -244,7 +265,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value) } == FLValueType::kFLNull {
+        if unsafe { FLValue_GetType(self.value.as_ptr()) } == FLValueType::kFLNull {
             visitor.visit_unit()
         } else {
             Err(Error::InvalidFormat(
@@ -279,13 +300,11 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value) } == FLValueType::kFLArray {
-            let arr = unsafe { FLValue_AsArray(self.value) };
-            if arr.is_null() {
-                return Err(Error::InvalidFormat("array is not array type".into()));
-            }
-            let arr = unsafe { &*arr };
-            let n = unsafe { FLArray_Count(arr) };
+        if unsafe { FLValue_GetType(self.value.as_ptr()) } == FLValueType::kFLArray {
+            let arr = unsafe { FLValue_AsArray(self.value.as_ptr()) };
+            let arr = NonNullConst::new(arr)
+                .ok_or_else(|| Error::InvalidFormat("array is not array type".into()))?;
+            let n = unsafe { FLArray_Count(arr.as_ptr()) };
             let n: usize = n.try_into().map_err(|err| {
                 Error::InvalidFormat(format!("Can not convert {} to usize: {}", n, err).into())
             })?;
@@ -318,14 +337,14 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        let ftype = unsafe { FLValue_GetType(self.value) };
+        let ftype = unsafe { FLValue_GetType(self.value.as_ptr()) };
         if ftype != FLValueType::kFLDict {
             return Err(Error::InvalidFormat(
                 format!("map has {:?} type, should be kFLDict", ftype).into(),
             ));
         }
 
-        let dict = unsafe { FLValue_AsDict(self.value) };
+        let dict = unsafe { FLValue_AsDict(self.value.as_ptr()) };
         if dict.is_null() {
             return Err(Error::InvalidFormat(
                 "map: value to dict return null".into(),
@@ -348,20 +367,17 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value) } != FLValueType::kFLDict {
+        if unsafe { FLValue_GetType(self.value.as_ptr()) } != FLValueType::kFLDict {
             return Err(Error::InvalidFormat(
                 format!("struct {} has not dict type", name).into(),
             ));
         }
 
-        let dict = unsafe { FLValue_AsDict(self.value) };
-        if dict.is_null() {
-            return Err(Error::InvalidFormat(
-                format!("struct {} has not dict type (null)", name).into(),
-            ));
-        }
-        let dict: &_FLDict = unsafe { &*dict };
-        let nfields = unsafe { FLDict_Count(dict) };
+        let dict = unsafe { FLValue_AsDict(self.value.as_ptr()) };
+        let dict = NonNullConst::new(dict).ok_or_else(|| {
+            Error::InvalidFormat(format!("struct {} has not dict type (null)", name).into())
+        })?;
+        let nfields = unsafe { FLDict_Count(dict.as_ptr()) };
         let nfields: usize = nfields.try_into().map_err(|err| {
             Error::InvalidFormat(format!("Can not convert {} to usize: {}", nfields, err).into())
         })?;
@@ -390,20 +406,17 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        let ftype = unsafe { FLValue_GetType(self.value) };
+        let ftype = unsafe { FLValue_GetType(self.value.as_ptr()) };
         match ftype {
             FLValueType::kFLString => {
-                let s: &str = unsafe { FLValue_AsString(self.value) }.try_into()?;
+                let s: &str = unsafe { FLValue_AsString(self.value.as_ptr()) }.try_into()?;
                 visitor.visit_enum(s.into_deserializer())
             }
             FLValueType::kFLDict => {
-                let dict = unsafe { FLValue_AsDict(self.value) };
-                if dict.is_null() {
-                    return Err(Error::InvalidFormat(
-                        format!("enum {} has not dict type (null)", name).into(),
-                    ));
-                }
-                let dict: &_FLDict = unsafe { &*dict };
+                let dict = unsafe { FLValue_AsDict(self.value.as_ptr()) };
+                let dict = NonNullConst::new(dict).ok_or_else(|| {
+                    Error::InvalidFormat(format!("enum {} has not dict type (null)", name).into())
+                })?;
                 visitor.visit_enum(EnumAccess::new(dict))
             }
             _ => Err(Error::InvalidFormat(

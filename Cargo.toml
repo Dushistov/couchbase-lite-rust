@@ -3,4 +3,5 @@ members = ["couchbase-lite-core-sys", "couchbase-lite", "chat-demo", "serde-flee
 
 [patch.'crates-io']
 couchbase-lite = { path = "couchbase-lite" }
+serde-fleece = { path = "serde-fleece" }
 couchbase-lite-core-sys = { path = "couchbase-lite-core-sys" }

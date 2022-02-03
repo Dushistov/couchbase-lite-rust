@@ -1,10 +1,12 @@
 use crate::{
+    document::{C4DocumentOwner, Document},
     error::{c4error_init, Error, Result},
     ffi::{
-        c4db_release, C4Database, C4DatabaseConfig2, C4DatabaseFlags, C4EncryptionAlgorithm,
-        C4EncryptionKey,
+        c4db_getDocumentCount, c4db_release, c4doc_get, C4Database, C4DatabaseConfig2,
+        C4DatabaseFlags, C4EncryptionAlgorithm, C4EncryptionKey,
     },
     log_reroute::c4log_to_log_init,
+    transaction::Transaction,
 };
 use couchbase_lite_core_sys::c4db_openNamed;
 use lazy_static::lazy_static;
@@ -44,10 +46,10 @@ impl<'a> DatabaseConfig<'a> {
 
 /// A connection to a couchbase-lite database.
 pub struct Database {
-    inner: DbInner,
+    pub(crate) inner: DbInner,
 }
 
-pub(crate) struct DbInner(NonNull<C4Database>);
+pub(crate) struct DbInner(pub NonNull<C4Database>);
 /// According to
 /// https://github.com/couchbase/couchbase-lite-core/wiki/Thread-Safety
 /// it is possible to call from any thread, but not concurrently
@@ -90,6 +92,36 @@ impl Database {
             })?;
 
         Database::open_named(db_name, cfg)
+    }
+    /// Begin a new transaction, the transaction defaults to rolling back
+    /// when it is dropped. If you want the transaction to commit,
+    /// you must call `Transaction::commit`
+    pub fn transaction(&mut self) -> Result<Transaction> {
+        Transaction::new(self)
+    }
+    /// Returns the number of (undeleted) documents in the database
+    pub fn document_count(&self) -> u64 {
+        unsafe { c4db_getDocumentCount(self.inner.0.as_ptr()) }
+    }
+    /// Return existing document from database
+    pub fn get_existing(&self, doc_id: &str) -> Result<Document> {
+        self.internal_get(doc_id, true)
+            .map(|x| Document::new_internal(x, doc_id))
+    }
+
+    pub(crate) fn internal_get(&self, doc_id: &str, must_exists: bool) -> Result<C4DocumentOwner> {
+        let mut c4err = c4error_init();
+        let c4doc = unsafe {
+            c4doc_get(
+                self.inner.0.as_ptr(),
+                doc_id.as_bytes().into(),
+                must_exists,
+                &mut c4err,
+            )
+        };
+        NonNull::new(c4doc)
+            .ok_or_else(|| c4err.into())
+            .map(C4DocumentOwner)
     }
 }
 

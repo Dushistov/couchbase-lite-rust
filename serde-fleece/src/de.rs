@@ -409,18 +409,18 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let dict = NonNullConst::new(dict).ok_or_else(|| {
             Error::InvalidFormat(format!("struct {} has not dict type (null)", name).into())
         })?;
-        let nfields = unsafe { FLDict_Count(dict.as_ptr()) };
-        let nfields: usize = nfields.try_into().map_err(|err| {
-            Error::InvalidFormat(format!("Can not convert {} to usize: {}", nfields, err).into())
+        let dict_size = unsafe { FLDict_Count(dict.as_ptr()) };
+        let dict_size: usize = dict_size.try_into().map_err(|err| {
+            Error::InvalidFormat(format!("Can not convert {} to usize: {}", dict_size, err).into())
         })?;
 
-        if nfields != fields.len() {
+        if dict_size < fields.len() {
             return Err(Error::InvalidFormat(
                 format!(
                     "struct {} has invalid number of fields, expect {}, got {}",
                     name,
                     fields.len(),
-                    nfields
+                    dict_size
                 )
                 .into(),
             ));

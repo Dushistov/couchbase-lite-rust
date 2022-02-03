@@ -209,6 +209,18 @@ fn test_de_struct() {
     #[derive(Serialize, Debug, PartialEq, Deserialize)]
     struct Rect(u16, u16);
     assert_eq!(Rect(1, 400), ser_deser(&Rect(1, 400)).unwrap());
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    #[serde(tag = "type")]
+    struct Foo {
+        i: i32,
+        s: String,
+    }
+    let expect = Foo {
+        i: 622521,
+        s: "Так себе".into(),
+    };
+    assert_eq!(expect, ser_deser(&expect).unwrap());
 }
 
 #[test]

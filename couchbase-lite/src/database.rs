@@ -7,12 +7,19 @@ use crate::{
         C4DatabaseFlags, C4EncryptionAlgorithm, C4EncryptionKey,
     },
     log_reroute::c4log_to_log_init,
+    observer::{DatabaseObserver, ObserverdChangesIter},
     transaction::Transaction,
 };
 use couchbase_lite_core_sys::c4db_openNamed;
 use lazy_static::lazy_static;
-use log::debug;
-use std::{marker::PhantomData, path::Path, ptr::NonNull};
+use log::{debug, error};
+use std::{
+    collections::HashSet,
+    marker::PhantomData,
+    path::Path,
+    ptr::NonNull,
+    sync::{Arc, Mutex},
+};
 
 /// Database configuration, used during open
 pub struct DatabaseConfig<'a> {
@@ -48,6 +55,8 @@ impl<'a> DatabaseConfig<'a> {
 /// A connection to a couchbase-lite database.
 pub struct Database {
     pub(crate) inner: DbInner,
+    pub(crate) db_events: Arc<Mutex<HashSet<usize>>>,
+    pub(crate) db_observers: Vec<DatabaseObserver>,
 }
 
 pub(crate) struct DbInner(pub NonNull<C4Database>);
@@ -71,6 +80,8 @@ impl Database {
         NonNull::new(db_ptr)
             .map(|inner| Database {
                 inner: DbInner(inner),
+                db_events: Arc::new(Mutex::new(HashSet::new())),
+                db_observers: vec![],
             })
             .ok_or_else(|| error.into())
     }
@@ -112,6 +123,47 @@ impl Database {
     /// Creates an enumerator ordered by docID.
     pub fn enumerate_all_docs(&self, flags: DocEnumeratorFlags) -> Result<DocEnumerator> {
         DocEnumerator::enumerate_all_docs(self, flags)
+    }
+
+    /// Register a database observer, with a callback that will be invoked after the database
+    /// changes. The callback will be called _once_, after the first change. After that it won't
+    /// be called again until all of the changes have been read by calling `Database::observed_changes`.
+    pub fn register_observer<F>(&mut self, mut callback_f: F) -> Result<()>
+    where
+        F: FnMut() + Send + 'static,
+    {
+        let db_events = self.db_events.clone();
+        let obs = DatabaseObserver::new(self, move |obs| {
+            {
+                match db_events.lock() {
+                    Ok(mut db_events) => {
+                        db_events.insert(obs as usize);
+                    }
+                    Err(err) => {
+                        error!(
+                            "register_observer::DatabaseObserver::lambda db_events lock failed: {}",
+                            err
+                        );
+                    }
+                }
+            }
+            callback_f();
+        })?;
+        self.db_observers.push(obs);
+        Ok(())
+    }
+
+    /// Remove all database observers
+    pub fn clear_observers(&mut self) {
+        self.db_observers.clear();
+    }
+
+    /// Get observed changes for this database
+    pub fn observed_changes(&mut self) -> ObserverdChangesIter {
+        ObserverdChangesIter {
+            db: self,
+            obs_it: None,
+        }
     }
 
     pub(crate) fn internal_get(&self, doc_id: &str, must_exists: bool) -> Result<C4DocumentOwner> {

@@ -2,13 +2,14 @@ use std::ptr::NonNull;
 
 use crate::{
     error::{c4error_init, Error, Result},
-    ffi::{c4doc_release, kDocExists, kRevDeleted, C4Document, C4DocumentFlags, C4RevisionFlags},
+    ffi::{c4doc_release, kDocExists, C4Document, C4DocumentFlags},
 };
 use couchbase_lite_core_sys::{c4doc_getRevisionBody, c4doc_loadRevisionBody, FLSliceResult};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_fleece::{to_fl_slice_result_with_encoder, FlEncoderSession};
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub struct Document {
     id: String,
     pub(crate) unsaved_body: Option<FLSliceResult>,
@@ -78,6 +79,7 @@ impl Document {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub(crate) struct C4DocumentOwner(pub(crate) NonNull<C4Document>);
 
 impl Drop for C4DocumentOwner {
@@ -92,17 +94,8 @@ impl C4DocumentOwner {
         (self.flags() & kDocExists) == kDocExists
     }
     #[inline]
-    pub(crate) fn is_deleted(&self) -> bool {
-        (self.selected_flags() & (kRevDeleted as C4RevisionFlags))
-            == (kRevDeleted as C4RevisionFlags)
-    }
-    #[inline]
     fn flags(&self) -> C4DocumentFlags {
         unsafe { self.0.as_ref().flags }
-    }
-    #[inline]
-    fn selected_flags(&self) -> C4RevisionFlags {
-        unsafe { self.0.as_ref().selectedRev.flags }
     }
     #[inline]
     pub(crate) fn id(&self) -> Result<&str> {

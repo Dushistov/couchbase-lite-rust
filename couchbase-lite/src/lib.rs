@@ -3,6 +3,7 @@ mod doc_enumerator;
 mod document;
 mod error;
 mod log_reroute;
+mod observer;
 mod transaction;
 
 pub use crate::{

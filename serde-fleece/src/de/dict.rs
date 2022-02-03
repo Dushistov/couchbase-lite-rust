@@ -1,26 +1,33 @@
+use super::NonNullConst;
 use crate::{
     de::Deserializer,
     ffi::{
         FLDictIterator, FLDictIterator_Begin, FLDictIterator_End, FLDictIterator_GetCount,
-        FLDictIterator_GetKeyString, FLDictIterator_GetValue, FLDict_Get, _FLDict, _FLValue,
+        FLDictIterator_GetKeyString, FLDictIterator_GetValue, FLDictIterator_Next, FLDict_Get,
+        _FLDict,
     },
     Error,
 };
-use couchbase_lite_core_sys::FLDictIterator_Next;
 use serde::de;
 use std::{marker::PhantomData, mem::MaybeUninit, str::FromStr};
 
 /// Can not use `DictAccess`, because of order of fields
 /// is not defined in fleee's dict, but defined in struct.
 pub(crate) struct StructAccess<'a> {
-    dict: &'a _FLDict,
+    dict: NonNullConst<_FLDict>,
     fields: &'static [&'static str],
     i: usize,
+    marker: PhantomData<&'a [u8]>,
 }
 
 impl<'a> StructAccess<'a> {
-    pub fn new(dict: &'a _FLDict, fields: &'static [&'static str]) -> Self {
-        Self { dict, fields, i: 0 }
+    pub fn new(dict: NonNullConst<_FLDict>, fields: &'static [&'static str]) -> Self {
+        Self {
+            dict,
+            fields,
+            i: 0,
+            marker: PhantomData,
+        }
     }
 }
 
@@ -33,14 +40,11 @@ impl<'a, 'de> de::SeqAccess<'de> for StructAccess<'a> {
     {
         if let Some(key) = self.fields.get(self.i) {
             unsafe {
-                let value = FLDict_Get(self.dict, (*key).into());
-                if value.is_null() {
-                    return Err(Error::InvalidFormat(
-                        "not expecting null value in dict".into(),
-                    ));
-                }
-                let value: &_FLValue = &*value;
-                let value = seed.deserialize(&mut Deserializer { value })?;
+                let value = FLDict_Get(self.dict.as_ptr(), (*key).into());
+                let value = NonNullConst::new(value).ok_or_else(|| {
+                    Error::InvalidFormat("not expecting null value in dict".into())
+                })?;
+                let value = seed.deserialize(&mut Deserializer::new(value))?;
                 self.i += 1;
                 Ok(Some(value))
             }
@@ -55,12 +59,16 @@ impl<'a, 'de> de::SeqAccess<'de> for StructAccess<'a> {
 }
 
 pub(crate) struct EnumAccess<'a> {
-    dict: &'a _FLDict,
+    dict: NonNullConst<_FLDict>,
+    marker: PhantomData<&'a [u8]>,
 }
 
 impl<'a> EnumAccess<'a> {
-    pub fn new(dict: &'a _FLDict) -> Self {
-        Self { dict }
+    pub fn new(dict: NonNullConst<_FLDict>) -> Self {
+        Self {
+            dict,
+            marker: PhantomData,
+        }
     }
 }
 
@@ -74,7 +82,7 @@ impl<'de, 'a> de::EnumAccess<'de> for EnumAccess<'a> {
     {
         let mut it = MaybeUninit::<FLDictIterator>::uninit();
         unsafe {
-            FLDictIterator_Begin(self.dict, it.as_mut_ptr());
+            FLDictIterator_Begin(self.dict.as_ptr(), it.as_mut_ptr());
             let mut it = it.assume_init();
             let n = FLDictIterator_GetCount(&it);
             if n != 1 {
@@ -87,13 +95,10 @@ impl<'de, 'a> de::EnumAccess<'de> for EnumAccess<'a> {
             let key = <&str as de::IntoDeserializer<'_, Error>>::into_deserializer(key);
             let key = seed.deserialize(key)?;
             let value = FLDictIterator_GetValue(&it);
-            if value.is_null() {
-                return Err(Error::InvalidFormat(
-                    "not expecting null value in enum dict".into(),
-                ));
-            }
-            let value: &_FLValue = &*value;
-            Ok((key, Deserializer { value }))
+            let value = NonNullConst::new(value).ok_or_else(|| {
+                Error::InvalidFormat("not expecting null value in enum dict".into())
+            })?;
+            Ok((key, Deserializer::new(value)))
         }
     }
 }
@@ -135,7 +140,7 @@ impl<'de> de::VariantAccess<'de> for Deserializer<'de> {
 pub(crate) struct DictAccess<'a> {
     n: usize,
     it: FLDictIterator,
-    marker: PhantomData<&'a _FLDict>,
+    marker: PhantomData<&'a [u8]>,
 }
 
 impl<'a> Drop for DictAccess<'a> {
@@ -183,13 +188,9 @@ impl<'a, 'de> de::MapAccess<'de> for DictAccess<'a> {
         unsafe {
             debug_assert!(FLDictIterator_GetCount(&self.it) > 0);
             let value = FLDictIterator_GetValue(&self.it);
-            if value.is_null() {
-                return Err(Error::InvalidFormat(
-                    "not expecting null value in dict".into(),
-                ));
-            }
-            let value: &_FLValue = &*value;
-            let value = de::DeserializeSeed::deserialize(seed, &mut Deserializer { value })?;
+            let value = NonNullConst::new(value)
+                .ok_or_else(|| Error::InvalidFormat("not expecting null value in dict".into()))?;
+            let value = de::DeserializeSeed::deserialize(seed, &mut Deserializer::new(value))?;
             FLDictIterator_Next(&mut self.it);
             Ok(value)
         }

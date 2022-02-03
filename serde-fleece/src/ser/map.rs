@@ -4,13 +4,13 @@ use itoa::Integer;
 use ryu::Float;
 use serde::{ser, Serialize};
 
-pub(crate) struct MapKeySerializer<'a, 'b> {
-    pub(crate) ser: &'a mut Serializer<'b>,
+pub(crate) struct MapKeySerializer<'a> {
+    pub(crate) ser: &'a mut Serializer,
 }
 
 pub struct InvalidKey;
 
-impl<'a, 'b, 'c> ser::Serializer for &'a mut MapKeySerializer<'b, 'c>
+impl<'a, 'b> ser::Serializer for &'a mut MapKeySerializer<'b>
 where
     'b: 'a,
 {
@@ -195,7 +195,7 @@ where
 /// `serialize_entry` method allows serializers to optimize for the case where
 /// key and value are both available simultaneously. In JSON it doesn't make a
 /// difference so the default behavior for `serialize_entry` is fine.
-impl<'a, 'b> ser::SerializeMap for MapKeySerializer<'a, 'b> {
+impl<'a> ser::SerializeMap for MapKeySerializer<'a> {
     type Ok = ();
     type Error = Error;
 

@@ -1,7 +1,7 @@
 mod dict;
 mod seq;
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData, ptr::NonNull};
 
 use self::dict::{DictAccess, StructAccess};
 use crate::{
@@ -18,18 +18,41 @@ use itoa::Integer;
 use serde::de::{self, IntoDeserializer};
 
 #[repr(transparent)]
-pub(crate) struct NonNullConst<T>(*const T);
+#[derive(Clone, Copy)]
+pub struct NonNullConst<T>(*const T);
 
 impl<T> NonNullConst<T> {
-    fn new(p: *const T) -> Option<Self> {
+    #[inline]
+    pub fn new(p: *const T) -> Option<Self> {
         if !p.is_null() {
             Some(Self(p))
         } else {
             None
         }
     }
-    fn as_ptr(&self) -> *const T {
+    /// # Safety
+    ///
+    /// the caller must guarantee that `ptr` is non-null.
+    #[inline]
+    pub const unsafe fn new_unchecked(ptr: *const T) -> Self {
+        NonNullConst(ptr)
+    }
+    #[must_use]
+    #[inline]
+    pub const fn as_ptr(&self) -> *const T {
         self.0
+    }
+    #[must_use]
+    #[inline]
+    pub const fn cast<U>(self) -> NonNullConst<U> {
+        // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
+        unsafe { NonNullConst::new_unchecked(self.as_ptr() as *mut U) }
+    }
+}
+
+impl<T> From<NonNull<T>> for NonNullConst<T> {
+    fn from(x: NonNull<T>) -> Self {
+        NonNullConst(x.as_ptr())
     }
 }
 
@@ -99,6 +122,15 @@ where
     T: de::Deserialize<'a>,
 {
     let mut deserializer = Deserializer::from_slice(s)?;
+    T::deserialize(&mut deserializer)
+}
+
+pub fn from_fl_dict<'a, T>(dict: NonNullConst<_FLDict>) -> Result<T, Error>
+where
+    T: de::Deserialize<'a>,
+{
+    let value: NonNullConst<_FLValue> = dict.cast();
+    let mut deserializer = Deserializer::<'a>::new(value);
     T::deserialize(&mut deserializer)
 }
 

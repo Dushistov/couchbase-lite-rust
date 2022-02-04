@@ -1,7 +1,7 @@
 use crate::ffi::{
     c4error_getDescription, c4error_getMessage, C4Error, C4ErrorDomain, FLSliceResult,
 };
-use std::fmt;
+use std::{fmt, os::raw::c_int};
 
 /// Enum listing possible errors.
 pub enum Error {
@@ -14,6 +14,11 @@ pub enum Error {
     SerdeFleece(serde_fleece::Error),
     /// argument contains 0 character
     NulError(std::ffi::NulError),
+    InvalidQuery {
+        pos: c_int,
+        query_expr: String,
+        err: C4Error,
+    },
 }
 
 impl std::error::Error for Error {}
@@ -35,7 +40,22 @@ impl fmt::Display for Error {
             Error::InvalidUtf8 => fmt.write_str("Utf8 encoding error"),
             Error::LogicError(msg) => write!(fmt, "logic error: {}", msg),
             Error::SerdeFleece(err) => write!(fmt, "serde+flecce error: {}", err),
-            Error::NulError(err) => write!(fmt, "NulError: {}", err),
+            Error::NulError(err) => write!(fmt, "argument contains null character: {}", err),
+            Error::InvalidQuery {
+                pos,
+                query_expr,
+                err,
+            } => {
+                let (msg, desc) = into_msg_desc(*err);
+                write!(
+                    fmt,
+                    "Can not parse query {}, error at {}: {} {}",
+                    query_expr,
+                    pos,
+                    desc.as_utf8_lossy(),
+                    msg.as_utf8_lossy()
+                )
+            }
         }
     }
 }
@@ -57,6 +77,22 @@ impl fmt::Debug for Error {
             Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
             Error::SerdeFleece(err) => write!(fmt, "SerdeFleece error: {}", err),
             Error::NulError(err) => write!(fmt, "NulError: {:?}", err),
+            Error::InvalidQuery {
+                pos,
+                query_expr,
+                err,
+            } => {
+                let (msg, desc) = into_msg_desc(*err);
+                write!(
+                    fmt,
+                    "InvalidQuery {{ query_expr {}, pos {}, err {:?} / {}: {} }}",
+                    query_expr,
+                    pos,
+                    *err,
+                    desc.as_utf8_lossy(),
+                    msg.as_utf8_lossy()
+                )
+            }
         }
     }
 }

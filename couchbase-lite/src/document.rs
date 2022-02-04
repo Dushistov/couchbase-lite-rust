@@ -1,12 +1,13 @@
-use std::ptr::NonNull;
-
 use crate::{
     error::{c4error_init, Error, Result},
-    ffi::{c4doc_release, kDocExists, C4Document, C4DocumentFlags},
+    ffi::{
+        c4doc_getRevisionBody, c4doc_loadRevisionBody, c4doc_release, kDocExists, C4Document,
+        C4DocumentFlags, FLSliceResult,
+    },
 };
-use couchbase_lite_core_sys::{c4doc_getRevisionBody, c4doc_loadRevisionBody, FLSliceResult};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_fleece::{to_fl_slice_result_with_encoder, FlEncoderSession};
+use std::ptr::NonNull;
 use uuid::Uuid;
 
 #[derive(Debug)]

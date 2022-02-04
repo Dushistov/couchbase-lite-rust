@@ -2,13 +2,13 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4query_new2, c4query_release, c4query_run, c4query_setParameters, c4queryenum_next,
-        c4queryenum_release, kC4DefaultQueryOptions, C4Query, C4QueryEnumerator,
+        c4queryenum_release, kC4DefaultQueryOptions, C4Query, C4QueryEnumerator, C4String,
         FLArrayIterator_GetCount, FLArrayIterator_GetValueAt,
     },
     value::{FromValueRef, ValueRef},
     Database, QueryLanguage,
 };
-use couchbase_lite_core_sys::C4String;
+use couchbase_lite_core_sys::FLStringResult;
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use serde::Serialize;
 use std::ptr::NonNull;
@@ -45,6 +45,19 @@ impl Query<'_> {
         NonNull::new(query)
             .map(|inner| Query { _db: db, inner })
             .ok_or_else(|| c4err.into())
+    }
+
+    /// convinient function to call with macros `serde_fleece::fleece`
+    /// as parameter
+    pub fn set_parameters_fleece(
+        &self,
+        parameters: std::result::Result<FLStringResult, serde_fleece::Error>,
+    ) -> Result<()> {
+        let params = parameters?;
+        unsafe {
+            c4query_setParameters(self.inner.as_ptr(), params.as_fl_slice());
+        }
+        Ok(())
     }
 
     pub fn set_parameters<T>(&self, parameters: &T) -> Result<()>

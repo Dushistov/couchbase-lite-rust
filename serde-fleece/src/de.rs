@@ -1,7 +1,7 @@
 mod dict;
 mod seq;
 
-use std::{marker::PhantomData, ptr::NonNull};
+use std::{borrow::Borrow, marker::PhantomData, ptr::NonNull};
 
 use self::dict::{DictAccess, StructAccess};
 use crate::{
@@ -125,11 +125,12 @@ where
     T::deserialize(&mut deserializer)
 }
 
-pub fn from_fl_dict<'a, T>(dict: NonNullConst<_FLDict>) -> Result<T, Error>
+pub fn from_fl_dict<'a, T, Dict>(dict: Dict) -> Result<T, Error>
 where
     T: de::Deserialize<'a>,
+    Dict: Borrow<NonNullConst<_FLDict>>,
 {
-    let value: NonNullConst<_FLValue> = dict.cast();
+    let value: NonNullConst<_FLValue> = dict.borrow().cast();
     let mut deserializer = Deserializer::<'a>::new(value);
     T::deserialize(&mut deserializer)
 }

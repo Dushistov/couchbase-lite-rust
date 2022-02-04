@@ -2,13 +2,11 @@ use crate::{
     document::{C4DocumentOwner, Document},
     error::{c4error_init, Error, Result},
     ffi::{
-        c4db_beginTransaction, c4db_endTransaction, c4db_getSharedFleeceEncoder, kRevDeleted,
+        c4db_beginTransaction, c4db_endTransaction, c4db_getSharedFleeceEncoder, c4doc_put,
+        c4doc_update, kRevDeleted, C4DocPutRequest, C4ErrorCode, C4ErrorDomain, FLSlice,
         FLSliceResult,
     },
     Database,
-};
-use couchbase_lite_core_sys::{
-    c4doc_put, c4doc_update, C4DocPutRequest, C4ErrorCode, C4ErrorDomain, FLSlice,
 };
 use log::error;
 use serde_fleece::FlEncoderSession;

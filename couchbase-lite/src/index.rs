@@ -1,11 +1,11 @@
 use crate::{
     error::{Error, Result},
-    ffi::{C4SliceResult, FLTrust, FLValueType, FLValue_FromData, FLValue_GetType},
+    ffi::{
+        C4IndexType, C4SliceResult, FLDict_Get, FLString, FLTrust, FLValueType, FLValue_AsDict,
+        FLValue_AsInt, FLValue_AsString, FLValue_FromData, FLValue_GetType, FLValue_IsInteger,
+        _FLDict,
+    },
     value::{ValueRef, ValueRefArray},
-};
-use couchbase_lite_core_sys::{
-    C4IndexType, FLDict_Get, FLString, FLValue_AsDict, FLValue_AsInt, FLValue_AsString,
-    FLValue_IsInteger, _FLDict,
 };
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use serde_fleece::NonNullConst;

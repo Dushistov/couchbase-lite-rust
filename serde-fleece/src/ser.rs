@@ -10,21 +10,22 @@ macro_rules! encoder_write {
     };
 }
 
+mod macros;
 mod map;
 
 use self::map::MapKeySerializer;
-use crate::error::Error;
-use crate::ffi::{
-    FLEncoder_BeginArray, FLEncoder_BeginDict, FLEncoder_EndArray, FLEncoder_EndDict,
-    FLEncoder_Finish, FLEncoder_Free, FLEncoder_GetError, FLEncoder_New, FLEncoder_Reset,
-    FLEncoder_WriteBool, FLEncoder_WriteDouble, FLEncoder_WriteFloat, FLEncoder_WriteInt,
-    FLEncoder_WriteKey, FLEncoder_WriteNull, FLEncoder_WriteString, FLEncoder_WriteUInt, FLError,
-    FLSliceResult, _FLEncoder,
+use crate::{
+    error::Error,
+    ffi::{
+        FLEncoder_BeginArray, FLEncoder_BeginDict, FLEncoder_EndArray, FLEncoder_EndDict,
+        FLEncoder_Finish, FLEncoder_Free, FLEncoder_GetError, FLEncoder_New, FLEncoder_Reset,
+        FLEncoder_WriteBool, FLEncoder_WriteDouble, FLEncoder_WriteFloat, FLEncoder_WriteInt,
+        FLEncoder_WriteKey, FLEncoder_WriteNull, FLEncoder_WriteString, FLEncoder_WriteUInt,
+        FLError, FLSliceResult, _FLEncoder,
+    },
 };
 use serde::{ser, Serialize};
-use std::borrow::Borrow;
-use std::fmt::Display;
-use std::ptr::NonNull;
+use std::{borrow::Borrow, fmt::Display, ptr::NonNull};
 
 pub(crate) struct Serializer {
     inner: NonNull<_FLEncoder>,

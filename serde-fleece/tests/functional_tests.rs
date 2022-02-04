@@ -1,7 +1,4 @@
-use ffi::{
-    FLEncoder_Free, FLEncoder_New, FLMutableDict_New, FLMutableDict_Release, FLMutableDict_SetInt,
-    FLMutableDict_SetString, FLTrust, FLValue_FromData, FLValue_ToJSON, _FLEncoder,
-};
+use ffi::{FLEncoder_Free, FLEncoder_New, FLTrust, FLValue_FromData, FLValue_ToJSON, _FLEncoder};
 use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_fleece::*;
@@ -284,22 +281,28 @@ fn test_de_fleece_dict() {
         a: i32,
         b: String,
     }
-    unsafe {
-        let md = FLMutableDict_New();
-        let md = NonNull::new(md).unwrap();
-        FLMutableDict_SetInt(md.as_ptr(), "a".into(), 5);
-        FLMutableDict_SetString(md.as_ptr(), "b".into(), "16".into());
-        let md: NonNullConst<_> = md.into();
-        let data: JsonData = from_fl_dict(md).unwrap();
-        assert_eq!(
-            JsonData {
-                a: 5,
-                b: "16".into()
-            },
-            data
-        );
-        FLMutableDict_Release(md.as_ptr() as *mut _);
-    }
+    let mut md = MutableDict::new().unwrap();
+    md.set_i64("a", 5);
+    md.set_string("b", "16");
+    let data: JsonData = from_fl_dict(md.as_dict()).unwrap();
+    assert_eq!(
+        JsonData {
+            a: 5,
+            b: "16".into()
+        },
+        data
+    );
+}
+
+#[test]
+fn test_fleece_macro() {
+    let slice = fleece!({ "pattern": "%555" }).unwrap();
+
+    let val = unsafe { FLValue_FromData(slice.as_fl_slice(), FLTrust::kFLUntrusted) };
+    assert!(!val.is_null());
+    let json = unsafe { FLValue_ToJSON(val) };
+    let json: &str = json.as_fl_slice().try_into().unwrap();
+    assert_eq!(r#"{"pattern":"%555"}"#, json);
 }
 
 fn to_fleece_to_json<T: Serialize>(value: &T) -> String {

@@ -344,3 +344,260 @@ fn test_indices() {
     }
     tmp_dir.close().expect("Can not close tmp_dir");
 }
+
+#[test]
+fn test_like_offset_limit() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut trans = db.transaction().unwrap();
+        for i in 0..10_000 {
+            let foo = Foo {
+                i: i,
+                s: format!("Hello {}", i),
+            };
+            let enc = trans.shared_encoder_session().unwrap();
+            let mut doc = Document::new(&foo, enc).unwrap();
+            trans.save(&mut doc).unwrap();
+        }
+        trans.commit().unwrap();
+
+        assert_eq!(
+            vec![
+                "Hello 1555",
+                "Hello 2555",
+                "Hello 3555",
+                "Hello 4555",
+                "Hello 555",
+                "Hello 5555",
+                "Hello 6555",
+                "Hello 7555",
+                "Hello 8555",
+                "Hello 9555",
+            ],
+            query_data(
+                &db,
+                r#"
+{
+ "WHAT": [".s"],
+ "WHERE": ["LIKE", [".s"], "%555"]
+}
+"#,
+            )
+            .unwrap()
+        );
+
+        assert_eq!(
+            vec!["Hello 0", "Hello 1"],
+            query_data(
+                &db,
+                r#"
+{
+ "WHAT": [".s"],
+ "LIMIT": 2, "OFFSET": 0
+}
+"#,
+            )
+            .unwrap()
+        );
+
+        assert_eq!(
+            vec!["Hello 1", "Hello 2"],
+            query_data(
+                &db,
+                r#"
+{
+ "WHAT": [".s"],
+ "LIMIT": 2, "OFFSET": 1
+}
+"#,
+            )
+            .unwrap()
+        );
+
+        assert_eq!(
+            vec!["Hello 2555", "Hello 3555",],
+            query_data(
+                &db,
+                r#"
+{
+ "WHAT": [".s"],
+ "WHERE": ["LIKE", [".s"], "%555"],
+ "ORDER_BY": [".s"],
+ "LIMIT": 2, "OFFSET": 1
+}
+"#,
+            )
+            .unwrap()
+        );
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+
+    fn query_data(db: &Database, query: &str) -> Result<Vec<String>, couchbase_lite::Error> {
+        let query = db.query(query)?;
+        let mut iter = query.run()?;
+        let mut query_ret = Vec::with_capacity(10);
+        while let Some(item) = iter.next()? {
+            let val = item.get_raw_checked(0)?;
+            let val = val.as_str()?;
+            query_ret.push(val.to_string());
+        }
+        query_ret.sort();
+        Ok(query_ret)
+    }
+}
+
+#[test]
+fn test_like_performance() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+        #[serde(tag = "type")]
+        struct Data {
+            field1: String,
+            field2: String,
+        }
+
+        const N: usize = 3_000;
+        let mut trans = db.transaction().unwrap();
+        for i in 0..N {
+            let d = Data {
+                field1: format!("_common_prefix_{}", i),
+                field2: format!("{}", i + 1),
+            };
+            let enc = trans.shared_encoder_session().unwrap();
+            let mut doc = Document::new(&d, enc).unwrap();
+            trans.save(&mut doc).unwrap();
+        }
+        trans.commit().unwrap();
+
+        db.create_index("field1", "[[\".field1\"]]", IndexType::ValueIndex, None)
+            .unwrap();
+        db.create_index("field2", "[[\".field2\"]]", IndexType::ValueIndex, None)
+            .unwrap();
+
+        for i in 0..N {
+            let pat = format!("{}", i);
+            let query = db
+                .query(&format!(
+                    r#"{{
+"WHAT": [["count()"]],
+ "WHERE": ["OR", ["LIKE", [".field1"], "%{pat}%"],
+                 ["LIKE", [".field2"], "%{pat}%"]]}}"#,
+                    pat = pat,
+                ))
+                .unwrap();
+            let mut iter = query.run().unwrap();
+            let mut query_ret = Vec::with_capacity(10);
+            while let Some(item) = iter.next().unwrap() {
+                let val = item.get_raw_checked(0).unwrap();
+                let val = val.as_u64().unwrap();
+                query_ret.push(val);
+            }
+            assert_eq!(1, query_ret.len());
+            assert!(query_ret[0] > 1);
+        }
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+#[test]
+fn test_n1ql_query() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut trans = db.transaction().unwrap();
+        for i in 0..10_000 {
+            let foo = Foo {
+                i,
+                s: format!("Hello {}", i),
+            };
+            let enc = trans.shared_encoder_session().unwrap();
+            let mut doc = Document::new(&foo, enc).unwrap();
+            trans.save(&mut doc).unwrap();
+        }
+        trans.commit().unwrap();
+
+        let query = db
+            .n1ql_query("SELECT s FROM a WHERE s LIKE '%555'")
+            .unwrap();
+        let expected = vec![
+            "Hello 1555",
+            "Hello 2555",
+            "Hello 3555",
+            "Hello 4555",
+            "Hello 555",
+            "Hello 5555",
+            "Hello 6555",
+            "Hello 7555",
+            "Hello 8555",
+            "Hello 9555",
+        ];
+
+        let mut iter = query.run().unwrap();
+        let mut query_ret = Vec::with_capacity(10);
+        while let Some(item) = iter.next().unwrap() {
+            let val = item.get_raw_checked(0).unwrap();
+            let val = val.as_str().unwrap();
+            query_ret.push(val.to_string());
+        }
+        query_ret.sort();
+
+        assert_eq!(expected, query_ret);
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+#[test]
+fn test_n1ql_query_with_parameter() {
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    {
+        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut trans = db.transaction().unwrap();
+        for i in 0..10_000 {
+            let foo = Foo {
+                i,
+                s: format!("Hello {}", i),
+            };
+            let enc = trans.shared_encoder_session().unwrap();
+            let mut doc = Document::new(&foo, enc).unwrap();
+            trans.save(&mut doc).unwrap();
+        }
+        trans.commit().unwrap();
+
+        let query = db
+            .n1ql_query("SELECT s FROM a WHERE s LIKE $pattern ORDER BY s LIMIT 2 OFFSET 1")
+            .unwrap();
+        query
+            .set_parameters_fleece(serde_fleece::fleece!({
+                "pattern": "%555"
+            }))
+            .unwrap();
+        let expected = vec!["Hello 2555", "Hello 3555"];
+
+        let mut iter = query.run().unwrap();
+        let mut query_ret = Vec::with_capacity(10);
+        while let Some(item) = iter.next().unwrap() {
+            let val = item.get_raw_checked(0).unwrap();
+            let val = val.as_str().unwrap();
+            query_ret.push(val.to_string());
+        }
+        query_ret.sort();
+
+        assert_eq!(expected, query_ret);
+    }
+    tmp_dir.close().expect("Can not close tmp_dir");
+}

@@ -3,22 +3,27 @@ use crate::{
     document::{C4DocumentOwner, Document},
     error::{c4error_init, Error, Result},
     ffi::{
-        c4db_getDocumentCount, c4db_release, c4doc_get, C4Database, C4DatabaseConfig2,
-        C4DatabaseFlags, C4EncryptionAlgorithm, C4EncryptionKey,
+        c4db_createIndex, c4db_getDocumentCount, c4db_getIndexesInfo, c4db_getSharedFleeceEncoder,
+        c4db_openNamed, c4db_release, c4doc_get, C4Database, C4DatabaseConfig2, C4DatabaseFlags,
+        C4EncryptionAlgorithm, C4EncryptionKey, C4IndexOptions, C4IndexType,
     },
+    index::{DbIndexesListIterator, IndexInfo, IndexOptions, IndexType},
     log_reroute::c4log_to_log_init,
     observer::{DatabaseObserver, ObserverdChangesIter},
+    query::Query,
     transaction::Transaction,
+    QueryLanguage,
 };
-use couchbase_lite_core_sys::{c4db_getSharedFleeceEncoder, c4db_openNamed};
+use fallible_streaming_iterator::FallibleStreamingIterator;
 use lazy_static::lazy_static;
 use log::{debug, error};
 use serde_fleece::FlEncoderSession;
 use std::{
     collections::HashSet,
+    ffi::CString,
     marker::PhantomData,
     path::Path,
-    ptr::NonNull,
+    ptr::{self, NonNull},
     sync::{Arc, Mutex},
 };
 
@@ -121,6 +126,16 @@ impl Database {
         self.internal_get(doc_id, true)
             .map(|x| Document::new_internal(x, doc_id))
     }
+    /// Compiles a query from an expression given as JSON.
+    /// The expression is a predicate that describes which documents should be returned.
+    /// A separate, optional sort expression describes the ordering of the results.
+    pub fn query(&self, query_json: &str) -> Result<Query> {
+        Query::new(self, QueryLanguage::kC4JSONQuery, query_json)
+    }
+    /// Compiles a query from an expression given as N1QL.
+    pub fn n1ql_query(&self, query: &str) -> Result<Query> {
+        Query::new(self, QueryLanguage::kC4N1QLQuery, query)
+    }
     /// Creates an enumerator ordered by docID.
     pub fn enumerate_all_docs(&self, flags: DocEnumeratorFlags) -> Result<DocEnumerator> {
         DocEnumerator::enumerate_all_docs(self, flags)
@@ -176,6 +191,91 @@ impl Database {
                 Error::LogicError("c4db_getSharedFleeceEncoder return null.into()".into())
             })
             .map(FlEncoderSession::new)
+    }
+
+    /// Returns the names of all indexes in the database
+    pub fn get_indexes(
+        &self,
+    ) -> Result<impl FallibleStreamingIterator<Item = IndexInfo, Error = Error>> {
+        let mut c4err = c4error_init();
+        let enc_data = unsafe { c4db_getIndexesInfo(self.inner.0.as_ptr(), &mut c4err) };
+        if enc_data.buf.is_null() {
+            return Err(c4err.into());
+        }
+
+        let indexes_list = DbIndexesListIterator::new(enc_data)?;
+        Ok(indexes_list)
+    }
+
+    /// Creates a database index, of the values of specific expressions across
+    /// all documents. The name is used to identify the index for later updating
+    /// or deletion; if an index with the same name already exists, it will be
+    /// replaced unless it has the exact same expressions.
+    /// Note: If some documents are missing the values to be indexed,
+    /// those documents will just be omitted from the index. It's not an error.
+    pub fn create_index(
+        &mut self,
+        index_name: &str,
+        expression_json: &str,
+        index_type: IndexType,
+        index_options: Option<IndexOptions>,
+    ) -> Result<()> {
+        use IndexType::*;
+        let index_type = match index_type {
+            ValueIndex => C4IndexType::kC4ValueIndex,
+            FullTextIndex => C4IndexType::kC4FullTextIndex,
+            ArrayIndex => C4IndexType::kC4ArrayIndex,
+            PredictiveIndex => C4IndexType::kC4PredictiveIndex,
+        };
+        let mut c4err = c4error_init();
+        let result = if let Some(index_options) = index_options {
+            let language = CString::new(index_options.language)?;
+            let stop_words: Option<CString> = if let Some(stop_words) = index_options.stop_words {
+                let mut list = String::with_capacity(stop_words.len() * 5);
+                for word in stop_words {
+                    if !list.is_empty() {
+                        list.push(' ');
+                    }
+                    list.push_str(word);
+                }
+                Some(CString::new(list)?)
+            } else {
+                None
+            };
+
+            let opts = C4IndexOptions {
+                language: language.as_ptr(),
+                disableStemming: index_options.disable_stemming,
+                ignoreDiacritics: index_options.ignore_diacritics,
+                stopWords: stop_words.map_or(ptr::null(), |x| x.as_ptr()),
+            };
+            unsafe {
+                c4db_createIndex(
+                    self.inner.0.as_ptr(),
+                    index_name.into(),
+                    expression_json.into(),
+                    index_type,
+                    &opts,
+                    &mut c4err,
+                )
+            }
+        } else {
+            unsafe {
+                c4db_createIndex(
+                    self.inner.0.as_ptr(),
+                    index_name.into(),
+                    expression_json.into(),
+                    index_type,
+                    ptr::null(),
+                    &mut c4err,
+                )
+            }
+        };
+        if result {
+            Ok(())
+        } else {
+            Err(c4err.into())
+        }
     }
 
     pub(crate) fn internal_get(&self, doc_id: &str, must_exists: bool) -> Result<C4DocumentOwner> {

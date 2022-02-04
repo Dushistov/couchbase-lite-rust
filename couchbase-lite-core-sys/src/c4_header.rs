@@ -42,3 +42,8 @@ pub unsafe fn FLMutableDict_SetInt(d: FLMutableDict, key: FLString, val: i64) {
 pub unsafe fn FLMutableDict_SetString(d: FLMutableDict, key: FLString, val: FLString) {
     FLSlot_SetString(FLMutableDict_Set(d, key), val);
 }
+
+#[inline]
+pub unsafe fn c4query_release(r: *mut C4Query) {
+    c4base_release(r as *mut std::os::raw::c_void)
+}

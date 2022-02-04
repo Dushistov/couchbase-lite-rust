@@ -12,6 +12,8 @@ pub enum Error {
     /// some invariant was broken
     LogicError(String),
     SerdeFleece(serde_fleece::Error),
+    /// argument contains 0 character
+    NulError(std::ffi::NulError),
 }
 
 impl std::error::Error for Error {}
@@ -33,6 +35,7 @@ impl fmt::Display for Error {
             Error::InvalidUtf8 => fmt.write_str("Utf8 encoding error"),
             Error::LogicError(msg) => write!(fmt, "logic error: {}", msg),
             Error::SerdeFleece(err) => write!(fmt, "serde+flecce error: {}", err),
+            Error::NulError(err) => write!(fmt, "NulError: {}", err),
         }
     }
 }
@@ -53,6 +56,7 @@ impl fmt::Debug for Error {
             Error::InvalidUtf8 => write!(fmt, "Invalid UTF-8 error"),
             Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
             Error::SerdeFleece(err) => write!(fmt, "SerdeFleece error: {}", err),
+            Error::NulError(err) => write!(fmt, "NulError: {:?}", err),
         }
     }
 }
@@ -66,6 +70,12 @@ impl From<C4Error> for Error {
 impl From<serde_fleece::Error> for Error {
     fn from(err: serde_fleece::Error) -> Self {
         Error::SerdeFleece(err)
+    }
+}
+
+impl From<std::ffi::NulError> for Error {
+    fn from(err: std::ffi::NulError) -> Self {
+        Error::NulError(err)
     }
 }
 

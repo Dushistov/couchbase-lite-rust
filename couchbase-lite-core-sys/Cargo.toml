@@ -5,11 +5,11 @@ authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
 
 [features]
-default = ["bundled", "bundled-sqlite"]
+default = ["bundled", "use-couchbase-lite-sqlite"]
 # use bundled couchbase-lite-core
 bundled = ["cmake"]
 # use bundled sqlite in bundled couchbase-lite-core
-bundled-sqlite = []
+use-couchbase-lite-sqlite = []
 with-asan = []
 
 [build-dependencies]

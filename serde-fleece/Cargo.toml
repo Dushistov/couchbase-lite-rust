@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["bundled", "bundled-sqlite"]
+default = ["bundled", "use-couchbase-lite-sqlite"]
 bundled = ["couchbase-lite-core-sys/bundled"]
-bundled-sqlite = ["couchbase-lite-core-sys/bundled-sqlite"]
+use-couchbase-lite-sqlite = ["couchbase-lite-core-sys/use-couchbase-lite-sqlite"]
 with-asan = ["couchbase-lite-core-sys/with-asan"]
 
 [dependencies]

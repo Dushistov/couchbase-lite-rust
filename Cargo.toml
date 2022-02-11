@@ -5,6 +5,3 @@ members = ["couchbase-lite-core-sys", "couchbase-lite", "chat-demo", "serde-flee
 couchbase-lite = { path = "couchbase-lite" }
 serde-fleece = { path = "serde-fleece" }
 couchbase-lite-core-sys = { path = "couchbase-lite-core-sys" }
-# waiting https://github.com/alexcrichton/cmake-rs/issues/96
-# and https://github.com/alexcrichton/cmake-rs/pull/101
-cmake = { git = "https://github.com/Dushistov/cmake-rs", rev = "dcdead05083829a7917368fa1873e707b769573a" }

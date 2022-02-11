@@ -2,7 +2,7 @@ use crate::{
     ffi::{
         c4error_make, c4socket_closeRequested, c4socket_closed, c4socket_completedWrite,
         c4socket_gotHTTPResponse, c4socket_opened, c4socket_received, c4socket_registerFactory,
-        kC4NetErrInvalidURL, kC4NoFraming, kC4NumNetErrorCodesPlus1, kC4ReplicatorOptionCookies,
+        kC4NetErrInvalidURL, kC4NetErrTLSHandshakeFailed, kC4NoFraming, kC4NumNetErrorCodesPlus1, kC4ReplicatorOptionCookies,
         kC4ReplicatorOptionExtraHeaders, kC4SocketOptionWSProtocols,
         kWebSocketCloseBadMessageFormat, kWebSocketCloseFirstAvailable, kWebSocketCloseNormal,
         C4Address, C4Error, C4Slice, C4SliceResult, C4Socket, C4SocketFactory, C4SocketFraming,
@@ -59,9 +59,7 @@ pub fn use_web_sockets(handle: Handle) {
 }
 
 type WsWriter = futures_util::stream::SplitSink<
-    tokio_tungstenite::WebSocketStream<
-        tokio_tungstenite::stream::Stream<TcpStream, tokio_native_tls::TlsStream<TcpStream>>,
-    >,
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<TcpStream>>,
     Message,
 >;
 
@@ -227,7 +225,7 @@ unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usi
     if nbytes == 0 {
         let read_confirmed = socket.read_confirmed.clone();
         socket.handle.spawn(async move {
-            read_confirmed.notify();
+            read_confirmed.notify_one();
         });
     }
 }
@@ -266,7 +264,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
             }
         }
 
-        close_confirmied.notify();
+        close_confirmied.notify_one();
         c4socket_closed(c4sock as *mut _, err);
     });
 }
@@ -517,8 +515,9 @@ unsafe fn tungstenite_err_to_c4_err(err: tungstenite::Error) -> C4Error {
         SendQueueFull(_) => (NetworkDomain, kC4NumNetErrorCodesPlus1),
         Utf8 => (WebSocketDomain, kWebSocketCloseBadMessageFormat),
         Url(_) => (NetworkDomain, kC4NetErrInvalidURL),
-        Http(ref code) => (WebSocketDomain, u32::from(code.as_u16())),
+        Http(ref code) => (WebSocketDomain, u32::from(code.status().as_u16())),
         HttpFormat(_) => (WebSocketDomain, kWebSocketCloseBadMessageFormat),
+        Tls(_) => (NetworkDomain, kC4NetErrTLSHandshakeFailed),
     };
     c4error_make(domain, code as c_int, msg.as_bytes().as_flslice())
 }

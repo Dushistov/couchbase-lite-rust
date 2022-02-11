@@ -45,7 +45,7 @@ pub fn use_web_sockets(handle: Handle) {
     let handle = Arc::new(handle);
     let sock_factory = C4SocketFactory {
         context: Arc::into_raw(handle) as *mut c_void,
-            framing: kC4NoFraming as C4SocketFraming,
+        framing: kC4NoFraming as C4SocketFraming,
 
         open: Some(ws_open),
         write: Some(ws_write),

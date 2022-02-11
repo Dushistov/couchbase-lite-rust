@@ -9,9 +9,6 @@ fn main() {
     let target = getenv_unwrap("TARGET");
     let is_msvc = target.contains("msvc");
 
-    if cfg!(feature = "bundled-sqlite") && !cfg!(feature = "bundled") {
-        panic!("Invalid set of options: bundled-sqlite should be used with bundled");
-    }
     if cfg!(feature = "with-asan") && !cfg!(feature = "bundled") {
         panic!("Invalid set of options: with-asan should be used with bundled");
     }
@@ -47,7 +44,7 @@ fn main() {
             .display()
     );
 
-    if cfg!(feature = "bundled-sqlite") {
+    if cfg!(feature = "use-couchbase-lite-sqlite") {
         println!("cargo:rustc-link-lib=static=CouchbaseSqlite3");
     }
 

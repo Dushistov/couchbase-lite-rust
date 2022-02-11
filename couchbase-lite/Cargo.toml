@@ -5,13 +5,13 @@ authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
 
 [features]
-default = ["bundled", "bundled-sqlite"]
+default = ["bundled", "use-couchbase-lite-sqlite"]
 # default = ["replication", "native-tls", "couchbase-sqlite"]
 # replication = ["tokio-tungstenite", "http", "tokio", "futures-util",  "tokio-native-tls"]
 # native-tls = ["tokio-tungstenite/native-tls"]
 # couchbase-sqlite = ["couchbase-lite-core-sys/couchbase-sqlite"]
 bundled = ["couchbase-lite-core-sys/bundled", "serde-fleece/bundled"]
-bundled-sqlite = ["couchbase-lite-core-sys/bundled-sqlite", "serde-fleece/bundled-sqlite"]
+use-couchbase-lite-sqlite = ["couchbase-lite-core-sys/use-couchbase-lite-sqlite", "serde-fleece/use-couchbase-lite-sqlite"]
 with-asan = ["couchbase-lite-core-sys/with-asan", "serde-fleece/with-asan"]
 
 [dependencies]

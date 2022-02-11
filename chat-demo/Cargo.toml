@@ -4,8 +4,13 @@ version = "0.2.0"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
 
+[features]
+default = ["bundled", "use-couchbase-lite-sqlite"]
+bundled = ["couchbase-lite/bundled"]
+use-couchbase-lite-sqlite = ["couchbase-lite/use-couchbase-lite-sqlite"]
+
 [dependencies]
-couchbase-lite = { version = "0.6.0", features = ["bundled", "bundled-sqlite"] }
+couchbase-lite = { version = "0.6.0", default-features = false }
 env_logger = "0.9"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }

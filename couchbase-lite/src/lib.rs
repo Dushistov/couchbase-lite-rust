@@ -52,6 +52,7 @@ mod index;
 mod log_reroute;
 mod observer;
 mod query;
+mod replicator;
 mod transaction;
 mod value;
 
@@ -61,6 +62,7 @@ pub use crate::{
     document::Document,
     error::Error,
     index::IndexType,
+    replicator::ReplicatorState,
 };
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;

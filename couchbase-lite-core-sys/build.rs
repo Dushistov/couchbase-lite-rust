@@ -48,6 +48,10 @@ fn main() {
         println!("cargo:rustc-link-lib=static=CouchbaseSqlite3");
     }
 
+    if cfg!(feature = "use-couchbase-lite-websocket") {
+        println!("cargo:rustc-link-lib=static=LiteCoreWebSocket");
+    }
+
     println!("cargo:rustc-link-lib=static=LiteCoreStatic");
     println!("cargo:rustc-link-lib=static=FleeceStatic");
     println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
@@ -77,7 +81,7 @@ fn main() {
     let mut includes = vec![
         sdir.join("C").join("include"),
         sdir.join("vendor").join("fleece").join("API"),
-        sdir,
+        sdir.clone(),
     ];
 
     let (mut addon_include_dirs, framework_dirs) =
@@ -87,16 +91,22 @@ fn main() {
     let out_dir = getenv_unwrap("OUT_DIR");
     let out_dir = Path::new(&out_dir);
 
+    let mut headers = vec![
+        "c4.h",
+        "fleece/FLSlice.h",
+        "c4Document+Fleece.h",
+        "fleece/Fleece.h",
+    ];
+    if cfg!(feature = "use-couchbase-lite-websocket") {
+        headers.push("c4Private.h");
+        includes.push(sdir.join("C"));
+    }
+
     run_bindgen_for_c_headers(
         &target,
         &includes,
         &framework_dirs,
-        &[
-            "c4.h",
-            "fleece/FLSlice.h",
-            "c4Document+Fleece.h",
-            "fleece/Fleece.h",
-        ],
+        &headers,
         &out_dir.join("c4_header.rs"),
     )
     .expect("bindgen failed");

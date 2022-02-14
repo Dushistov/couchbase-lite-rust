@@ -1,4 +1,7 @@
-use ffi::{FLEncoder_Free, FLEncoder_New, FLTrust, FLValue_FromData, FLValue_ToJSON, _FLEncoder};
+use ffi::{
+    FLEncoder_Free, FLEncoder_New, FLSliceResult, FLTrust, FLValue_FromData, FLValue_ToJSON,
+    _FLEncoder,
+};
 use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_fleece::*;
@@ -296,13 +299,16 @@ fn test_de_fleece_dict() {
 
 #[test]
 fn test_fleece_macro() {
-    let slice = fleece!({ "pattern": "%555" }).unwrap();
-
-    let val = unsafe { FLValue_FromData(slice.as_fl_slice(), FLTrust::kFLUntrusted) };
-    assert!(!val.is_null());
-    let json = unsafe { FLValue_ToJSON(val) };
-    let json: &str = json.as_fl_slice().try_into().unwrap();
-    assert_eq!(r#"{"pattern":"%555"}"#, json);
+    assert_eq!(
+        r#"{"pattern":"%555"}"#,
+        fleece_encoded_to_json(fleece!({ "pattern": "%555" }).unwrap())
+    );
+    let cookie_name = "cookies";
+    let token = "AAAA=BBBB";
+    assert_eq!(
+        r#"{"cookies":"AAAA=BBBB"}"#,
+        fleece_encoded_to_json(fleece!({ cookie_name: token }).unwrap())
+    );
 }
 
 fn to_fleece_to_json<T: Serialize>(value: &T) -> String {
@@ -348,4 +354,12 @@ fn to_fleece_to_json_enc<T: Serialize>(value: &T, enc: FlEncoderSession) -> Stri
 fn ser_deser<T: Serialize + DeserializeOwned>(value: &T) -> Result<T, Error> {
     let ba = to_fl_slice_result(&value)?;
     from_slice(ba.as_bytes())
+}
+
+fn fleece_encoded_to_json(data: FLSliceResult) -> String {
+    let val = unsafe { FLValue_FromData(data.as_fl_slice(), FLTrust::kFLUntrusted) };
+    assert!(!val.is_null());
+    let json = unsafe { FLValue_ToJSON(val) };
+    let s: &str = json.as_fl_slice().try_into().unwrap();
+    s.to_string()
 }

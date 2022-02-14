@@ -1,9 +1,10 @@
 use couchbase_lite::{
     fallible_streaming_iterator::FallibleStreamingIterator, kC4DB_Create, Database, Document,
+    ReplicatorState,
 };
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
-use std::{env, path::Path, sync::mpsc};
+use std::{collections::HashSet, env, path::Path, sync::mpsc};
 use tokio::io::AsyncBufReadExt;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -22,12 +23,56 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(2)
         .unwrap_or_else(|| "ws://192.168.1.132:4984/demo/".to_string());
     let token: Option<String> = env::args().nth(3);
+
     let (db_thread, db_exec) = run_db_thread(db_path);
+    let db_exec_repl = db_exec.clone();
+    db_exec.spawn(move |db| {
+        if let Some(db) = db.as_mut() {
+            db.start_replicator(
+                &sync_url,
+                token.as_ref().map(String::as_str),
+                move |repl_state| {
+                    println!("replicator state changed: {:?}", repl_state);
+                    match repl_state {
+                        ReplicatorState::Stopped(_) | ReplicatorState::Offline => {
+                            db_exec_repl.spawn(|db| {
+                                if let Some(db) = db.as_mut() {
+                                    println!("restarting replicator");
+                                    std::thread::sleep(std::time::Duration::from_secs(5));
+                                    db.restart_replicator().expect("restart_replicator failed");
+                                } else {
+                                    eprintln!("db is NOT open");
+                                }
+                            });
+                        }
+                        _ => {}
+                    }
+                },
+            )
+            .expect("replicator start failed");
+        } else {
+            eprintln!("db is NOT open");
+        }
+    });
+
+    let db_exec_repl = db_exec.clone();
+    db_exec.spawn(move |db| {
+        if let Some(db) = db.as_mut() {
+            db.register_observer(move || {
+                db_exec_repl
+                    .spawn(|db| print_external_changes(db).expect("read external changes failed"));
+            })
+            .expect("register observer failed");
+        } else {
+            eprintln!("db is NOT open");
+        }
+    });
 
     let mut stdin = tokio::io::BufReader::new(tokio::io::stdin());
+    static EDIT_PREFIX: &'static str = "edit ";
+
     let db_exec_repl = db_exec.clone();
     runtime.block_on(async move {
-        static EDIT_PREFIX: &'static str = "edit ";
         let mut buf = String::new();
         let mut edit_id = None;
         loop {
@@ -68,7 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     db_exec.spawn(|db| {
         if let Some(db) = db.as_mut() {
             db.clear_observers();
-        //            db.stop_replicator();
+            db.stop_replicator();
         } else {
             eprintln!("db is NOT open");
         }
@@ -130,7 +175,7 @@ fn save_msg(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut trans = db.transaction()?;
     let msg = Message { msg: data.into() };
-    let enc = trans.shared_encoder_session()?;
+    let enc = trans.shared_encoder_session().unwrap();
     let mut doc = if let Some(doc_id) = doc_id {
         println!("save_msg: edit message");
         Document::new_with_id(doc_id, &msg, enc)?
@@ -156,6 +201,41 @@ fn print_all_messages(db: &Database) -> Result<(), Box<dyn std::error::Error>> {
 
         let db_msg: Message = doc.decode_body()?;
         println!("db_msg: {:?}", db_msg);
+    }
+    Ok(())
+}
+
+fn print_external_changes(db: &mut Option<Database>) -> Result<(), Box<dyn std::error::Error>> {
+    let db = db
+        .as_mut()
+        .ok_or_else(|| format!("print_external_changes: db not OPEN"))?;
+    let mut doc_ids = HashSet::<String>::new();
+    for change in db.observed_changes() {
+        println!(
+            "observed change: doc id {} was changed, external {}",
+            change.doc_id()?,
+            change.external()
+        );
+        if change.external() {
+            doc_ids.insert(change.doc_id()?.into());
+        }
+    }
+    for doc_id in &doc_ids {
+        let doc = match db.get_existing(doc_id.as_str()) {
+            Ok(x) => x,
+            Err(err) => {
+                eprintln!("Can not get {}: {}", doc_id, err);
+                continue;
+            }
+        };
+        let db_msg: Message = match doc.decode_body() {
+            Ok(x) => x,
+            Err(err) => {
+                eprintln!("Can not decode data: {}", err);
+                continue;
+            }
+        };
+        println!("external: {}", db_msg.msg);
     }
     Ok(())
 }

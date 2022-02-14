@@ -1,4 +1,4 @@
-use couchbase_lite::{kC4DB_Create, Database, DocEnumeratorFlags, Document, IndexType};
+use couchbase_lite::*;
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
@@ -600,4 +600,64 @@ fn test_n1ql_query_with_parameter() {
         assert_eq!(expected, query_ret);
     }
     tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+// to reproduce bug you need server, so ignored by default
+// details https://github.com/Dushistov/couchbase-lite-rust/issues/54
+#[test]
+#[ignore]
+#[cfg(feature = "use-tokio-websocket")]
+fn test_double_replicator_restart() {
+    use tokio::runtime;
+
+    let _ = env_logger::try_init();
+
+    let runtime = runtime::Builder::new_current_thread()
+        .enable_io()
+        .build()
+        .unwrap();
+
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    println!("we create tempdir at {}", tmp_dir.path().display());
+    let db_path = tmp_dir.path().join("a.cblite2");
+    let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+
+    let (sync_tx, sync_rx) = std::sync::mpsc::channel::<()>();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+
+    {
+        let sync_tx = sync_tx.clone();
+        let handle = runtime.handle().clone();
+        db.start_replicator("ws://127.0.0.1:4984/demo/", None, move |repl_state| {
+            println!("repl_state changed: {:?}", repl_state);
+            if let ReplicatorState::Idle = repl_state {
+                sync_tx.send(()).unwrap();
+                let tx = tx.clone();
+                handle.spawn(async move {
+                    tx.send(()).await.unwrap();
+                });
+            }
+        })
+        .unwrap();
+    }
+
+    let thread_join_handle = {
+        std::thread::spawn(move || {
+            runtime.block_on(async {
+                rx.recv().await.unwrap();
+                println!("got async event that replicator was idle");
+                rx.recv().await.unwrap();
+            });
+        })
+    };
+    sync_rx.recv().unwrap();
+    println!("got SYNC event that replicator was idle");
+    for _ in 0..10 {
+        db.restart_replicator().unwrap();
+    }
+    println!("multi restart done");
+
+    thread_join_handle.join().unwrap();
+
+    println!("tokio done");
 }

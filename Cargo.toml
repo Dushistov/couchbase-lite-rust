@@ -2,6 +2,8 @@
 members = ["couchbase-lite-core-sys", "couchbase-lite", "chat-demo", "serde-fleece"]
 
 [patch.'crates-io']
+# waiting https://github.com/hyperium/http/pull/496
+http = { git = "https://github.com/Dushistov/http", rev = "e494b091422083918757d21708c630e98c438d3c" }
 couchbase-lite = { path = "couchbase-lite" }
 serde-fleece = { path = "serde-fleece" }
 couchbase-lite-core-sys = { path = "couchbase-lite-core-sys" }

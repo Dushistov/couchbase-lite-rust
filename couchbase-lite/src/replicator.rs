@@ -1,3 +1,6 @@
+#[cfg(feature = "use-tokio-websocket")]
+mod tokio_socket;
+
 use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
@@ -8,8 +11,7 @@ use crate::{
     },
     Database,
 };
-use lazy_static::lazy_static;
-use log::{debug, error, info};
+use log::{error, info, trace};
 use std::{
     convert::TryFrom,
     mem::{self, MaybeUninit},
@@ -18,6 +20,7 @@ use std::{
     process::abort,
     ptr,
     ptr::NonNull,
+    sync::Once,
 };
 
 pub(crate) struct Replicator {
@@ -33,6 +36,7 @@ unsafe impl Send for Replicator {}
 
 impl Drop for Replicator {
     fn drop(&mut self) {
+        trace!("repl drop {:?}", self.inner.as_ptr());
         unsafe {
             c4repl_free(self.inner.as_ptr());
             (self.free_callback_f)(self.boxed_callback_f.as_ptr());
@@ -51,7 +55,6 @@ impl Replicator {
     where
         F: FnMut(C4ReplicatorStatus) + Send + 'static,
     {
-        lazy_static::initialize(&WEBSOCKET_IMPL);
         unsafe extern "C" fn call_on_status_changed<F>(
             c4_repl: *mut C4Replicator,
             status: C4ReplicatorStatus,
@@ -166,6 +169,7 @@ impl Replicator {
                 &mut c4err,
             )
         };
+        trace!("repl new result {:?}", repl);
         NonNull::new(repl)
             .map(|inner| Replicator {
                 inner,
@@ -180,6 +184,7 @@ impl Replicator {
     }
 
     pub(crate) fn stop(self) {
+        trace!("repl stop {:?}", self.inner.as_ptr());
         unsafe { c4repl_stop(self.inner.as_ptr()) };
     }
 
@@ -229,20 +234,18 @@ fn slice_without_null_char(cnst: &[u8]) -> &[u8] {
     &cnst[0..(cnst.len() - 1)]
 }
 
-lazy_static! {
-    static ref WEBSOCKET_IMPL: Result<()> = {
-        debug!("init websocket implementation");
-        c4socket_init()
-    };
-}
+static WEBSOCKET_IMPL: Once = Once::new();
 
 #[cfg(feature = "use-couchbase-lite-websocket")]
-fn c4socket_init() -> Result<()> {
-    unsafe { crate::ffi::C4RegisterBuiltInWebSocket() };
-    Ok(())
+pub(crate) fn init_builtin_socket_impl() {
+    WEBSOCKET_IMPL.call_once(|| {
+        unsafe { crate::ffi::C4RegisterBuiltInWebSocket() };
+    });
 }
 
 #[cfg(feature = "use-tokio-websocket")]
-fn c4socket_init() -> Result<()> {
-    unimplemented!()
+pub(crate) fn init_tokio_socket_impl(handle: tokio::runtime::Handle) {
+    WEBSOCKET_IMPL.call_once(|| {
+        tokio_socket::c4socket_init(handle);
+    });
 }

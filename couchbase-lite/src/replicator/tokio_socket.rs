@@ -20,6 +20,7 @@ use log::{error, info, trace, warn};
 use serde_fleece::NonNullConst;
 use std::{
     borrow::Cow,
+    io::Write,
     mem,
     os::raw::{c_int, c_void},
     sync::{
@@ -321,10 +322,12 @@ unsafe fn c4address_to_request(
     addr: &C4Address,
     options: C4Slice,
 ) -> Result<Request, Error> {
+    let mut authority = Vec::with_capacity(addr.hostname.size + 1 + 5);
+    authority.extend_from_slice(<&[u8]>::from(addr.hostname));
+    write!(&mut authority, ":{}", addr.port).expect("append to Vec failed");
     let uri = Uri::builder()
         .scheme(<&[u8]>::from(addr.scheme))
-        .authority(<&[u8]>::from(addr.hostname))
-        .port(addr.port)
+        .authority(authority)
         .path_and_query(<&[u8]>::from(addr.path))
         .build()?;
     trace!("c4address_to_request, marker {:x}, uri {:?}", marker, uri);

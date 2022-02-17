@@ -614,12 +614,14 @@ fn test_double_replicator_restart() {
 
     let runtime = runtime::Builder::new_current_thread()
         .enable_io()
+        .enable_time()
         .build()
         .unwrap();
 
     let tmp_dir = tempdir().expect("Can not create tmp directory");
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
+    Database::init_socket_impl(runtime.handle().clone());
     let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
 
     let (sync_tx, sync_rx) = std::sync::mpsc::channel::<()>();
@@ -641,12 +643,17 @@ fn test_double_replicator_restart() {
         .unwrap();
     }
 
+    let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
+
     let thread_join_handle = {
         std::thread::spawn(move || {
             runtime.block_on(async {
                 rx.recv().await.unwrap();
                 println!("got async event that replicator was idle");
                 rx.recv().await.unwrap();
+                let _: () = stop_rx.await.unwrap();
+                println!("get value from stop_rx, waiting last messages processing");
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             });
         })
     };
@@ -656,7 +663,9 @@ fn test_double_replicator_restart() {
         db.restart_replicator().unwrap();
     }
     println!("multi restart done");
-
+    std::thread::sleep(std::time::Duration::from_secs(2));
+    db.stop_replicator();
+    stop_tx.send(()).unwrap();
     thread_join_handle.join().unwrap();
 
     println!("tokio done");

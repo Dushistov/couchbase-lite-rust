@@ -9,7 +9,7 @@ default = ["bundled", "use-couchbase-lite-sqlite", "use-tokio-websocket", "nativ
 bundled = ["couchbase-lite-core-sys/bundled", "serde-fleece/bundled"]
 use-couchbase-lite-sqlite = ["couchbase-lite-core-sys/use-couchbase-lite-sqlite", "serde-fleece/use-couchbase-lite-sqlite"]
 with-asan = ["couchbase-lite-core-sys/with-asan", "serde-fleece/with-asan"]
-use-tokio-websocket = ["tokio-tungstenite"]
+use-tokio-websocket = ["tokio-tungstenite", "tokio", "futures-util"]
 native-tls = ["tokio-tungstenite/native-tls"]
 use-couchbase-lite-websocket = ["couchbase-lite-core-sys/use-couchbase-lite-websocket"]
 
@@ -18,7 +18,9 @@ couchbase-lite-core-sys = { version = "0.5.0", default-features = false }
 serde-fleece = { version = "0.1.0", default-features = false }
 lazy_static = "1.4"
 log = "0.4"
-tokio-tungstenite = { version = "0.16.1", optional = true, default-features = false }
+tokio = { version = "1.16.1", optional = true, default-features = false, features = ["rt", "sync", "macros", "time"] }
+tokio-tungstenite = { version = "0.16.1", optional = true, default-features = false, features = ["connect"] }
+futures-util = { version = "0.3", optional = true, default-features = false }
 # TODO: remove deps when https://github.com/rust-lang/rust/issues/44930
 # was merged
 va_list = "0.1"
@@ -31,4 +33,4 @@ fallible-streaming-iterator = "0.1.9"
 tempfile = "3.0"
 env_logger = "0.9"
 serde = { version = "1.0.104", default-features = false, features = ["derive", "std"] }
-tokio = { version = "1.16.1", default-features = false, features = ["sync", "rt", "net"] }
+tokio = { version = "1.16.1", default-features = false, features = ["sync", "rt", "net", "time"] }

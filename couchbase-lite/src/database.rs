@@ -85,6 +85,15 @@ impl Drop for DbInner {
     }
 }
 
+impl Drop for Database {
+    fn drop(&mut self) {
+        if let Some(repl) = self.db_replicator.take() {
+            repl.stop();
+        }
+        self.db_observers.clear();
+    }
+}
+
 impl Database {
     pub fn open_named(name: &str, cfg: DatabaseConfig) -> Result<Self> {
         lazy_static::initialize(&DB_LOG_HANDLER);
@@ -197,6 +206,20 @@ impl Database {
             Some(repl) => repl.status().try_into(),
             None => Ok(ReplicatorState::Offline),
         }
+    }
+
+    /// Intialize socket implementation for replication
+    /// (builtin couchbase-lite websocket library)
+    #[cfg(feature = "use-couchbase-lite-websocket")]
+    pub fn init_socket_impl() {
+        crate::replicator::init_builtin_socket_impl();
+    }
+
+    /// Intialize socket implementation for replication
+    /// (builtin couchbase-lite websocket library)
+    #[cfg(feature = "use-tokio-websocket")]
+    pub fn init_socket_impl(handle: tokio::runtime::Handle) {
+        crate::replicator::init_tokio_socket_impl(handle);
     }
 
     /// starts database replication

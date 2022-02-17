@@ -16,6 +16,7 @@ struct Message {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let runtime = tokio::runtime::Runtime::new()?;
+    Database::init_socket_impl(runtime.handle().clone());
 
     let db_path = env::args().nth(1).expect("No path to db file");
     let db_path = Path::new(&db_path);

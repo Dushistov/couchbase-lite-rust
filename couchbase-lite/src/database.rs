@@ -16,7 +16,6 @@ use crate::{
     QueryLanguage,
 };
 use fallible_streaming_iterator::FallibleStreamingIterator;
-use lazy_static::lazy_static;
 use log::{debug, error};
 use serde_fleece::FlEncoderSession;
 use std::{
@@ -25,7 +24,7 @@ use std::{
     marker::PhantomData,
     path::Path,
     ptr::{self, NonNull},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, Once},
 };
 
 /// Database configuration, used during open
@@ -96,7 +95,10 @@ impl Drop for Database {
 
 impl Database {
     pub fn open_named(name: &str, cfg: DatabaseConfig) -> Result<Self> {
-        lazy_static::initialize(&DB_LOG_HANDLER);
+        DB_LOG_HANDLER.call_once(|| {
+            debug!("init couchbase log to rust log rerouting");
+            c4log_to_log_init();
+        });
         let cfg = cfg.inner?;
         let mut error = c4error_init();
         let db_ptr = unsafe { c4db_openNamed(name.into(), &cfg, &mut error) };
@@ -393,10 +395,4 @@ impl Database {
     }
 }
 
-lazy_static! {
-    static ref DB_LOG_HANDLER: () = {
-        debug!("init couchbase log to rust log rerouting");
-        c4log_to_log_init();
-        ()
-    };
-}
+static DB_LOG_HANDLER: Once = Once::new();

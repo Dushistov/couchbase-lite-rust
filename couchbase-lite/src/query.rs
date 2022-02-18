@@ -3,12 +3,11 @@ use crate::{
     ffi::{
         c4query_new2, c4query_release, c4query_run, c4query_setParameters, c4queryenum_next,
         c4queryenum_release, kC4DefaultQueryOptions, C4Query, C4QueryEnumerator, C4String,
-        FLArrayIterator_GetCount, FLArrayIterator_GetValueAt, FLValue,
+        FLArrayIterator_GetCount, FLArrayIterator_GetValueAt, FLStringResult, FLValue,
     },
     value::{FromValueRef, ValueRef},
     Database, QueryLanguage,
 };
-use couchbase_lite_core_sys::FLStringResult;
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use serde::Serialize;
 use serde_fleece::NonNullConst;

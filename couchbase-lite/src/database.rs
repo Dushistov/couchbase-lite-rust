@@ -4,8 +4,9 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4db_createIndex, c4db_getDocumentCount, c4db_getIndexesInfo, c4db_getSharedFleeceEncoder,
-        c4db_openNamed, c4db_release, c4doc_get, C4Database, C4DatabaseConfig2, C4DatabaseFlags,
-        C4EncryptionAlgorithm, C4EncryptionKey, C4IndexOptions, C4IndexType,
+        c4db_openNamed, c4db_release, c4doc_get, kC4DB_Create, kC4DB_NoUpgrade,
+        kC4DB_NonObservable, kC4DB_ReadOnly, C4Database, C4DatabaseConfig2, C4EncryptionAlgorithm,
+        C4EncryptionKey, C4IndexOptions, C4IndexType,
     },
     index::{DbIndexesListIterator, IndexInfo, IndexOptions, IndexType},
     log_reroute::c4log_to_log_init,
@@ -15,6 +16,7 @@ use crate::{
     transaction::Transaction,
     QueryLanguage,
 };
+use bitflags::bitflags;
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use log::{debug, error};
 use serde_fleece::FlEncoderSession;
@@ -33,8 +35,22 @@ pub struct DatabaseConfig<'a> {
     phantom: PhantomData<&'a Path>,
 }
 
+bitflags! {
+    #[repr(transparent)]
+    pub struct DatabaseFlags: u32 {
+        /// Create the file if it doesn't exist
+        const CREATE = kC4DB_Create;
+        /// Open file read-only
+        const READ_ONLY = kC4DB_ReadOnly;
+        /// Disable upgrading an older-version database
+        const NO_UPGRADE = kC4DB_NoUpgrade;
+        /// Disable database/collection observers, for slightly faster writes
+        const NON_OBSERVABLE = kC4DB_NonObservable;
+    }
+}
+
 impl<'a> DatabaseConfig<'a> {
-    pub fn new(parent_directory: &'a Path, flags: C4DatabaseFlags) -> Self {
+    pub fn new(parent_directory: &'a Path, flags: DatabaseFlags) -> Self {
         let os_path_utf8 = match parent_directory.to_str() {
             Some(x) => x,
             None => {
@@ -47,7 +63,7 @@ impl<'a> DatabaseConfig<'a> {
         Self {
             inner: Ok(C4DatabaseConfig2 {
                 parentDirectory: os_path_utf8.into(),
-                flags,
+                flags: flags.bits(),
                 encryptionKey: C4EncryptionKey {
                     algorithm: C4EncryptionAlgorithm::kC4EncryptionNone,
                     bytes: [0; 32],
@@ -112,7 +128,7 @@ impl Database {
             })
             .ok_or_else(|| error.into())
     }
-    pub fn open_with_flags(path: &Path, flags: C4DatabaseFlags) -> Result<Self> {
+    pub fn open_with_flags(path: &Path, flags: DatabaseFlags) -> Result<Self> {
         let parent_path = path
             .parent()
             .ok_or_else(|| Error::LogicError(format!("path {:?} has no parent diretory", path)))?;

@@ -4,7 +4,7 @@
 //! # extern crate serde;
 //! # use serde::{Serialize, Deserialize};
 //! use couchbase_lite::{
-//!     Database, DatabaseConfig, Document, kC4DB_Create,
+//!     Database, DatabaseConfig, Document, DatabaseFlags,
 //!     fallible_streaming_iterator::FallibleStreamingIterator
 //! };
 //! use std::path::Path;
@@ -18,7 +18,7 @@
 //! fn main() -> Result<(), couchbase_lite::Error> {
 //!     let mut db = Database::open_with_flags(
 //!         &std::env::temp_dir().join("a.cblite2"),
-//!         kC4DB_Create,
+//!         DatabaseFlags::CREATE,
 //!     )?;
 //!     {
 //!         let msg = Message { msg: "Test message".into() };
@@ -57,7 +57,7 @@ mod transaction;
 mod value;
 
 pub use crate::{
-    database::{Database, DatabaseConfig},
+    database::{Database, DatabaseConfig, DatabaseFlags},
     doc_enumerator::DocEnumeratorFlags,
     document::Document,
     error::Error,
@@ -66,7 +66,4 @@ pub use crate::{
 };
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;
-pub use ffi::{
-    kC4DB_Create, kC4DB_NoUpgrade, kC4DB_NonObservable, kC4DB_ReadOnly,
-    C4QueryLanguage as QueryLanguage,
-};
+pub use ffi::C4QueryLanguage as QueryLanguage;

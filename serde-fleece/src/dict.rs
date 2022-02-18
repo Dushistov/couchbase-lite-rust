@@ -1,9 +1,7 @@
-use couchbase_lite_core_sys::_FLValue;
-
 use crate::{
     ffi::{
         FLError, FLMutableDict_New, FLMutableDict_Release, FLMutableDict_SetInt,
-        FLMutableDict_SetString, FLSlice, FLValue_AsData, _FLDict,
+        FLMutableDict_SetString, FLSlice, FLValue_AsData, _FLDict, _FLValue,
     },
     Error, NonNullConst,
 };

@@ -35,7 +35,7 @@ fn test_write_read() {
     let db_path = tmp_dir.path().join("a.cblite2");
     let mut ids_and_data = Vec::<(String, Foo)>::new();
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         {
             let mut trans = db.transaction().unwrap();
             for i in 17..=180 {
@@ -60,7 +60,7 @@ fn test_write_read() {
 
     println!("Close and reopen");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         assert_eq!(ids_and_data.len() as u64, db.document_count());
         for (doc_id, foo) in &ids_and_data {
             let doc = db.get_existing(doc_id).unwrap();
@@ -96,7 +96,7 @@ fn test_write_read() {
 
     println!("Close and reopen, enumerate");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         assert_eq!(ids_and_data.len() as u64, db.document_count());
         {
             let mut iter = db
@@ -142,7 +142,7 @@ fn test_observed_changes() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         db.register_observer(|| println!("something changed"))
             .unwrap();
         let changes: Vec<_> = db.observed_changes().collect();
@@ -198,7 +198,7 @@ fn test_save_float() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         let mut trans = db.transaction().unwrap();
         let s = S {
             f: 17.48,
@@ -231,7 +231,7 @@ fn test_save_several_times() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         let s = create_s(500);
         let mut trans = db.transaction().unwrap();
         let mut doc = Document::new(&s, trans.shared_encoder_session().unwrap()).unwrap();
@@ -281,7 +281,7 @@ fn test_indices() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
 
         fn get_index_list(db: &Database) -> Vec<String> {
             let mut ret = vec![];
@@ -352,7 +352,7 @@ fn test_like_offset_limit() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         let mut trans = db.transaction().unwrap();
         for i in 0..10_000 {
             let foo = Foo {
@@ -457,7 +457,7 @@ fn test_like_performance() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
         #[serde(tag = "type")]
         struct Data {
@@ -515,7 +515,7 @@ fn test_n1ql_query() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         let mut trans = db.transaction().unwrap();
         for i in 0..10_000 {
             let foo = Foo {
@@ -584,7 +584,7 @@ fn test_n1ql_query_with_parameter() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     {
-        let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         let mut trans = db.transaction().unwrap();
         for i in 0..10_000 {
             let foo = Foo {
@@ -641,7 +641,7 @@ fn test_double_replicator_restart() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     Database::init_socket_impl(runtime.handle().clone());
-    let mut db = Database::open_with_flags(&db_path, kC4DB_Create).unwrap();
+    let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
 
     let (sync_tx, sync_rx) = std::sync::mpsc::channel::<()>();
     let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);

@@ -1,5 +1,5 @@
 use couchbase_lite::{
-    fallible_streaming_iterator::FallibleStreamingIterator, kC4DB_Create, Database, Document,
+    fallible_streaming_iterator::FallibleStreamingIterator, Database, DatabaseFlags, Document,
     ReplicatorState,
 };
 use log::{error, trace};
@@ -144,7 +144,7 @@ fn run_db_thread(db_path: &Path) -> (std::thread::JoinHandle<()>, DbQueryExecuto
     let (sender, receiver) = std::sync::mpsc::channel::<Job<Database>>();
     let db_path: std::path::PathBuf = db_path.into();
     let join_handle = std::thread::spawn(move || {
-        let mut db = match Database::open_with_flags(&db_path, kC4DB_Create) {
+        let mut db = match Database::open_with_flags(&db_path, DatabaseFlags::CREATE) {
             Ok(db) => {
                 println!("We read all messages after open:");
                 print_all_messages(&db).expect("read from db failed");

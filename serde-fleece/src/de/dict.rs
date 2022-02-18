@@ -42,7 +42,7 @@ impl<'a, 'de> de::SeqAccess<'de> for StructAccess<'a> {
             unsafe {
                 let value = FLDict_Get(self.dict.as_ptr(), (*key).into());
                 let value = NonNullConst::new(value).ok_or_else(|| {
-                    Error::InvalidFormat("not expecting null value in dict".into())
+                    Error::InvalidFormat(format!("missing field `{}` in fleece dict", key).into())
                 })?;
                 let value = seed.deserialize(&mut Deserializer::new(value))?;
                 self.i += 1;

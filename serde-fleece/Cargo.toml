@@ -10,7 +10,7 @@ use-couchbase-lite-sqlite = ["couchbase-lite-core-sys/use-couchbase-lite-sqlite"
 with-asan = ["couchbase-lite-core-sys/with-asan"]
 
 [dependencies]
-couchbase-lite-core-sys = { version = "0.5", default-features = false }
+couchbase-lite-core-sys = { path = "../couchbase-lite-core-sys", version = "0.5", default-features = false }
 serde = { version = "1.0", default-features = false }
 itoa = "1.0"
 ryu = "1.0"

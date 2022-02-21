@@ -56,13 +56,13 @@ impl<T> From<NonNull<T>> for NonNullConst<T> {
     }
 }
 
-pub(crate) struct Deserializer<'de> {
+pub struct Deserializer<'de> {
     pub value: NonNullConst<_FLValue>,
     marker: PhantomData<&'de [u8]>,
 }
 
 impl<'de> Deserializer<'de> {
-    fn new(value: NonNullConst<_FLValue>) -> Self {
+    pub fn new(value: NonNullConst<_FLValue>) -> Self {
         Self {
             value,
             marker: PhantomData,

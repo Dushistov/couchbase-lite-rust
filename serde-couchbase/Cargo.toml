@@ -1,0 +1,10 @@
+[package]
+name = "serde-couchbase"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+couchbase-lite-core-sys = { path = "../couchbase-lite-core-sys", version = "0.5", default-features = false }
+couchbase-lite = { path = "../couchbase-lite", version = "0.6" }
+serde-fleece = { path = "../serde-fleece", version = "0.1" }
+serde = { version = "1.0", default-features = false }

@@ -133,6 +133,10 @@ impl<'en> FallibleStreamingIterator for Enumerator<'en> {
 }
 
 impl<'a> Enumerator<'a> {
+    pub fn c4_enumerator(&self) -> NonNull<C4QueryEnumerator> {
+        self.inner
+    }
+
     pub fn get_raw_checked(&self, i: u32) -> Result<ValueRef<'a>> {
         let n = unsafe { FLArrayIterator_GetCount(&self.inner.as_ref().columns) };
         if i >= n {

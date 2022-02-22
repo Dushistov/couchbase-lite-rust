@@ -3,7 +3,7 @@ use crate::{
     ffi::{
         c4query_new2, c4query_release, c4query_run, c4query_setParameters, c4queryenum_next,
         c4queryenum_release, kC4DefaultQueryOptions, C4Query, C4QueryEnumerator, C4String,
-        FLArrayIterator_GetCount, FLArrayIterator_GetValueAt,
+        FLArrayIterator_GetCount, FLArrayIterator_GetValueAt, FLValue,
     },
     value::{FromValueRef, ValueRef},
     Database, QueryLanguage,
@@ -11,6 +11,7 @@ use crate::{
 use couchbase_lite_core_sys::FLStringResult;
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use serde::Serialize;
+use serde_fleece::NonNullConst;
 use std::ptr::NonNull;
 
 pub struct Query<'db> {
@@ -133,7 +134,7 @@ impl<'en> FallibleStreamingIterator for Enumerator<'en> {
 }
 
 impl<'a> Enumerator<'a> {
-    pub fn get_raw_checked(&self, i: u32) -> Result<ValueRef<'a>> {
+    fn do_get_raw_checked(&self, i: u32) -> Result<FLValue> {
         let n = unsafe { FLArrayIterator_GetCount(&self.inner.as_ref().columns) };
         if i >= n {
             return Err(Error::LogicError(format!(
@@ -142,8 +143,13 @@ impl<'a> Enumerator<'a> {
             )));
         }
 
-        let val: ValueRef =
-            unsafe { FLArrayIterator_GetValueAt(&self.inner.as_ref().columns, i) }.into();
+        Ok(unsafe { FLArrayIterator_GetValueAt(&self.inner.as_ref().columns, i) })
+    }
+
+    pub fn get_raw_checked(&self, i: u32) -> Result<ValueRef<'a>> {
+        let value = self.do_get_raw_checked(i)?;
+
+        let val: ValueRef = value.into();
         Ok(val)
     }
 
@@ -153,5 +159,16 @@ impl<'a> Enumerator<'a> {
     {
         let value_ref = self.get_raw_checked(i)?;
         FromValueRef::column_result(value_ref)
+    }
+
+    pub fn get_checked_serde<'de, T: serde::de::Deserialize<'de>>(&'de self, i: u32) -> Result<T> {
+        let value = self.do_get_raw_checked(i)?;
+        let value = NonNullConst::new(value).ok_or_else(|| {
+            Error::LogicError(format!(
+                "Query parameter {} is null, can not deserialize",
+                i
+            ))
+        })?;
+        serde_fleece::from_fl_value(value).map_err(Error::from)
     }
 }

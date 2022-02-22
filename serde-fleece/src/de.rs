@@ -135,6 +135,13 @@ where
     T::deserialize(&mut deserializer)
 }
 
+pub fn from_fl_value<'a, T: de::Deserialize<'a>>(
+    value: NonNullConst<_FLValue>,
+) -> Result<T, Error> {
+    let mut deserializer = Deserializer::new(value);
+    T::deserialize(&mut deserializer)
+}
+
 impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     type Error = Error;
 
@@ -400,9 +407,14 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) } != FLValueType::kFLDict {
+        let fv_type = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if fv_type != FLValueType::kFLDict {
             return Err(Error::InvalidFormat(
-                format!("struct {} has not dict type", name).into(),
+                format!(
+                    "For struct {} fleece data should be dict type, but got: {:?}",
+                    name, fv_type
+                )
+                .into(),
             ));
         }
 

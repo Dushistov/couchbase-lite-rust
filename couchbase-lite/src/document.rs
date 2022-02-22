@@ -7,7 +7,7 @@ use crate::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_fleece::{to_fl_slice_result_with_encoder, FlEncoderSession};
-use std::ptr::NonNull;
+use std::{ptr::NonNull, str};
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -81,6 +81,27 @@ impl Document {
         let body = to_fl_slice_result_with_encoder(data, enc)?;
         self.unsaved_body = Some(body);
         Ok(())
+    }
+
+    /// Returns a document's current sequence in the local database.
+    /// This number increases every time the document is saved, and a more recently saved document
+    /// will have a greater sequence number than one saved earlier, so sequences may be used as an
+    /// abstract 'clock' to tell relative modification times
+    #[inline]
+    pub fn sequence(&self) -> Option<u64> {
+        self.inner
+            .as_ref()
+            .map(|p| unsafe { p.0.as_ref() }.sequence)
+    }
+
+    /// Returns a document's revision ID, which is a short opaque string that's guaranteed to be
+    /// unique to every change made to the document.
+    #[inline]
+    pub fn revision_id(&self) -> Option<&str> {
+        self.inner
+            .as_ref()
+            .map(|p| str::from_utf8(unsafe { p.0.as_ref() }.revID.as_fl_slice().into()).ok())
+            .unwrap_or(None)
     }
 
     pub(crate) fn new_internal<S>(inner: C4DocumentOwner, doc_id: S) -> Self

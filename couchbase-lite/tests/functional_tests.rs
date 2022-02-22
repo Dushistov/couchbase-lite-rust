@@ -528,9 +528,6 @@ fn test_n1ql_query() {
         }
         trans.commit().unwrap();
 
-        let query = db
-            .n1ql_query("SELECT s FROM a WHERE s LIKE '%555'")
-            .unwrap();
         let expected = vec![
             "Hello 1555",
             "Hello 2555",
@@ -544,16 +541,38 @@ fn test_n1ql_query() {
             "Hello 9555",
         ];
 
-        let mut iter = query.run().unwrap();
-        let mut query_ret = Vec::with_capacity(10);
-        while let Some(item) = iter.next().unwrap() {
-            let val = item.get_raw_checked(0).unwrap();
-            let val = val.as_str().unwrap();
-            query_ret.push(val.to_string());
-        }
-        query_ret.sort();
+        {
+            let query = db
+                .n1ql_query("SELECT s FROM a WHERE s LIKE '%555'")
+                .unwrap();
 
-        assert_eq!(expected, query_ret);
+            let mut iter = query.run().unwrap();
+            let mut query_ret = Vec::with_capacity(10);
+            while let Some(item) = iter.next().unwrap() {
+                let val = item.get_raw_checked(0).unwrap();
+                let val = val.as_str().unwrap();
+                query_ret.push(val.to_string());
+            }
+            query_ret.sort();
+
+            assert_eq!(expected, query_ret);
+        }
+
+        {
+            let query = db
+                .n1ql_query("SELECT s FROM a WHERE s LIKE '%555'")
+                .unwrap();
+
+            let mut iter = query.run().unwrap();
+            let mut query_ret = Vec::with_capacity(10);
+            while let Some(item) = iter.next().unwrap() {
+                let val: &str = item.get_checked_serde(0).unwrap();
+                query_ret.push(val.to_string());
+            }
+            query_ret.sort();
+
+            assert_eq!(expected, query_ret);
+        }
     }
     tmp_dir.close().expect("Can not close tmp_dir");
 }

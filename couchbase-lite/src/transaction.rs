@@ -85,7 +85,7 @@ impl Transaction<'_> {
                     doc.unsaved_body
                         .as_ref()
                         .map(FLSliceResult::as_fl_slice)
-                        .unwrap_or(FLSlice::default()),
+                        .unwrap_or_default(),
                 )
             } else {
                 (kRevDeleted, FLSlice::default())

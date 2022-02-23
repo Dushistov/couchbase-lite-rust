@@ -137,7 +137,7 @@ impl Database {
             .file_name()
             .ok_or_else(|| Error::LogicError(format!("path {:?} has no last part", path)))?
             .to_str()
-            .ok_or_else(|| Error::InvalidUtf8)?
+            .ok_or(Error::InvalidUtf8)?
             .strip_suffix(".cblite2")
             .ok_or_else(|| {
                 Error::LogicError(format!(

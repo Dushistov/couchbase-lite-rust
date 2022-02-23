@@ -1,10 +1,11 @@
 use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
-        c4doc_getRevisionBody, c4doc_loadRevisionBody, c4doc_release, kDocExists, C4Document,
-        C4DocumentFlags, FLSliceResult,
+        c4doc_getRevisionBody, c4doc_loadRevisionBody, c4doc_release, kDocConflicted, kDocDeleted,
+        kDocExists, kDocHasAttachments, C4Document, C4DocumentFlags, FLSliceResult,
     },
 };
+use bitflags::bitflags;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_fleece::{to_fl_slice_result_with_encoder, FlEncoderSession};
 use std::{ptr::NonNull, str};
@@ -15,6 +16,19 @@ pub struct Document {
     id: String,
     pub(crate) unsaved_body: Option<FLSliceResult>,
     pub(crate) inner: Option<C4DocumentOwner>,
+}
+
+bitflags! {
+    pub struct DocumentFlags: u32 {
+        /// The document's current revision is deleted.
+        const DELETED         = kDocDeleted;
+        /// The document is in conflict.
+        const CONFLICTED      = kDocConflicted;
+        /// The document's current revision has attachments.
+        const HAS_ATTACHMENTS = kDocHasAttachments;
+        /// The document exists (i.e. has revisions.)
+        const EXISTS = kDocExists;
+    }
 }
 
 impl Document {
@@ -104,6 +118,19 @@ impl Document {
             .unwrap_or(None)
     }
 
+    #[inline]
+    pub fn flags(&self) -> Option<DocumentFlags> {
+        self.inner
+            .as_ref()
+            .map(|p| DocumentFlags::from_bits_truncate(p.flags()))
+    }
+
+    /// Just check `Document::flags` to see if document exists
+    #[inline]
+    pub fn exists(&self) -> bool {
+        self.inner.as_ref().map(|x| x.exists()).unwrap_or(false)
+    }
+
     pub(crate) fn new_internal<S>(inner: C4DocumentOwner, doc_id: S) -> Self
     where
         S: Into<String>,
@@ -116,9 +143,6 @@ impl Document {
     }
     pub(crate) fn replace_c4doc(&mut self, doc: Option<C4DocumentOwner>) {
         self.inner = doc;
-    }
-    pub(crate) fn exists(&self) -> bool {
-        self.inner.as_ref().map(|x| x.exists()).unwrap_or(false)
     }
 }
 

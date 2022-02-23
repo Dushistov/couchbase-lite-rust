@@ -295,8 +295,9 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
         if is_client_close {
             // acording to comment from c4SocketTypes.h
             const CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
-            if let Err(_) =
-                tokio::time::timeout(CLOSE_TIMEOUT, close_control.confirm.notified()).await
+            if tokio::time::timeout(CLOSE_TIMEOUT, close_control.confirm.notified())
+                .await
+                .is_err()
             {
                 warn!("c4sock {:?}: timeout for waiting close ack expired", c4sock);
                 close_control.signal_to_stop_read_loop(c4sock).await;
@@ -324,7 +325,7 @@ unsafe fn c4address_to_request(
 ) -> Result<Request, Error> {
     let mut authority = Vec::with_capacity(addr.hostname.size + 1 + 5);
     authority.extend_from_slice(<&[u8]>::from(addr.hostname));
-    write!(&mut authority, ":{}", addr.port).expect("append to Vec failed");
+    write!(authority, ":{}", addr.port).expect("append to Vec failed");
     let uri = Uri::builder()
         .scheme(<&[u8]>::from(addr.scheme))
         .authority(authority)
@@ -579,7 +580,7 @@ unsafe fn headers_to_dict(http_resp: &Response) -> Result<FLSliceResult, FLError
     let res = FLEncoder_Finish(enc, &mut fl_err);
     FLEncoder_Free(enc);
     if !res.is_empty() && all_ok {
-        Ok(res.into())
+        Ok(res)
     } else {
         Err(fl_err)
     }

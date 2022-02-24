@@ -1,10 +1,10 @@
 use couchbase_lite::{
-    fallible_streaming_iterator::FallibleStreamingIterator, Database, DatabaseFlags, Document,
-    ReplicatorState,
+    fallible_streaming_iterator::FallibleStreamingIterator, ffi::kRevIsConflict, resolve_conflict,
+    Database, DatabaseFlags, DocEnumeratorFlags, Document, ReplicatorState,
 };
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, env, path::Path, sync::mpsc};
+use std::{collections::HashSet, env, path::Path, str, sync::mpsc, time::Duration};
 use tokio::io::AsyncBufReadExt;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -22,13 +22,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_path = Path::new(&db_path);
     let sync_url = env::args()
         .nth(2)
-        .unwrap_or_else(|| "ws://192.168.1.132:4984/demo/".to_string());
+        .unwrap_or_else(|| "ws://192.168.1.32:4984/demo/".to_string());
     let token: Option<String> = env::args().nth(3);
 
     let (db_thread, db_exec) = run_db_thread(db_path);
     let db_exec_repl = db_exec.clone();
+    let db_exec2 = db_exec.clone();
     db_exec.spawn(move |db| {
         if let Some(db) = db.as_mut() {
+            fix_conflicts(db).expect("fix conflict failed");
             db.start_replicator(
                 &sync_url,
                 token.as_ref().map(String::as_str),
@@ -47,6 +49,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             });
                         }
                         _ => {}
+                    }
+                },
+                move |pushing, doc_it| {
+                    for doc in doc_it {
+                        if !pushing && (doc.flags & kRevIsConflict) != 0 {
+                            let doc_id: &str = doc.docID.as_fl_slice().try_into().unwrap();
+                            let doc_id = doc_id.to_string();
+                            let rev_id = <&[u8]>::from(doc.revID.as_fl_slice()).to_vec();
+                            db_exec2.spawn(move |db| {
+                                println!("there is conflict for ({}, {:?}) during replication, trying resolve", doc_id, str::from_utf8(&rev_id));
+                                if let Some(db) = db.as_mut() {
+                                    resolve_conflict(db, &doc_id, Some(rev_id.into())).expect("resolve conflict failed");
+                                }
+                            });
+                        }
                     }
                 },
             )
@@ -70,7 +87,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let mut stdin = tokio::io::BufReader::new(tokio::io::stdin());
-    static EDIT_PREFIX: &'static str = "edit ";
 
     let db_exec_repl = db_exec.clone();
     runtime.block_on(async move {
@@ -84,12 +100,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let msg = &buf;
             let msg = msg.trim_end();
             if !msg.is_empty() {
-                if msg == "quit" {
+                if msg.starts_with("!quit") {
                     println!("Time to quit");
                     break;
-                } else if msg.starts_with(EDIT_PREFIX) {
-                    edit_id = Some((&msg[EDIT_PREFIX.len()..]).to_string());
+                } else if let Some(id) = msg.strip_prefix("!edit ") {
+                    edit_id = Some(id.to_string());
                     println!("ready to edit message {:?}", edit_id);
+                } else if msg.starts_with("!list") {
+                    db_exec_repl.spawn(move |db| {
+                        if let Some(db) = db.as_mut() {
+                            print_all_messages(db).expect("read from db failed");
+                        }
+                    });
                 } else {
                     println!("Your message is '{}'", msg);
 
@@ -110,7 +132,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             buf.clear();
         }
     });
-
+    println!("tokio runtime block_on done");
     db_exec.spawn(|db| {
         if let Some(db) = db.as_mut() {
             db.clear_observers();
@@ -121,7 +143,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     drop(db_exec);
     db_thread.join().unwrap();
+    println!("process exit time I/O");
+
+    runtime.block_on(async move {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    });
     println!("exiting");
+    Ok(())
+}
+
+fn fix_conflicts(db: &mut Database) -> Result<(), Box<dyn std::error::Error>> {
+    let mut conflicts = Vec::with_capacity(100);
+    {
+        let mut it = db.enumerate_all_docs(DocEnumeratorFlags::empty())?;
+        while let Some(item) = it.next()? {
+            let doc = item.get_doc()?;
+            println!("document with conflict {}", doc.id());
+            conflicts.push(doc.id().to_string());
+        }
+    }
+    for doc_id in &conflicts {
+        resolve_conflict(db, &doc_id, None)?;
+    }
+    if !conflicts.is_empty() {
+        println!("All conflicts was resolved");
+    }
     Ok(())
 }
 
@@ -196,12 +242,16 @@ fn print_all_messages(db: &Database) -> Result<(), Box<dyn std::error::Error>> {
         // work with item
         let id = item.get_raw_checked(0)?;
         let id = id.as_str()?;
-        println!("iteration id {}", id);
         let doc = db.get_existing(id)?;
-        println!("doc id {}", doc.id());
-
+        let doc_id = doc.id().to_string();
+        let seq = doc.sequence().ok_or("No sequence")?;
+        let rev = doc.revision_id().ok_or("No revision")?.to_string();
+        let flags = doc.flags();
         let db_msg: Message = doc.decode_body()?;
-        println!("db_msg: {:?}", db_msg);
+        println!(
+            "iter id {} doc id {}, seq {}, rev {}, flags {:?}, msg `{}`",
+            id, doc_id, seq, rev, flags, db_msg.msg
+        );
     }
     Ok(())
 }

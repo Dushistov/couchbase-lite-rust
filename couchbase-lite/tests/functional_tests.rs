@@ -649,16 +649,29 @@ fn test_double_replicator_restart() {
     {
         let sync_tx = sync_tx.clone();
         let handle = runtime.handle().clone();
-        db.start_replicator("ws://127.0.0.1:4984/demo/", None, move |repl_state| {
-            println!("repl_state changed: {:?}", repl_state);
-            if let ReplicatorState::Idle = repl_state {
-                sync_tx.send(()).unwrap();
-                let tx = tx.clone();
-                handle.spawn(async move {
-                    tx.send(()).await.unwrap();
-                });
-            }
-        })
+        db.start_replicator(
+            "ws://127.0.0.1:4984/demo/",
+            None,
+            move |repl_state| {
+                println!("repl_state changed: {:?}", repl_state);
+                if let ReplicatorState::Idle = repl_state {
+                    sync_tx.send(()).unwrap();
+                    let tx = tx.clone();
+                    handle.spawn(async move {
+                        tx.send(()).await.unwrap();
+                    });
+                }
+            },
+            move |pushing, doc_iter| {
+                let docs: Vec<String> = doc_iter
+                    .map(|x| {
+                        let doc_id: &str = x.docID.as_fl_slice().try_into().unwrap();
+                        doc_id.to_string()
+                    })
+                    .collect();
+                println!("pushing {}, docs {:?}", pushing, docs);
+            },
+        )
         .unwrap();
     }
 

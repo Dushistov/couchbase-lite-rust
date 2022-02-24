@@ -5,13 +5,14 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_start, c4repl_stop,
-        kC4ReplicatorOptionCookies, C4Address, C4Replicator, C4ReplicatorActivityLevel,
-        C4ReplicatorMode, C4ReplicatorParameters, C4ReplicatorStatus,
-        C4ReplicatorStatusChangedCallback, C4String, FLSliceResult,
+        kC4ReplicatorOptionCookies, C4Address, C4DocumentEnded, C4Replicator,
+        C4ReplicatorActivityLevel, C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode,
+        C4ReplicatorParameters, C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, C4String,
+        FLSliceResult,
     },
     Database,
 };
-use log::{error, info, trace};
+use log::{debug, error, info, trace};
 use std::{
     convert::TryFrom,
     mem::{self, MaybeUninit},
@@ -20,14 +21,24 @@ use std::{
     process::abort,
     ptr,
     ptr::NonNull,
+    slice, str,
     sync::Once,
 };
 
 pub(crate) struct Replicator {
     inner: NonNull<C4Replicator>,
     c_callback_on_status_changed: C4ReplicatorStatusChangedCallback,
+    c_callback_on_documents_ended: C4ReplicatorDocumentsEndedCallback,
     free_callback_f: unsafe fn(_: *mut c_void),
     boxed_callback_f: NonNull<c_void>,
+}
+
+struct CallbackContext<
+    StateCallback: FnMut(C4ReplicatorStatus) + Send + 'static,
+    DocumentsEndedCallback: FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
+> {
+    state_cb: StateCallback,
+    docs_ended_cb: DocumentsEndedCallback,
 }
 
 /// it should be safe to call replicator API from any thread
@@ -45,46 +56,88 @@ impl Drop for Replicator {
 }
 
 impl Replicator {
-    /// For example: url "ws://192.168.1.132:4984/demo/"
-    pub(crate) fn new<F>(
+    /// # Arguments
+    /// * `url` - should be something like "ws://192.168.1.132:4984/demo/"
+    /// * `state_changed_callback` - reports back change of replicator state
+    /// * `documents_ended_callback` - reports about the replication status of documents
+    pub(crate) fn new<StateCallback, DocumentsEndedCallback>(
         db: &Database,
         url: &str,
         token: Option<&str>,
-        state_changed_callback: F,
+        state_changed_callback: StateCallback,
+        documents_ended_callback: DocumentsEndedCallback,
     ) -> Result<Self>
     where
-        F: FnMut(C4ReplicatorStatus) + Send + 'static,
+        StateCallback: FnMut(C4ReplicatorStatus) + Send + 'static,
+        DocumentsEndedCallback:
+            FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
     {
-        unsafe extern "C" fn call_on_status_changed<F>(
+        unsafe extern "C" fn call_on_status_changed<F, F2>(
             c4_repl: *mut C4Replicator,
             status: C4ReplicatorStatus,
             ctx: *mut c_void,
         ) where
-            F: FnMut(C4ReplicatorStatus) + Send,
+            F: FnMut(C4ReplicatorStatus) + Send + 'static,
+            F2: FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
         {
             info!("on_status_changed: repl {:?}, status {:?}", c4_repl, status);
             let r = catch_unwind(|| {
-                let boxed_f = ctx as *mut F;
+                let ctx = ctx as *mut CallbackContext<F, F2>;
                 assert!(
-                    !boxed_f.is_null(),
-                    "DatabaseObserver: Internal error - null function pointer"
+                    !ctx.is_null(),
+                    "Replicator::call_on_status_changed: Internal error - null function pointer"
                 );
-                (*boxed_f)(status);
+                ((*ctx).state_cb)(status);
             });
             if r.is_err() {
-                error!("Replicator::call_on_status_changed catch panic aborting");
+                error!("Replicator::call_on_status_changed: catch panic aborting");
                 abort();
             }
         }
 
-        let boxed_f: *mut F = Box::into_raw(Box::new(state_changed_callback));
+        unsafe extern "C" fn call_on_documents_ended<F1, F>(
+            c4_repl: *mut C4Replicator,
+            pushing: bool,
+            num_docs: usize,
+            docs: *mut *const C4DocumentEnded,
+            ctx: *mut ::std::os::raw::c_void,
+        ) where
+            F1: FnMut(C4ReplicatorStatus) + Send + 'static,
+            F: FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
+        {
+            debug!(
+                "on_documents_ended: repl {:?} pushing {}, num_docs {}",
+                c4_repl, pushing, num_docs
+            );
+            let r = catch_unwind(|| {
+                let ctx = ctx as *mut CallbackContext<F1, F>;
+                assert!(
+                    !ctx.is_null(),
+                    "Replicator::call_on_documents_ended: Internal error - null function pointer"
+                );
+                let docs: &[*const C4DocumentEnded] = slice::from_raw_parts(docs, num_docs);
+                let mut it = docs.iter().map(|x| &**x);
+                ((*ctx).docs_ended_cb)(pushing, &mut it);
+            });
+            if r.is_err() {
+                error!("Replicator::call_on_documents_ended: catch panic aborting");
+                abort();
+            }
+        }
+
+        let ctx = Box::new(CallbackContext {
+            state_cb: state_changed_callback,
+            docs_ended_cb: documents_ended_callback,
+        });
+        let ctx_p = Box::into_raw(ctx);
         Replicator::do_new(
             db,
             url,
             token,
-            free_boxed_value::<F>,
-            unsafe { NonNull::new_unchecked(boxed_f as *mut c_void) },
-            Some(call_on_status_changed::<F>),
+            free_boxed_value::<CallbackContext<StateCallback, DocumentsEndedCallback>>,
+            unsafe { NonNull::new_unchecked(ctx_p as *mut c_void) },
+            Some(call_on_status_changed::<StateCallback, DocumentsEndedCallback>),
+            Some(call_on_documents_ended::<StateCallback, DocumentsEndedCallback>),
         )
     }
 
@@ -104,6 +157,7 @@ impl Replicator {
             free_callback_f,
             boxed_callback_f,
             c_callback_on_status_changed,
+            c_callback_on_documents_ended,
         } = self;
         mem::forget(self);
         unsafe {
@@ -117,6 +171,7 @@ impl Replicator {
             free_callback_f,
             boxed_callback_f,
             c_callback_on_status_changed,
+            c_callback_on_documents_ended,
         )?;
         repl.start()?;
         Ok(repl)
@@ -129,6 +184,7 @@ impl Replicator {
         free_callback_f: unsafe fn(_: *mut c_void),
         boxed_callback_f: NonNull<c_void>,
         call_on_status_changed: C4ReplicatorStatusChangedCallback,
+        call_on_documents_ended: C4ReplicatorDocumentsEndedCallback,
     ) -> Result<Self> {
         let mut remote_addr = MaybeUninit::<C4Address>::uninit();
         let mut db_name = C4String::default();
@@ -152,7 +208,7 @@ impl Replicator {
             pushFilter: None,
             validationFunc: None,
             onStatusChanged: call_on_status_changed,
-            onDocumentsEnded: None,
+            onDocumentsEnded: call_on_documents_ended,
             onBlobProgress: None,
             propertyEncryptor: ptr::null_mut(),
             propertyDecryptor: ptr::null_mut(),
@@ -176,6 +232,7 @@ impl Replicator {
                 free_callback_f,
                 boxed_callback_f,
                 c_callback_on_status_changed: call_on_status_changed,
+                c_callback_on_documents_ended: call_on_documents_ended,
             })
             .ok_or_else(|| {
                 unsafe { free_callback_f(boxed_callback_f.as_ptr()) };

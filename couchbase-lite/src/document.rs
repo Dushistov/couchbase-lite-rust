@@ -1,14 +1,15 @@
 use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
-        c4doc_getRevisionBody, c4doc_loadRevisionBody, c4doc_release, kDocConflicted, kDocDeleted,
-        kDocExists, kDocHasAttachments, C4Document, C4DocumentFlags, FLSliceResult,
+        c4doc_getRevisionBody, c4doc_loadRevisionBody, c4doc_release, c4rev_getGeneration,
+        kDocConflicted, kDocDeleted, kDocExists, kDocHasAttachments, C4Document, C4DocumentFlags,
+        C4Revision, FLSlice, FLSliceResult,
     },
 };
 use bitflags::bitflags;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_fleece::{to_fl_slice_result_with_encoder, FlEncoderSession};
-use std::{ptr::NonNull, str};
+use std::{os::raw::c_uint, ptr::NonNull, str};
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -81,8 +82,7 @@ impl Document {
                 self.id
             ))
         })?;
-        load_body(inner.0)?;
-        let body = unsafe { c4doc_getRevisionBody(inner.0.as_ptr()) };
+        let body = inner.load_body()?;
         let x: T = serde_fleece::from_slice(body.into())?;
         Ok(x)
     }
@@ -114,7 +114,7 @@ impl Document {
     pub fn revision_id(&self) -> Option<&str> {
         self.inner
             .as_ref()
-            .map(|p| str::from_utf8(unsafe { p.0.as_ref() }.revID.as_fl_slice().into()).ok())
+            .map(|p| str::from_utf8(p.revision_id().into()).ok())
             .unwrap_or(None)
     }
 
@@ -166,6 +166,10 @@ impl C4DocumentOwner {
         unsafe { self.0.as_ref().flags }
     }
     #[inline]
+    pub(crate) fn selected_revision(&self) -> &C4Revision {
+        &unsafe { self.0.as_ref() }.selectedRev
+    }
+    #[inline]
     pub(crate) fn id(&self) -> Result<&str> {
         unsafe {
             self.0
@@ -176,13 +180,20 @@ impl C4DocumentOwner {
                 .map_err(|_| Error::InvalidUtf8)
         }
     }
-}
-
-fn load_body(inner: NonNull<C4Document>) -> Result<()> {
-    let mut c4err = c4error_init();
-    if unsafe { c4doc_loadRevisionBody(inner.as_ptr(), &mut c4err) } {
-        Ok(())
-    } else {
-        Err(c4err.into())
+    #[inline]
+    pub(crate) fn revision_id(&self) -> FLSlice {
+        unsafe { self.0.as_ref() }.revID.as_fl_slice()
+    }
+    #[inline]
+    pub(crate) fn generation(&self) -> c_uint {
+        unsafe { c4rev_getGeneration(self.revision_id()) }
+    }
+    pub(crate) fn load_body(&self) -> Result<&[u8]> {
+        let mut c4err = c4error_init();
+        if unsafe { c4doc_loadRevisionBody(self.0.as_ptr(), &mut c4err) } {
+            Ok(unsafe { c4doc_getRevisionBody(self.0.as_ptr()) }.into())
+        } else {
+            Err(c4err.into())
+        }
     }
 }

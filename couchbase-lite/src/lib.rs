@@ -44,6 +44,7 @@
 //! }
 //! ```
 
+mod conflict_resolver;
 mod database;
 mod doc_enumerator;
 mod document;
@@ -57,6 +58,7 @@ mod transaction;
 mod value;
 
 pub use crate::{
+    conflict_resolver::resolve_conflict,
     database::{Database, DatabaseConfig, DatabaseFlags},
     doc_enumerator::DocEnumeratorFlags,
     document::Document,

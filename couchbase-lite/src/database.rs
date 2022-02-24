@@ -3,10 +3,11 @@ use crate::{
     document::{C4DocumentOwner, Document},
     error::{c4error_init, Error, Result},
     ffi::{
-        c4db_createIndex, c4db_getDocumentCount, c4db_getIndexesInfo, c4db_getSharedFleeceEncoder,
-        c4db_openNamed, c4db_release, c4doc_get, kC4DB_Create, kC4DB_NoUpgrade,
-        kC4DB_NonObservable, kC4DB_ReadOnly, C4Database, C4DatabaseConfig2, C4EncryptionAlgorithm,
-        C4EncryptionKey, C4IndexOptions, C4IndexType,
+        c4db_createIndex, c4db_getDoc, c4db_getDocumentCount, c4db_getIndexesInfo,
+        c4db_getSharedFleeceEncoder, c4db_openNamed, c4db_release, kC4DB_Create, kC4DB_NoUpgrade,
+        kC4DB_NonObservable, kC4DB_ReadOnly, C4Database, C4DatabaseConfig2, C4DocContentLevel,
+        C4DocumentEnded, C4EncryptionAlgorithm, C4EncryptionKey, C4ErrorCode, C4ErrorDomain,
+        C4IndexOptions, C4IndexType,
     },
     index::{DbIndexesListIterator, IndexInfo, IndexOptions, IndexType},
     log_reroute::c4log_to_log_init,
@@ -18,7 +19,7 @@ use crate::{
 };
 use bitflags::bitflags;
 use fallible_streaming_iterator::FallibleStreamingIterator;
-use log::{debug, error};
+use log::{debug, error, trace};
 use serde_fleece::FlEncoderSession;
 use std::{
     collections::HashSet,
@@ -96,6 +97,7 @@ unsafe impl Send for DbInner {}
 
 impl Drop for DbInner {
     fn drop(&mut self) {
+        trace!("release db {:?}", self.0.as_ptr());
         unsafe { c4db_release(self.0.as_ptr()) };
     }
 }
@@ -241,27 +243,29 @@ impl Database {
     }
 
     /// starts database replication
-    pub fn start_replicator<F>(
+    pub fn start_replicator<StatusF, DocsReplF>(
         &mut self,
         url: &str,
         token: Option<&str>,
-        mut repl_status_changed: F,
+        mut repl_status_changed: StatusF,
+        repl_docs_ended: DocsReplF,
     ) -> Result<()>
     where
-        F: FnMut(ReplicatorState) + Send + 'static,
+        StatusF: FnMut(ReplicatorState) + Send + 'static,
+        DocsReplF: FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
     {
-        let mut db_replicator =
-            Replicator::new(
-                self,
-                url,
-                token,
-                move |status| match ReplicatorState::try_from(status) {
-                    Ok(state) => repl_status_changed(state),
-                    Err(err) => {
-                        error!("replicator status change: invalid status {}", err);
-                    }
-                },
-            )?;
+        let mut db_replicator = Replicator::new(
+            self,
+            url,
+            token,
+            move |status| match ReplicatorState::try_from(status) {
+                Ok(state) => repl_status_changed(state),
+                Err(err) => {
+                    error!("replicator status change: invalid status {}", err);
+                }
+            },
+            repl_docs_ended,
+        )?;
         db_replicator.start()?;
         self.db_replicator = Some(db_replicator);
         self.replicator_params = Some(ReplicatorParams {
@@ -395,19 +399,48 @@ impl Database {
         }
     }
 
-    pub(crate) fn internal_get(&self, doc_id: &str, must_exists: bool) -> Result<C4DocumentOwner> {
+    pub(crate) fn do_internal_get(
+        &self,
+        doc_id: &str,
+        must_exists: bool,
+        content_level: C4DocContentLevel,
+    ) -> Result<C4DocumentOwner> {
         let mut c4err = c4error_init();
         let c4doc = unsafe {
-            c4doc_get(
+            c4db_getDoc(
                 self.inner.0.as_ptr(),
                 doc_id.as_bytes().into(),
                 must_exists,
+                content_level,
                 &mut c4err,
             )
         };
         NonNull::new(c4doc)
             .ok_or_else(|| c4err.into())
             .map(C4DocumentOwner)
+    }
+
+    pub(crate) fn do_internal_get_opt(
+        &self,
+        doc_id: &str,
+        must_exists: bool,
+        content_level: C4DocContentLevel,
+    ) -> Result<Option<C4DocumentOwner>> {
+        match self.do_internal_get(doc_id, must_exists, content_level) {
+            Ok(x) => Ok(Some(x)),
+            Err(Error::C4Error(err))
+                if err.domain == C4ErrorDomain::LiteCoreDomain
+                    && err.code == C4ErrorCode::kC4ErrorNotFound.0 =>
+            {
+                Ok(None)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn internal_get(&self, doc_id: &str, must_exists: bool) -> Result<C4DocumentOwner> {
+        self.do_internal_get(doc_id, must_exists, C4DocContentLevel::kDocGetCurrentRev)
     }
 }
 

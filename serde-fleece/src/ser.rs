@@ -13,6 +13,8 @@ macro_rules! encoder_write {
 mod macros;
 mod map;
 
+pub use macros::EncodeValue;
+
 use self::map::MapKeySerializer;
 use crate::{
     error::Error,

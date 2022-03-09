@@ -309,6 +309,10 @@ fn test_fleece_macro() {
         r#"{"cookies":"AAAA=BBBB"}"#,
         fleece_encoded_to_json(fleece!({ cookie_name: token }).unwrap())
     );
+    assert_eq!(
+        r#"{"f1":17}"#,
+        fleece_encoded_to_json(fleece!({ "f1": 17 }).unwrap())
+    );
 }
 
 fn to_fleece_to_json<T: Serialize>(value: &T) -> String {

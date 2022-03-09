@@ -385,13 +385,9 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         }
 
         let dict = unsafe { FLValue_AsDict(self.value.as_ptr()) };
-        if dict.is_null() {
-            return Err(Error::InvalidFormat(
-                "map: value to dict return null".into(),
-            ));
-        }
-        let dict: &_FLDict = unsafe { &*dict };
-        let n = unsafe { FLDict_Count(dict) };
+        let dict = NonNullConst::new(dict)
+            .ok_or_else(|| Error::InvalidFormat("map: value to dict return null".into()))?;
+        let n = unsafe { FLDict_Count(dict.as_ptr()) };
         let n: usize = n.try_into().map_err(|err| {
             Error::InvalidFormat(format!("Can not convert {} to usize: {}", n, err).into())
         })?;

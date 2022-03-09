@@ -151,10 +151,10 @@ impl<'a> Drop for DictAccess<'a> {
 }
 
 impl<'a> DictAccess<'a> {
-    pub fn new(dict: &'a _FLDict, n: usize) -> Self {
+    pub fn new(dict: NonNullConst<_FLDict>, n: usize) -> Self {
         let mut it = MaybeUninit::<FLDictIterator>::uninit();
         let it = unsafe {
-            FLDictIterator_Begin(dict, it.as_mut_ptr());
+            FLDictIterator_Begin(dict.as_ptr(), it.as_mut_ptr());
             it.assume_init()
         };
         Self {

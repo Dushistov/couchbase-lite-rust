@@ -3,60 +3,12 @@ use crate::{
     de::Deserializer,
     ffi::{
         FLDictIterator, FLDictIterator_Begin, FLDictIterator_End, FLDictIterator_GetCount,
-        FLDictIterator_GetKeyString, FLDictIterator_GetValue, FLDictIterator_Next, FLDict_Get,
-        _FLDict,
+        FLDictIterator_GetKeyString, FLDictIterator_GetValue, FLDictIterator_Next, _FLDict,
     },
     Error,
 };
 use serde::de;
 use std::{marker::PhantomData, mem::MaybeUninit, str::FromStr};
-
-/// Can not use `DictAccess`, because of order of fields
-/// is not defined in fleee's dict, but defined in struct.
-pub(crate) struct StructAccess<'a> {
-    dict: NonNullConst<_FLDict>,
-    fields: &'static [&'static str],
-    i: usize,
-    marker: PhantomData<&'a [u8]>,
-}
-
-impl<'a> StructAccess<'a> {
-    pub fn new(dict: NonNullConst<_FLDict>, fields: &'static [&'static str]) -> Self {
-        Self {
-            dict,
-            fields,
-            i: 0,
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<'a, 'de> de::SeqAccess<'de> for StructAccess<'a> {
-    type Error = Error;
-
-    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
-    where
-        T: de::DeserializeSeed<'de>,
-    {
-        if let Some(key) = self.fields.get(self.i) {
-            unsafe {
-                let value = FLDict_Get(self.dict.as_ptr(), (*key).into());
-                let value = NonNullConst::new(value).ok_or_else(|| {
-                    Error::InvalidFormat(format!("missing field `{}` in fleece dict", key).into())
-                })?;
-                let value = seed.deserialize(&mut Deserializer::new(value))?;
-                self.i += 1;
-                Ok(Some(value))
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    fn size_hint(&self) -> Option<usize> {
-        Some(self.fields.len())
-    }
-}
 
 pub(crate) struct EnumAccess<'a> {
     dict: NonNullConst<_FLDict>,
@@ -441,13 +393,11 @@ impl<'de, 'a> de::Deserializer<'de> for DictKeySerializer<'a> {
         Err(Error::Unsupported("Can not deserialize dict key from enum"))
     }
 
-    fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: de::Visitor<'de>,
     {
-        Err(Error::Unsupported(
-            "Can not deserialize dict key from identifier",
-        ))
+        visitor.visit_str(self.0)
     }
 
     fn deserialize_ignored_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>

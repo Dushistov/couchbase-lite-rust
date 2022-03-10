@@ -96,6 +96,7 @@ fn main() {
         "fleece/FLSlice.h",
         "c4Document+Fleece.h",
         "fleece/Fleece.h",
+        "fleece/FLExpert.h",
     ];
     if cfg!(feature = "use-couchbase-lite-websocket") {
         headers.push("c4Private.h");

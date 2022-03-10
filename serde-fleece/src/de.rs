@@ -3,7 +3,7 @@ mod seq;
 
 use std::{borrow::Borrow, marker::PhantomData, ptr::NonNull};
 
-use self::dict::{DictAccess, StructAccess};
+use self::dict::DictAccess;
 use crate::{
     de::{dict::EnumAccess, seq::ArrayAccess},
     ffi::{
@@ -397,7 +397,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     fn deserialize_struct<V>(
         self,
         name: &'static str,
-        fields: &'static [&'static str],
+        _fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
@@ -423,19 +423,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             Error::InvalidFormat(format!("Can not convert {} to usize: {}", dict_size, err).into())
         })?;
 
-        if dict_size < fields.len() {
-            return Err(Error::InvalidFormat(
-                format!(
-                    "struct {} has invalid number of fields, expect {}, got {}",
-                    name,
-                    fields.len(),
-                    dict_size
-                )
-                .into(),
-            ));
-        }
-
-        visitor.visit_seq(StructAccess::new(dict, fields))
+        visitor.visit_map(DictAccess::new(dict, dict_size))
     }
 
     fn deserialize_enum<V>(
@@ -473,12 +461,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         self.deserialize_str(visitor)
     }
 
-    fn deserialize_ignored_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: de::Visitor<'de>,
     {
-        Err(Error::Unsupported(
-            "deserialize self described format not supported for now",
-        ))
+        // Called in case like there is unexpected key in dictionary, and we
+        // want to ignore value for this key. In our case we can do nothing.
+        // This is IgnoreAny visitor, and visit_unit do nothing.
+        visitor.visit_unit()
     }
 }

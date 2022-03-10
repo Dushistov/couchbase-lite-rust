@@ -175,7 +175,7 @@ fn test_de_primitive() {
 }
 
 #[test]
-fn test_de_struct() {
+fn test_de_struct_normal_functionality() {
     #[derive(Serialize, PartialEq, Deserialize, Debug)]
     struct Test {
         int: u32,
@@ -221,6 +221,87 @@ fn test_de_struct() {
         s: "Так себе".into(),
     };
     assert_eq!(expect, ser_deser(&expect).unwrap());
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    struct SkipField {
+        i: i32,
+        #[serde(default)]
+        #[serde(skip_deserializing)]
+        s: String,
+    }
+    assert_eq!(
+        SkipField {
+            i: 17,
+            s: String::new(),
+        },
+        ser_deser(&SkipField {
+            i: 17,
+            s: "aaaa".into(),
+        })
+        .unwrap()
+    );
+}
+
+#[test]
+fn test_de_struct_errors_corner_cases() {
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    struct S1 {}
+    assert_eq!(S1 {}, ser_deser(&S1 {}).unwrap());
+    assert_eq!(
+        S1 {},
+        from_slice::<S1>(fleece!({ "f1": 17 }).unwrap().as_bytes()).unwrap()
+    );
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    struct S2 {
+        f1: i32,
+    }
+    assert_eq!(
+        "Custom error: missing field `f1`",
+        from_slice::<S2>(fleece!({}).unwrap().as_bytes())
+            .unwrap_err()
+            .to_string()
+    );
+    assert_eq!(
+        "Custom error: missing field `f1`",
+        from_slice::<S2>(fleece!({"f2": 17}).unwrap().as_bytes())
+            .unwrap_err()
+            .to_string()
+    );
+    assert_eq!(
+        "Custom error: missing field `f1`",
+        from_slice::<S2>(fleece!({"f2": 17, "f3": "aaa"}).unwrap().as_bytes())
+            .unwrap_err()
+            .to_string()
+    );
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    struct S3 {
+        i: i32,
+        #[serde(default)]
+        #[serde(skip_serializing)]
+        s: String,
+    }
+    assert_eq!(
+        S3 {
+            i: 17,
+            s: String::new(),
+        },
+        from_slice::<S3>(fleece!({"i": 17}).unwrap().as_bytes()).unwrap()
+    );
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    struct S4 {
+        i: i32,
+        s: String,
+    }
+    assert_eq!(
+        S4 {
+            i: 34,
+            s: "uuu".into(),
+        },
+        from_slice::<S4>(fleece!({"s": "uuu", "i": 34}).unwrap().as_bytes()).unwrap()
+    );
 }
 
 #[test]

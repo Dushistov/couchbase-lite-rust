@@ -83,7 +83,7 @@ impl Document {
             ))
         })?;
         let body = inner.load_body()?;
-        let x: T = serde_fleece::from_slice(body.into())?;
+        let x: T = serde_fleece::from_slice(body)?;
         Ok(x)
     }
     /// Update internal buffer with data, you need save document

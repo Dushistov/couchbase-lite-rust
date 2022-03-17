@@ -3,7 +3,7 @@ use crate::{
     document::{C4DocumentOwner, Document},
     error::{c4error_init, Error, Result},
     ffi::{
-        c4db_createIndex, c4db_getDoc, c4db_getDocumentCount, c4db_getIndexesInfo,
+        c4db_createIndex, c4db_getDoc, c4db_getDocumentCount, c4db_getIndexesInfo, c4db_getName,
         c4db_getSharedFleeceEncoder, c4db_openNamed, c4db_release, kC4DB_Create, kC4DB_NoUpgrade,
         kC4DB_NonObservable, kC4DB_ReadOnly, C4Database, C4DatabaseConfig2, C4DocContentLevel,
         C4DocumentEnded, C4EncryptionAlgorithm, C4EncryptionKey, C4ErrorCode, C4ErrorDomain,
@@ -397,6 +397,15 @@ impl Database {
         } else {
             Err(c4err.into())
         }
+    }
+
+    /// Returns the name of the database, as given to `c4db_openNamed`.
+    /// This is the filename _without_ the ".cblite2" extension.
+    #[inline]
+    pub fn name(&self) -> Result<&str> {
+        unsafe { c4db_getName(self.inner.0.as_ptr()) }
+            .try_into()
+            .map_err(|_| Error::InvalidUtf8)
     }
 
     pub(crate) fn do_internal_get(

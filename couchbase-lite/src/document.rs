@@ -56,15 +56,12 @@ impl Document {
             unsaved_body,
         })
     }
-    pub fn new_with_id_fleece<S: Into<String>>(
-        doc_id: S,
-        fleece_data: FLSliceResult,
-    ) -> Result<Self> {
-        Ok(Self {
+    pub fn new_with_id_fleece<S: Into<String>>(doc_id: S, fleece_data: FLSliceResult) -> Self {
+        Self {
             inner: None,
             id: doc_id.into(),
             unsaved_body: Some(fleece_data),
-        })
+        }
     }
     /// return the document's ID
     pub fn id(&self) -> &str {

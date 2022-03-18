@@ -25,7 +25,7 @@ use std::{
     os::raw::{c_int, c_void},
     sync::{
         atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering},
-        Arc,
+        Arc, Condvar, Mutex,
     },
     time::Duration,
 };
@@ -37,6 +37,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{
         self,
+        client::IntoClientRequest,
         handshake::client::{Request, Response},
         http::{self, HeaderValue, Uri},
         protocol::{frame::coding::CloseCode, CloseFrame},
@@ -163,6 +164,7 @@ unsafe extern "C" fn ws_open(
     let close_control = sock_impl.close_control.clone();
     c4Socket_setNativeHandle(c4sock, Box::into_raw(sock_impl) as *mut c_void);
     let c4sock = C4SocketPtr(c4sock);
+    let handle2 = handle.clone();
     handle.spawn(async move {
         let close_ctl = close_control.clone();
         match do_open(
@@ -172,6 +174,7 @@ unsafe extern "C" fn ws_open(
             read_push_pull,
             writer,
             close_control,
+            handle2,
         )
         .await
         {
@@ -239,6 +242,44 @@ unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usi
     }
 }
 
+struct DoneSignal {
+    inner: Arc<(Mutex<bool>, Condvar)>,
+}
+
+impl Drop for DoneSignal {
+    fn drop(&mut self) {
+        trace!("DoneSignal::drop {:?}", Arc::as_ptr(&self.inner));
+        let (lock, cvar) = &*self.inner;
+        let mut done = lock.lock().expect("mutex lock failed");
+        *done = true;
+        cvar.notify_one();
+    }
+}
+
+struct WaitDoneSignal {
+    inner: Arc<(Mutex<bool>, Condvar)>,
+}
+
+impl WaitDoneSignal {
+    fn wait(&self) {
+        let (lock, cvar) = &*self.inner;
+        let mut done = lock.lock().expect("mutex lock failed");
+        while !*done {
+            done = cvar.wait(done).expect("condvar wait failed");
+        }
+    }
+}
+
+fn wait_signal() -> (WaitDoneSignal, DoneSignal) {
+    let inner = Arc::new((Mutex::new(false), Condvar::new()));
+    (
+        WaitDoneSignal {
+            inner: inner.clone(),
+        },
+        DoneSignal { inner },
+    )
+}
+
 unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, message: C4String) {
     trace!(
         "c4sock {:?}: requestClose status {}, message: {:?}",
@@ -255,7 +296,16 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
     let socket: &SocketImpl = &*native;
     let writer = socket.writer.clone();
     let close_control = socket.close_control.clone();
-    socket.handle.block_on(async move {
+    let c4sock = C4SocketPtr(c4sock);
+
+    let (wait_done, done_signal) = wait_signal();
+
+    socket.handle.spawn(async move {
+        trace!(
+            "c4sock {:?}: start closing, done signal addr {:?}",
+            c4sock,
+            Arc::as_ptr(&done_signal.inner)
+        );
         let state = close_control.state.load(Ordering::Acquire);
         let is_client_close = match state {
             CloseState::None => {
@@ -304,9 +354,20 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
             }
         }
         if !close_control.signaled.swap(true, Ordering::SeqCst) {
-            c4socket_closed(c4sock, err);
+            c4socket_closed(c4sock.0, err);
         }
     });
+    trace!(
+        "c4sock {:?}: waiting done signal {:?}",
+        c4sock,
+        Arc::as_ptr(&wait_done.inner)
+    );
+    wait_done.wait();
+    trace!(
+        "c4sock {:?}: got done signal {:?}",
+        c4sock,
+        Arc::as_ptr(&wait_done.inner)
+    );
 }
 
 unsafe extern "C" fn ws_dispose(c4sock: *mut C4Socket) {
@@ -386,6 +447,7 @@ async fn do_open(
     read_push_pull: Arc<ReadPushPull>,
     writer: Arc<TokioMutex<Option<WsWriter>>>,
     close_control: Arc<CloseControl>,
+    handle: Handle,
 ) -> Result<(), Error> {
     let request = request?;
     let (ws_stream, http_resp) = tokio::select! {
@@ -424,7 +486,15 @@ async fn do_open(
     unsafe {
         c4socket_opened(c4sock.0);
     }
-    main_read_loop(c4sock, ws_reader, stop_rx, read_push_pull, close_control).await?;
+    main_read_loop(
+        c4sock,
+        ws_reader,
+        stop_rx,
+        read_push_pull,
+        close_control,
+        handle,
+    )
+    .await?;
     Ok(())
 }
 
@@ -434,6 +504,7 @@ async fn main_read_loop(
     mut stop_rx: oneshot::Receiver<()>,
     read_push_pull: Arc<ReadPushPull>,
     close_control: Arc<CloseControl>,
+    handle: Handle,
 ) -> Result<(), Error> {
     'read_loop: loop {
         tokio::select! {
@@ -468,9 +539,14 @@ async fn main_read_loop(
                         match state {
                             CloseState::None => {
                                 close_control.state.store(CloseState::Server, Ordering::Release);
-                                unsafe {
-                                    c4socket_closeRequested(c4sock.0, code, reason.as_bytes().into());
-                                }
+                                let task = handle.spawn_blocking(move || {
+                                    let c4sock: C4SocketPtr = c4sock;
+                                    unsafe {
+                                        c4socket_closeRequested(c4sock.0, code, reason.as_bytes().into());
+                                    }
+                                });
+                                task.await.expect("The task being joined has panicked");
+
                             }
                             CloseState::Server => {
                                 warn!("c4sock {:?} duplicate close message from server: {} {}",
@@ -631,10 +707,10 @@ impl From<FLError> for Error {
 }
 
 impl CloseControl {
-    async fn signal_to_stop_read_loop(&self, ctx: *mut C4Socket) {
+    async fn signal_to_stop_read_loop(&self, ctx: C4SocketPtr) {
         let mut lock = self.stop_read_loop.lock().await;
         if let Some(stop_tx) = lock.take() {
-            trace!("c4sock {:?}: stoping connect/read loop", ctx);
+            trace!("c4sock {:?}: stoping connect/read loop", ctx.0);
             let _ = stop_tx.send(());
         }
     }

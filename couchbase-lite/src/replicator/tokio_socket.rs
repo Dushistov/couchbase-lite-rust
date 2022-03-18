@@ -332,7 +332,9 @@ unsafe fn c4address_to_request(
         .path_and_query(<&[u8]>::from(addr.path))
         .build()?;
     trace!("c4address_to_request, marker {:x}, uri {:?}", marker, uri);
-    let mut request = Request::get(uri).body(())?;
+    let mut request = uri
+        .into_client_request()
+        .map_err(|err| unsafe { tungstenite_err_to_c4_err(err) })?;
     let options =
         NonNullConst::new(FLValue_FromData(options, FLTrust::kFLUntrusted)).ok_or_else(|| {
             Error(c4error_make(
@@ -481,6 +483,8 @@ async fn main_read_loop(
                         }
                         break 'read_loop;
                     }
+                    Message::Frame(_) =>
+                        warn!("unsupport Message::Frame format"),
                     Message::Ping(_) => {
                         trace!("c4sock {:?}: ping frame was received", c4sock);
                         todo!();

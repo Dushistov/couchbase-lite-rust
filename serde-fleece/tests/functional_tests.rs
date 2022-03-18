@@ -148,6 +148,18 @@ fn test_ser_collections() {
     assert_eq!(r#"{"5":35,"6":42}"#, to_fleece_to_json(&m));
 }
 
+#[test]
+fn test_ser_json() {
+    let mut enc = Encoder::new();
+    let mut test_json = |json: &str| {
+        let fleece = json_to_fleece_with_encoder(json.as_bytes(), enc.session()).unwrap();
+        let result = fleece_encoded_to_json(fleece);
+        assert_eq!(json, result);
+    };
+    test_json("[1,2]");
+    test_json(r#"{"a":17,"b":"value"}"#);
+}
+
 macro_rules! test_primive_ser_deser {
     ($($ty:ty)*) => {
         $(

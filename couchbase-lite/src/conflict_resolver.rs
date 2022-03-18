@@ -29,7 +29,7 @@ pub fn resolve_conflict(
             }
         };
         let ok = if let Some(rev_id) = rev_id.as_ref() {
-            select_revision(&doc, &rev_id)?;
+            select_revision(&doc, rev_id)?;
             let mask = kRevLeaf | kRevIsConflict;
             (doc.selected_revision().flags & mask) == mask
         } else {

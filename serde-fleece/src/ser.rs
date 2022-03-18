@@ -19,11 +19,11 @@ use self::map::MapKeySerializer;
 use crate::{
     error::Error,
     ffi::{
-        FLEncoder_BeginArray, FLEncoder_BeginDict, FLEncoder_EndArray, FLEncoder_EndDict,
-        FLEncoder_Finish, FLEncoder_Free, FLEncoder_GetError, FLEncoder_New, FLEncoder_Reset,
-        FLEncoder_WriteBool, FLEncoder_WriteDouble, FLEncoder_WriteFloat, FLEncoder_WriteInt,
-        FLEncoder_WriteKey, FLEncoder_WriteNull, FLEncoder_WriteString, FLEncoder_WriteUInt,
-        FLError, FLSliceResult, _FLEncoder,
+        FLEncoder_BeginArray, FLEncoder_BeginDict, FLEncoder_ConvertJSON, FLEncoder_EndArray,
+        FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free, FLEncoder_GetError, FLEncoder_New,
+        FLEncoder_Reset, FLEncoder_WriteBool, FLEncoder_WriteDouble, FLEncoder_WriteFloat,
+        FLEncoder_WriteInt, FLEncoder_WriteKey, FLEncoder_WriteNull, FLEncoder_WriteString,
+        FLEncoder_WriteUInt, FLError, FLSliceResult, _FLEncoder,
     },
 };
 use serde::{ser, Serialize};
@@ -79,6 +79,29 @@ where
         inner: *encoder.borrow(),
     };
     value.serialize(&mut serializer)?;
+    let mut err = FLError::kFLNoError;
+    let ret = unsafe { FLEncoder_Finish(serializer.inner.as_ptr(), &mut err) };
+    if !ret.is_empty() {
+        Ok(ret)
+    } else {
+        Err(err.into())
+    }
+}
+
+/// Convert json data into fleece encoded byte array
+pub fn json_to_fleece_with_encoder<FleeceEncoder>(
+    json: &[u8],
+    encoder: FleeceEncoder,
+) -> Result<FLSliceResult, Error>
+where
+    FleeceEncoder: Borrow<NonNull<_FLEncoder>>,
+{
+    let serializer = Serializer {
+        inner: *encoder.borrow(),
+    };
+    if !unsafe { FLEncoder_ConvertJSON(serializer.inner.as_ptr(), json.into()) } {
+        return Err(Error::Fleece(FLError::kFLEncodeError));
+    }
     let mut err = FLError::kFLNoError;
     let ret = unsafe { FLEncoder_Finish(serializer.inner.as_ptr(), &mut err) };
     if !ret.is_empty() {

@@ -254,6 +254,9 @@ fn cmake_build_src_dir(is_msvc: bool) -> (PathBuf, PathBuf) {
 
 #[cfg(not(feature = "bundled"))]
 fn cmake_build_src_dir(_is_msvc: bool) -> (PathBuf, PathBuf) {
+    println!("cargo:rerun-if-env-changed=COUCHBASE_LITE_CORE_BUILD_DIR");
+    println!("cargo:rerun-if-env-changed=COUCHBASE_LITE_CORE_SRC_DIR");
+
     (
         getenv_unwrap("COUCHBASE_LITE_CORE_BUILD_DIR").into(),
         getenv_unwrap("COUCHBASE_LITE_CORE_SRC_DIR").into(),

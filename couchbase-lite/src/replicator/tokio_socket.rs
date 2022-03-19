@@ -395,7 +395,7 @@ unsafe fn c4address_to_request(
     trace!("c4address_to_request, marker {:x}, uri {:?}", marker, uri);
     let mut request = uri
         .into_client_request()
-        .map_err(|err| unsafe { tungstenite_err_to_c4_err(err) })?;
+        .map_err(|err| tungstenite_err_to_c4_err(err))?;
     let options =
         NonNullConst::new(FLValue_FromData(options, FLTrust::kFLUntrusted)).ok_or_else(|| {
             Error(c4error_make(

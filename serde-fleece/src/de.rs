@@ -9,8 +9,8 @@ use crate::{
     ffi::{
         FLArray_Count, FLDict_Count, FLTrust, FLValueType, FLValue_AsArray, FLValue_AsBool,
         FLValue_AsDict, FLValue_AsDouble, FLValue_AsFloat, FLValue_AsInt, FLValue_AsString,
-        FLValue_AsUnsigned, FLValue_FromData, FLValue_GetType, FLValue_IsInteger, _FLDict,
-        _FLValue,
+        FLValue_AsUnsigned, FLValue_FromData, FLValue_GetType, FLValue_IsDouble, FLValue_IsInteger,
+        FLValue_IsUnsigned, _FLDict, _FLValue,
     },
     Error,
 };
@@ -145,13 +145,35 @@ pub fn from_fl_value<'a, T: de::Deserialize<'a>>(
 impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     type Error = Error;
 
-    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: de::Visitor<'de>,
     {
-        Err(Error::Unsupported(
-            "deserialize self described format not supported for now",
-        ))
+        let fl_type = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        match fl_type {
+            FLValueType::kFLUndefined => Err(Error::Unsupported(
+                "deserialize self described: `undefined` not supported",
+            )),
+            FLValueType::kFLNull => self.deserialize_unit(visitor),
+            FLValueType::kFLBoolean => self.deserialize_bool(visitor),
+            FLValueType::kFLNumber => {
+                if unsafe { FLValue_IsUnsigned(self.value.as_ptr()) } {
+                    self.deserialize_u64(visitor)
+                } else if unsafe { FLValue_IsInteger(self.value.as_ptr()) } {
+                    self.deserialize_i64(visitor)
+                } else if unsafe { FLValue_IsDouble(self.value.as_ptr()) } {
+                    self.deserialize_f64(visitor)
+                } else {
+                    self.deserialize_f32(visitor)
+                }
+            }
+            FLValueType::kFLString => self.deserialize_str(visitor),
+            FLValueType::kFLData => Err(Error::Unsupported(
+                "deserialize self described: `data` not supported",
+            )),
+            FLValueType::kFLArray => self.deserialize_seq(visitor),
+            FLValueType::kFLDict => self.deserialize_map(visitor),
+        }
     }
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>

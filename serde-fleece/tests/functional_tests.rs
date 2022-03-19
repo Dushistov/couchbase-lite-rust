@@ -165,7 +165,7 @@ macro_rules! test_primive_ser_deser {
         $(
             let expect = <$ty>::min_value();
             assert_eq!(expect, ser_deser(&expect).unwrap());
-            let expect = i64::max_value();
+            let expect = <$ty>::max_value();
             assert_eq!(expect, ser_deser(&expect).unwrap());
             let expect = 0 as $ty;
             assert_eq!(expect, ser_deser(&expect).unwrap());
@@ -252,6 +252,38 @@ fn test_de_struct_normal_functionality() {
         })
         .unwrap()
     );
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct WithFlat {
+        #[serde(flatten)]
+        p: Flat,
+    }
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[serde(rename_all = "camelCase")]
+    struct Flat {
+        f1: String,
+        f2: Option<u32>,
+        f25: i64,
+        f3: u64,
+        f4: i32,
+        f5: f32,
+        f6: f64,
+    }
+    let mut data = WithFlat {
+        p: Flat {
+            f1: "AAA BBB".into(),
+            f2: Some(42),
+            f25: -1,
+            f3: u64::MAX,
+            f4: i32::MIN,
+            f5: 1.5,
+            f6: 2.5,
+        },
+    };
+    assert_eq!(data, ser_deser(&data).unwrap());
+    data.p.f2 = None;
+    assert_eq!(data, ser_deser(&data).unwrap());
 }
 
 #[test]

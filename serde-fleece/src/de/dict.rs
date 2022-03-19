@@ -165,13 +165,11 @@ struct DictKeySerializer<'a>(&'a str);
 impl<'de, 'a> de::Deserializer<'de> for DictKeySerializer<'a> {
     type Error = Error;
 
-    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: de::Visitor<'de>,
     {
-        Err(Error::Unsupported(
-            "DictKeySerializer can not work with any",
-        ))
+        self.deserialize_str(visitor)
     }
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>

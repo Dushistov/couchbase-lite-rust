@@ -79,7 +79,7 @@ impl Display for Error {
                 write!(f, "FLeece error: {}", msg)
             }
             Error::Custom(msg) => write!(f, "Custom error: {}", msg),
-            Error::Unsupported(msg) => write!(f, "Unsupporte operation: {}", msg),
+            Error::Unsupported(msg) => write!(f, "Unsupported operation: {}", msg),
             Error::InvalidFormat(msg) => write!(f, "invalid fleece data: {}", msg),
         }
     }

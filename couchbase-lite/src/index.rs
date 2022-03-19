@@ -89,14 +89,18 @@ pub struct IndexInfo {
 }
 
 impl IndexInfo {
-    pub fn name_as_str(&self) -> std::result::Result<&str, std::str::Utf8Error> {
-        self.name.try_into()
+    pub fn name_as_str(&self) -> Result<&str> {
+        self.name
+            .try_into()
+            .map_err(|_: std::str::Utf8Error| Error::InvalidUtf8)
     }
     pub fn type_(&self) -> C4IndexType {
         self.type_
     }
-    pub fn expr_as_str(&self) -> std::result::Result<&str, std::str::Utf8Error> {
-        self.expr.try_into()
+    pub fn expr_as_str(&self) -> Result<&str> {
+        self.expr
+            .try_into()
+            .map_err(|_: std::str::Utf8Error| Error::InvalidUtf8)
     }
 }
 

@@ -252,7 +252,10 @@ fn test_de_struct_normal_functionality() {
         })
         .unwrap()
     );
+}
 
+#[test]
+fn test_de_struct_flattern() {
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct WithFlat {
         #[serde(flatten)]
@@ -283,6 +286,39 @@ fn test_de_struct_normal_functionality() {
     };
     assert_eq!(data, ser_deser(&data).unwrap());
     data.p.f2 = None;
+    assert_eq!(data, ser_deser(&data).unwrap());
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct WithFlat2 {
+        #[serde(flatten)]
+        p: Flat2,
+    }
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[serde(rename_all = "camelCase")]
+    struct Flat2 {
+        f: Enum1,
+    }
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    enum Enum1 {
+        NotSent,
+        SentNoResponse(String),
+        Status(String, Enum2),
+    }
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    enum Enum2 {
+        A,
+        B,
+        C,
+    }
+    let mut data = WithFlat2 {
+        p: Flat2 { f: Enum1::NotSent },
+    };
+    assert_eq!(data, ser_deser(&data).unwrap());
+
+    data.p.f = Enum1::Status("aaa".into(), Enum2::B);
     assert_eq!(data, ser_deser(&data).unwrap());
 }
 

@@ -3,7 +3,7 @@ use crate::{
     ffi::{
         c4query_new, c4query_new2, c4query_release, c4query_run, c4query_setParameters,
         c4queryenum_next, c4queryenum_release, kC4DefaultQueryOptions, kC4N1QLQuery, C4Query,
-        C4QueryEnumerator, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt, c4query_columnCount,
+        C4QueryEnumerator, FLArrayIterator_GetCount, FLArrayIterator_GetValueAt, c4query_columnCount, c4query_explain,
         c4query_columnTitle
     },
     fl_slice::{fl_slice_empty, AsFlSlice},
@@ -91,6 +91,12 @@ impl Query<'_> {
                 inner,
             })
             .ok_or_else(|| c4err.into())
+    }
+
+    pub fn explain(&self) -> Result<String> {
+        let explain = unsafe { c4query_explain(self.inner.as_ptr()) };
+        let explain_result = unsafe { fl_slice_to_str_unchecked(explain.as_flslice()).to_owned() };
+        Ok(explain_result)
     }
 
     pub fn column_names(&self) -> Result<Vec<String>> {

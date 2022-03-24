@@ -264,7 +264,7 @@ fn cmake_build_src_dir(_is_msvc: bool) -> (PathBuf, PathBuf) {
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
-fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
+fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std::error::Error>> {
     use std::{
         io::{Read, Write},
         process::Stdio,
@@ -281,22 +281,19 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
         .stderr(Stdio::piped())
         .stdin(Stdio::piped())
         .stdout(Stdio::inherit())
-        .spawn()
-        .map_err(|err| err.to_string())?;
+        .spawn()?;
 
     cc_process
         .stdin
         .ok_or_else(|| "can not get stdin of cc".to_string())?
-        .write_all(b"\n")
-        .map_err(|err| err.to_string())?;
+        .write_all(b"\n")?;
 
     let mut cc_output = String::new();
 
     cc_process
         .stderr
         .ok_or_else(|| "can not get stderr of cc".to_string())?
-        .read_to_string(&mut cc_output)
-        .map_err(|err| err.to_string())?;
+        .read_to_string(&mut cc_output)?;
 
     const BEGIN_PAT: &str = "\n#include <...> search starts here:\n";
     const END_PAT: &str = "\nEnd of search list.\n";
@@ -337,7 +334,7 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
-fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
+fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std::error::Error>> {
     Ok((vec![], vec![]))
 }
 

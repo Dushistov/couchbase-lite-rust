@@ -2,7 +2,7 @@ use crate::{
     error::{Error, Result},
     ffi::{
         c4dbobs_create, c4dbobs_free, c4dbobs_getChanges, c4dbobs_releaseChanges, C4DatabaseChange,
-        C4DatabaseObserver,
+        C4DatabaseObserver, C4RevisionFlags,
     },
     Database,
 };
@@ -114,6 +114,10 @@ impl DbChange {
     #[inline]
     pub fn body_size(&self) -> u32 {
         self.inner.bodySize
+    }
+    #[inline]
+    pub fn revision_flags(&self) -> C4RevisionFlags {
+        self.inner.flags
     }
 }
 

@@ -61,7 +61,7 @@ pub use crate::{
     conflict_resolver::resolve_conflict,
     database::{Database, DatabaseConfig, DatabaseFlags},
     doc_enumerator::DocEnumeratorFlags,
-    document::Document,
+    document::{Document, DocumentFlags},
     error::Error,
     index::IndexType,
     replicator::ReplicatorState,

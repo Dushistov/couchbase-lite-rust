@@ -122,6 +122,11 @@ impl Document {
             .map(|p| DocumentFlags::from_bits_truncate(p.flags()))
     }
 
+    #[inline]
+    pub fn generation(&self) -> c_uint {
+        self.inner.as_ref().map(|d| d.generation()).unwrap_or(0)
+    }
+
     /// Just check `Document::flags` to see if document exists
     #[inline]
     pub fn exists(&self) -> bool {

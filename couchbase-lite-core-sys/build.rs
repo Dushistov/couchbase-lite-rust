@@ -263,77 +263,89 @@ fn cmake_build_src_dir(_is_msvc: bool) -> (PathBuf, PathBuf) {
     )
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "linux"))]
 fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std::error::Error>> {
     use std::{
+        collections::HashSet,
         io::{Read, Write},
         process::Stdio,
     };
 
-    let cc_build = cc::Build::new();
+    let mut include_dirs = HashSet::new();
+    let mut framework_dirs = HashSet::new();
 
-    let cc_process = cc_build
-        .get_compiler()
-        .to_command()
-        .env("LANG", "C")
-        .env("LC_MESSAGES", "C")
-        .args(&["-v", "-x", "c", "-E", "-"])
-        .stderr(Stdio::piped())
-        .stdin(Stdio::piped())
-        .stdout(Stdio::inherit())
-        .spawn()?;
+    for lang in &["c", "c++"] {
+        let cc_build = cc::Build::new();
 
-    cc_process
-        .stdin
-        .ok_or_else(|| "can not get stdin of cc".to_string())?
-        .write_all(b"\n")?;
+        let cc_process = cc_build
+            .get_compiler()
+            .to_command()
+            .env("LANG", "C")
+            .env("LC_MESSAGES", "C")
+            .args(&["-v", "-x", lang, "-E", "-"])
+            .stderr(Stdio::piped())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::inherit())
+            .spawn()?;
 
-    let mut cc_output = String::new();
+        cc_process
+            .stdin
+            .ok_or_else(|| "can not get stdin of cc".to_string())?
+            .write_all(b"\n")?;
 
-    cc_process
-        .stderr
-        .ok_or_else(|| "can not get stderr of cc".to_string())?
-        .read_to_string(&mut cc_output)?;
+        let mut cc_output = String::new();
 
-    const BEGIN_PAT: &str = "\n#include <...> search starts here:\n";
-    const END_PAT: &str = "\nEnd of search list.\n";
-    let start_includes = cc_output
-        .find(BEGIN_PAT)
-        .ok_or_else(|| format!("No '{}' in output from cc", BEGIN_PAT))?
-        + BEGIN_PAT.len();
-    let end_includes = (&cc_output[start_includes..])
-        .find(END_PAT)
-        .ok_or_else(|| format!("No '{}' in output from cc", END_PAT))?
-        + start_includes;
+        cc_process
+            .stderr
+            .ok_or_else(|| "can not get stderr of cc".to_string())?
+            .read_to_string(&mut cc_output)?;
 
-    const FRAMEWORK_PAT: &str = " (framework directory)";
+        const BEGIN_PAT: &str = "\n#include <...> search starts here:\n";
+        const END_PAT: &str = "\nEnd of search list.\n";
+        let start_includes = cc_output
+            .find(BEGIN_PAT)
+            .ok_or_else(|| format!("No '{}' in output from cc", BEGIN_PAT))?
+            + BEGIN_PAT.len();
+        let end_includes = (&cc_output[start_includes..])
+            .find(END_PAT)
+            .ok_or_else(|| format!("No '{}' in output from cc", END_PAT))?
+            + start_includes;
 
-    let include_dis = (&cc_output[start_includes..end_includes])
-        .split('\n')
-        .filter_map(|s| {
-            if !s.ends_with(FRAMEWORK_PAT) {
-                Some(PathBuf::from(s.trim().to_string()))
-            } else {
-                None
-            }
-        })
-        .collect();
-    let framework_dirs = (&cc_output[start_includes..end_includes])
-        .split('\n')
-        .filter_map(|s| {
-            if s.ends_with(FRAMEWORK_PAT) {
-                let line = s.trim();
-                let line = &line[..line.len() - FRAMEWORK_PAT.len()];
-                Some(PathBuf::from(line.trim().to_string()))
-            } else {
-                None
-            }
-        })
-        .collect();
-    Ok((include_dis, framework_dirs))
+        const FRAMEWORK_PAT: &str = " (framework directory)";
+
+        include_dirs.extend(
+            (&cc_output[start_includes..end_includes])
+                .split('\n')
+                .filter_map(|s| {
+                    if !s.ends_with(FRAMEWORK_PAT) {
+                        Some(PathBuf::from(s.trim().to_string()))
+                    } else {
+                        None
+                    }
+                }),
+        );
+
+        framework_dirs.extend(
+            (&cc_output[start_includes..end_includes])
+                .split('\n')
+                .filter_map(|s| {
+                    if s.ends_with(FRAMEWORK_PAT) {
+                        let line = s.trim();
+                        let line = &line[..line.len() - FRAMEWORK_PAT.len()];
+                        Some(PathBuf::from(line.trim().to_string()))
+                    } else {
+                        None
+                    }
+                }),
+        );
+    }
+    Ok((
+        include_dirs.into_iter().collect(),
+        framework_dirs.into_iter().collect(),
+    ))
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "linux")))]
 fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std::error::Error>> {
     Ok((vec![], vec![]))
 }

@@ -1,6 +1,7 @@
 use couchbase_lite::{
     fallible_streaming_iterator::FallibleStreamingIterator, ffi::kRevIsConflict, resolve_conflict,
-    Database, DatabaseFlags, DocEnumeratorFlags, Document, ReplicatorState,
+    Database, DatabaseFlags, DocEnumeratorFlags, Document, ReplicatorAuthentication,
+    ReplicatorState,
 };
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
@@ -25,6 +26,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| "ws://192.168.1.32:4984/demo/".to_string());
     let token: Option<String> = env::args().nth(3);
 
+    let auth = if let Some(token) = token {
+        ReplicatorAuthentication::SessionToken(token)
+    } else {
+        ReplicatorAuthentication::None
+    };
+
     let (db_thread, db_exec) = run_db_thread(db_path);
     let db_exec_repl = db_exec.clone();
     let db_exec2 = db_exec.clone();
@@ -33,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             fix_conflicts(db).expect("fix conflict failed");
             db.start_replicator(
                 &sync_url,
-                token.as_ref().map(String::as_str),
+                auth,
                 move |repl_state| {
                     println!("replicator state changed: {:?}", repl_state);
                     match repl_state {

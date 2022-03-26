@@ -5,15 +5,17 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_start, c4repl_stop,
-        kC4ReplicatorOptionCookies, C4Address, C4DocumentEnded, C4Replicator,
-        C4ReplicatorActivityLevel, C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode,
-        C4ReplicatorParameters, C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, C4String,
-        FLSliceResult,
+        kC4AuthTypeBasic, kC4AuthTypeSession, kC4ReplicatorAuthPassword, kC4ReplicatorAuthToken,
+        kC4ReplicatorAuthType, kC4ReplicatorAuthUserName, kC4ReplicatorOptionAuthentication,
+        C4Address, C4DocumentEnded, C4Replicator, C4ReplicatorActivityLevel,
+        C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode, C4ReplicatorParameters,
+        C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, C4String, FLSliceResult,
     },
     Database,
 };
 use log::{debug, error, info, trace};
 use std::{
+    collections::HashMap,
     convert::TryFrom,
     mem::{self, MaybeUninit},
     os::raw::c_void,
@@ -41,6 +43,13 @@ struct CallbackContext<
     docs_ended_cb: DocumentsEndedCallback,
 }
 
+#[derive(Clone)]
+pub enum ReplicatorAuthentication {
+    SessionToken(String),
+    Basic { username: String, password: String },
+    None,
+}
+
 /// it should be safe to call replicator API from any thread
 /// according to https://github.com/couchbase/couchbase-lite-core/wiki/Thread-Safety
 unsafe impl Send for Replicator {}
@@ -63,7 +72,7 @@ impl Replicator {
     pub(crate) fn new<StateCallback, DocumentsEndedCallback>(
         db: &Database,
         url: &str,
-        token: Option<&str>,
+        auth: ReplicatorAuthentication,
         state_changed_callback: StateCallback,
         documents_ended_callback: DocumentsEndedCallback,
     ) -> Result<Self>
@@ -133,7 +142,7 @@ impl Replicator {
         Replicator::do_new(
             db,
             url,
-            token,
+            auth,
             free_boxed_value::<CallbackContext<StateCallback, DocumentsEndedCallback>>,
             unsafe { NonNull::new_unchecked(ctx_p as *mut c_void) },
             Some(call_on_status_changed::<StateCallback, DocumentsEndedCallback>),
@@ -151,7 +160,12 @@ impl Replicator {
         }
     }
 
-    pub(crate) fn restart(self, db: &Database, url: &str, token: Option<&str>) -> Result<Self> {
+    pub(crate) fn restart(
+        self,
+        db: &Database,
+        url: &str,
+        auth: ReplicatorAuthentication,
+    ) -> Result<Self> {
         let Replicator {
             inner: prev_inner,
             free_callback_f,
@@ -167,7 +181,7 @@ impl Replicator {
         let mut repl = Replicator::do_new(
             db,
             url,
-            token,
+            auth,
             free_callback_f,
             boxed_callback_f,
             c_callback_on_status_changed,
@@ -180,7 +194,7 @@ impl Replicator {
     fn do_new(
         db: &Database,
         url: &str,
-        token: Option<&str>,
+        auth: ReplicatorAuthentication,
         free_callback_f: unsafe fn(_: *mut c_void),
         boxed_callback_f: NonNull<c_void>,
         call_on_status_changed: C4ReplicatorStatusChangedCallback,
@@ -192,13 +206,40 @@ impl Replicator {
             return Err(Error::LogicError(format!("Can not parse URL {}", url)));
         }
         let remote_addr = unsafe { remote_addr.assume_init() };
-        let options_dict: FLSliceResult = if let Some(token) = token {
-            let opt_cookie = slice_without_null_char(kC4ReplicatorOptionCookies);
-            let token_cookie = format!("{}={}", "SyncGatewaySession", token);
-            let token_cookie = token_cookie.as_str();
-            serde_fleece::fleece!({ opt_cookie: token_cookie })
-        } else {
-            serde_fleece::fleece!({})
+
+        let opt_auth_dict = str_without_null_char(kC4ReplicatorOptionAuthentication);
+        let opt_auth_type = str_without_null_char(kC4ReplicatorAuthType);
+
+        let options_dict: FLSliceResult = match auth {
+            ReplicatorAuthentication::SessionToken(token) => {
+                let auth_type = str_without_null_char(kC4AuthTypeSession);
+                let opt_token = str_without_null_char(kC4ReplicatorAuthToken);
+                let token_cookie = format!("{}={}", "SyncGatewaySession", token);
+
+                let auth_dict = HashMap::from([
+                    (opt_auth_type, auth_type),
+                    (opt_token, token_cookie.as_str()),
+                ]);
+
+                let opt_dict = HashMap::from([(opt_auth_dict, auth_dict)]);
+                serde_fleece::to_fl_slice_result(&opt_dict)
+            }
+            ReplicatorAuthentication::Basic { username, password } => {
+                let auth_type = str_without_null_char(kC4AuthTypeBasic);
+                let opt_username = str_without_null_char(kC4ReplicatorAuthUserName);
+                let opt_password = str_without_null_char(kC4ReplicatorAuthPassword);
+
+                let auth_dict = HashMap::from([
+                    (opt_auth_type, auth_type),
+                    (opt_username, username.as_str()),
+                    (opt_password, password.as_str()),
+                ]);
+
+                let opt_dict = HashMap::from([(opt_auth_dict, auth_dict)]);
+
+                serde_fleece::to_fl_slice_result(&opt_dict)
+            }
+            ReplicatorAuthentication::None => serde_fleece::fleece!({}),
         }?;
 
         let repl_params = C4ReplicatorParameters {
@@ -285,10 +326,16 @@ impl TryFrom<C4ReplicatorStatus> for ReplicatorState {
     }
 }
 
-/// Convert C contant strings to slices excluding last null char
+/// Convert C constant strings to slices excluding last null char
 #[inline]
 fn slice_without_null_char(cnst: &[u8]) -> &[u8] {
     &cnst[0..(cnst.len() - 1)]
+}
+
+/// Convert C constant strings to str excluding last null char
+#[inline]
+fn str_without_null_char(cnst: &[u8]) -> &str {
+    std::str::from_utf8(slice_without_null_char(cnst)).expect("C constant should be string")
 }
 
 static WEBSOCKET_IMPL: Once = Once::new();

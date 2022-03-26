@@ -1,10 +1,10 @@
 use crate::{
     error::{Error, Result},
     ffi::{
-        FLArray, FLArray_Count, FLArray_Get, FLArray_IsEmpty, FLDict, FLDict_Count, FLDict_IsEmpty,
-        FLValue, FLValueType, FLValue_AsArray, FLValue_AsBool, FLValue_AsDict, FLValue_AsDouble,
-        FLValue_AsInt, FLValue_AsString, FLValue_AsUnsigned, FLValue_GetType, FLValue_IsDouble,
-        FLValue_IsInteger, FLValue_IsUnsigned,
+        FLArray, FLArray_Count, FLArray_Get, FLArray_IsEmpty, FLDict, FLDict_Count, FLDict_Get,
+        FLDict_IsEmpty, FLSlice, FLValue, FLValueType, FLValue_AsArray, FLValue_AsBool,
+        FLValue_AsDict, FLValue_AsDouble, FLValue_AsInt, FLValue_AsString, FLValue_AsUnsigned,
+        FLValue_GetType, FLValue_IsDouble, FLValue_IsInteger, FLValue_IsUnsigned,
     },
 };
 use std::convert::TryFrom;
@@ -91,6 +91,12 @@ impl ValueRefDict {
     }
     pub fn is_empty(&self) -> bool {
         unsafe { FLDict_IsEmpty(self.0) }
+    }
+    pub(crate) unsafe fn get_raw(&self, key: FLSlice) -> FLValue {
+        FLDict_Get(self.0, key)
+    }
+    pub fn get(&self, key: FLSlice) -> ValueRef {
+        unsafe { self.get_raw(key) }.into()
     }
 }
 

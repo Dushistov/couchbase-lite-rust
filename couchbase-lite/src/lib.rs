@@ -63,8 +63,9 @@ pub use crate::{
     doc_enumerator::DocEnumeratorFlags,
     document::{Document, DocumentFlags},
     error::Error,
+    fallible_streaming_iterator::FallibleStreamingIterator,
     index::IndexType,
-    replicator::ReplicatorState,
+    replicator::{ReplicatorAuthentication, ReplicatorState},
 };
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;

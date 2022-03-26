@@ -651,7 +651,7 @@ fn test_double_replicator_restart() {
         let handle = runtime.handle().clone();
         db.start_replicator(
             "ws://127.0.0.1:4984/demo/",
-            None,
+            ReplicatorAuthentication::None,
             move |repl_state| {
                 println!("repl_state changed: {:?}", repl_state);
                 if let ReplicatorState::Idle = repl_state {

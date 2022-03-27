@@ -2,7 +2,9 @@ use crate::{
     ffi::{
         c4Socket_getNativeHandle, c4Socket_setNativeHandle, c4error_make, c4socket_closeRequested,
         c4socket_closed, c4socket_completedWrite, c4socket_gotHTTPResponse, c4socket_opened,
-        c4socket_received, c4socket_registerFactory, kC4ReplicatorOptionCookies,
+        c4socket_received, c4socket_registerFactory, kC4AuthTypeBasic, kC4AuthTypeSession,
+        kC4ReplicatorAuthPassword, kC4ReplicatorAuthToken, kC4ReplicatorAuthType,
+        kC4ReplicatorAuthUserName, kC4ReplicatorOptionAuthentication, kC4ReplicatorOptionCookies,
         kC4ReplicatorOptionExtraHeaders, kC4SocketOptionWSProtocols, C4Address, C4Error,
         C4ErrorDomain, C4NetworkErrorCode, C4Slice, C4SliceResult, C4Socket, C4SocketFactory,
         C4SocketFraming, C4String, C4WebSocketCloseCode, FLDict_Get, FLEncoder_BeginDict,
@@ -23,6 +25,7 @@ use std::{
     io::Write,
     mem,
     os::raw::{c_int, c_void},
+    str::FromStr,
     sync::{
         atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering},
         Arc, Condvar, Mutex,
@@ -39,7 +42,7 @@ use tokio_tungstenite::{
         self,
         client::IntoClientRequest,
         handshake::client::{Request, Response},
-        http::{self, HeaderValue, Uri},
+        http::{self, header::HeaderName, HeaderValue, Uri},
         protocol::{frame::coding::CloseCode, CloseFrame},
         Message,
     },
@@ -412,20 +415,79 @@ unsafe fn c4address_to_request(
         ))
     })?;
 
-    if let ValueRef::Dict(_opts) = ValueRef::from(FLDict_Get(
+    if let ValueRef::Array(opts) = ValueRef::from(FLDict_Get(
         options.as_ptr(),
         slice_without_null_char(kC4ReplicatorOptionExtraHeaders).into(),
     )) {
-        unimplemented!()
+        // ExtraHeaders is an array, not a dict, so we need to split out the header keys
+        let headers = request.headers_mut();
+        for i in 0..opts.len() {
+            if let ValueRef::String(header) = opts.get(i) {
+                if let Some(index) = header.find(":") {
+                    let name = &header[..index];
+                    let value = &header[index + 1..];
+
+                    headers.insert(HeaderName::from_str(name)?, HeaderValue::from_str(value)?);
+                } else {
+                    panic!("Header value {header} does not appear to be valid");
+                }
+            } else {
+                panic!("Header value was not string");
+            }
+        }
     }
 
-    if let ValueRef::String(cookies) = ValueRef::from(FLDict_Get(
+    let mut cookies = Vec::<String>::new();
+
+    if let ValueRef::Dict(auth) = ValueRef::from(FLDict_Get(
+        options.as_ptr(),
+        slice_without_null_char(kC4ReplicatorOptionAuthentication).into(),
+    )) {
+        let auth_type = if let ValueRef::String(auth_type) =
+            auth.get(slice_without_null_char(kC4ReplicatorAuthType).into())
+        {
+            auth_type
+        } else {
+            // No auth type, default to Basic
+            "Basic"
+        };
+
+        if auth_type.as_bytes() == slice_without_null_char(kC4AuthTypeBasic) {
+            if let ValueRef::String(username) =
+                auth.get(slice_without_null_char(kC4ReplicatorAuthUserName).into())
+            {
+                if let ValueRef::String(password) =
+                    auth.get(slice_without_null_char(kC4ReplicatorAuthPassword).into())
+                {
+                    let header =
+                        http_auth_basic::Credentials::new(username, password).as_http_header();
+
+                    request
+                        .headers_mut()
+                        .insert("Authorization", HeaderValue::from_str(header.as_str())?);
+                } else {
+                    panic!("Auth type Basic, but could not get password")
+                }
+            } else {
+                panic!("Auth type Basic, but could not get username")
+            }
+        } else if auth_type.as_bytes() == slice_without_null_char(kC4AuthTypeSession) {
+            if let ValueRef::String(token) =
+                auth.get(slice_without_null_char(kC4ReplicatorAuthToken).into())
+            {
+                let token_cookie = format!("{}={}", "SyncGatewaySession", token);
+                cookies.push(token_cookie);
+            }
+        } else {
+            unimplemented!("Only Basic and Session auth types are implemented")
+        }
+    }
+
+    if let ValueRef::String(cookie) = ValueRef::from(FLDict_Get(
         options.as_ptr(),
         slice_without_null_char(kC4ReplicatorOptionCookies).into(),
     )) {
-        request
-            .headers_mut()
-            .insert("Cookie", HeaderValue::from_str(cookies)?);
+        cookies.push(cookie.to_string());
     }
 
     if let ValueRef::String(protocol) = ValueRef::from(FLDict_Get(
@@ -435,6 +497,14 @@ unsafe fn c4address_to_request(
         request
             .headers_mut()
             .insert("Sec-WebSocket-Protocol", HeaderValue::from_str(protocol)?);
+    }
+
+    if !cookies.is_empty() {
+        let cookies = cookies.join(";");
+
+        request
+            .headers_mut()
+            .insert("Cookie", HeaderValue::from_str(cookies.as_str())?);
     }
 
     Ok(request)
@@ -668,6 +738,20 @@ unsafe fn headers_to_dict(http_resp: &Response) -> Result<FLSliceResult, FLError
 
 impl From<http::Error> for Error {
     fn from(err: http::Error) -> Self {
+        let msg = err.to_string();
+
+        Self(unsafe {
+            c4error_make(
+                C4ErrorDomain::NetworkDomain,
+                C4NetworkErrorCode::kC4NetErrInvalidURL.0,
+                msg.as_bytes().into(),
+            )
+        })
+    }
+}
+
+impl From<http::header::InvalidHeaderName> for Error {
+    fn from(err: http::header::InvalidHeaderName) -> Self {
         let msg = err.to_string();
 
         Self(unsafe {

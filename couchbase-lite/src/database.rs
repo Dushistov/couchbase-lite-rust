@@ -13,7 +13,7 @@ use crate::{
     log_reroute::c4log_to_log_init,
     observer::{DatabaseObserver, ObserverdChangesIter},
     query::Query,
-    replicator::{Replicator, ReplicatorState},
+    replicator::{Replicator, ReplicatorAuthentication, ReplicatorState},
     transaction::Transaction,
     QueryLanguage,
 };
@@ -86,7 +86,7 @@ pub struct Database {
 
 struct ReplicatorParams {
     url: String,
-    token: Option<String>,
+    auth: ReplicatorAuthentication,
 }
 
 pub(crate) struct DbInner(pub NonNull<C4Database>);
@@ -246,7 +246,7 @@ impl Database {
     pub fn start_replicator<StatusF, DocsReplF>(
         &mut self,
         url: &str,
-        token: Option<&str>,
+        auth: ReplicatorAuthentication,
         mut repl_status_changed: StatusF,
         repl_docs_ended: DocsReplF,
     ) -> Result<()>
@@ -257,7 +257,7 @@ impl Database {
         let mut db_replicator = Replicator::new(
             self,
             url,
-            token,
+            auth.clone(),
             move |status| match ReplicatorState::try_from(status) {
                 Ok(state) => repl_status_changed(state),
                 Err(err) => {
@@ -270,7 +270,7 @@ impl Database {
         self.db_replicator = Some(db_replicator);
         self.replicator_params = Some(ReplicatorParams {
             url: url.into(),
-            token: token.map(str::to_string),
+            auth,
         });
         Ok(())
     }
@@ -288,11 +288,8 @@ impl Database {
                 "you call restart_replicator, but have not yet call start_replicator (repl)".into(),
             )
         })?;
-        self.db_replicator = Some(repl.restart(
-            self,
-            &replicator_params.url,
-            replicator_params.token.as_deref(),
-        )?);
+        self.db_replicator =
+            Some(repl.restart(self, &replicator_params.url, replicator_params.auth.clone())?);
         Ok(())
     }
 

@@ -65,7 +65,7 @@ def build_and_test_rust_part_for_ios(src_root: str) -> None:
     check_call(["cmake", "--build", "."], cwd = cpp_build_dir)
     os.environ["COUCHBASE_LITE_CORE_BUILD_DIR"] = cpp_build_dir
     os.environ["COUCHBASE_LITE_CORE_SRC_DIR"] = cpp_src
-    check_call(["cargo", "build", "-vv", "--no-default-features", "--features=use-couchbase-lite-sqlite", "--target=aarch64-apple-ios", "-p", "chat-demo"], cwd = src_root)
+    check_call(["cargo", "build", "-vv", "--no-default-features", "--features=use-couchbase-lite-sqlite,use-tokio-websocket", "--target=aarch64-apple-ios", "-p", "chat-demo"], cwd = src_root)
 
 @show_timing
 def main() -> None:

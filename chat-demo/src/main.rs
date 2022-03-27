@@ -17,7 +17,10 @@ struct Message {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let runtime = tokio::runtime::Runtime::new()?;
-    Database::init_socket_impl(runtime.handle().clone());
+    Database::init_socket_impl(
+        #[cfg(feature = "use-tokio-websocket")]
+        runtime.handle().clone(),
+    );
 
     let db_path = env::args().nth(1).expect("No path to db file");
     let db_path = Path::new(&db_path);
@@ -150,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     drop(db_exec);
     db_thread.join().unwrap();
-    println!("process exit time I/O");
+    println!("process exit time, waiting I/O");
 
     runtime.block_on(async move {
         tokio::time::sleep(Duration::from_secs(2)).await;
@@ -254,10 +257,11 @@ fn print_all_messages(db: &Database) -> Result<(), Box<dyn std::error::Error>> {
         let seq = doc.sequence().ok_or("No sequence")?;
         let rev = doc.revision_id().ok_or("No revision")?.to_string();
         let flags = doc.flags();
+        let gen = doc.generation();
         let db_msg: Message = doc.decode_body()?;
         println!(
-            "iter id {} doc id {}, seq {}, rev {}, flags {:?}, msg `{}`",
-            id, doc_id, seq, rev, flags, db_msg.msg
+            "iter id {} doc id {}, seq {}, rev {}, gen {}, flags {:?}, msg `{}`",
+            id, doc_id, seq, rev, gen, flags, db_msg.msg
         );
     }
     Ok(())
@@ -270,9 +274,10 @@ fn print_external_changes(db: &mut Option<Database>) -> Result<(), Box<dyn std::
     let mut doc_ids = HashSet::<String>::new();
     for change in db.observed_changes() {
         println!(
-            "observed change: doc id {} was changed, external {}",
+            "observed change: doc id {} was changed, external {}, flags {}",
             change.doc_id()?,
-            change.external()
+            change.external(),
+            change.revision_flags(),
         );
         if change.external() {
             doc_ids.insert(change.doc_id()?.into());

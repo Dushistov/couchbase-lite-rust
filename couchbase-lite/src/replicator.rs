@@ -13,7 +13,6 @@ use crate::{
 };
 use log::{debug, error, info, trace};
 use std::{
-    collections::HashMap,
     convert::TryFrom,
     mem::{self, MaybeUninit},
     os::raw::c_void,
@@ -208,25 +207,20 @@ impl Replicator {
         let remote_addr = unsafe { remote_addr.assume_init() };
 
         let options_dict: FLSliceResult = match auth {
-            ReplicatorAuthentication::SessionToken(token) => {
-                let auth_dict = HashMap::from([
-                    (kC4ReplicatorAuthType, kC4AuthTypeSession),
-                    (kC4ReplicatorAuthToken, token.as_str()),
-                ]);
-
-                let opt_dict = HashMap::from([(kC4ReplicatorOptionAuthentication, auth_dict)]);
-                serde_fleece::to_fl_slice_result(&opt_dict)
-            }
+            ReplicatorAuthentication::SessionToken(token) => serde_fleece::fleece!({
+                kC4ReplicatorOptionAuthentication: {
+                    kC4ReplicatorAuthType: kC4AuthTypeSession,
+                    kC4ReplicatorAuthToken: token
+                }
+            }),
             ReplicatorAuthentication::Basic { username, password } => {
-                let auth_dict = HashMap::from([
-                    (kC4ReplicatorAuthType, kC4AuthTypeBasic),
-                    (kC4ReplicatorAuthUserName, username.as_str()),
-                    (kC4ReplicatorAuthPassword, password.as_str()),
-                ]);
-
-                let opt_dict = HashMap::from([(kC4ReplicatorOptionAuthentication, auth_dict)]);
-
-                serde_fleece::to_fl_slice_result(&opt_dict)
+                serde_fleece::fleece!({
+                    kC4ReplicatorOptionAuthentication: {
+                        kC4ReplicatorAuthType: kC4AuthTypeBasic,
+                        kC4ReplicatorAuthUserName: username,
+                        kC4ReplicatorAuthPassword: password
+                    }
+                })
             }
             ReplicatorAuthentication::None => serde_fleece::fleece!({}),
         }?;

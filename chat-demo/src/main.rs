@@ -172,6 +172,8 @@ fn fix_conflicts(db: &mut Database) -> Result<(), Box<dyn std::error::Error>> {
             conflicts.push(doc.id().to_string());
         }
     }
+    println!("There are {} conflicts in database", conflicts.len());
+
     for doc_id in &conflicts {
         resolve_conflict(db, &doc_id, None)?;
     }

@@ -5,8 +5,6 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_start, c4repl_stop,
-        kC4AuthTypeBasic, kC4AuthTypeSession, kC4ReplicatorAuthPassword, kC4ReplicatorAuthToken,
-        kC4ReplicatorAuthType, kC4ReplicatorAuthUserName, kC4ReplicatorOptionAuthentication,
         C4Address, C4DocumentEnded, C4Replicator, C4ReplicatorActivityLevel,
         C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode, C4ReplicatorParameters,
         C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, C4String, FLSliceResult,
@@ -200,6 +198,8 @@ impl Replicator {
         call_on_status_changed: C4ReplicatorStatusChangedCallback,
         call_on_documents_ended: C4ReplicatorDocumentsEndedCallback,
     ) -> Result<Self> {
+        use consts::*;
+
         let mut remote_addr = MaybeUninit::<C4Address>::uninit();
         let mut db_name = C4String::default();
         if !unsafe { c4address_fromURL(url.into(), remote_addr.as_mut_ptr(), &mut db_name) } {
@@ -207,32 +207,24 @@ impl Replicator {
         }
         let remote_addr = unsafe { remote_addr.assume_init() };
 
-        let opt_auth_dict = str_without_null_char(kC4ReplicatorOptionAuthentication);
-        let opt_auth_type = str_without_null_char(kC4ReplicatorAuthType);
-
         let options_dict: FLSliceResult = match auth {
             ReplicatorAuthentication::SessionToken(token) => {
-                let auth_type = str_without_null_char(kC4AuthTypeSession);
-                let opt_token = str_without_null_char(kC4ReplicatorAuthToken);
+                let auth_dict = HashMap::from([
+                    (kC4ReplicatorAuthType, kC4AuthTypeSession),
+                    (kC4ReplicatorAuthToken, token.as_str()),
+                ]);
 
-                let auth_dict =
-                    HashMap::from([(opt_auth_type, auth_type), (opt_token, token.as_str())]);
-
-                let opt_dict = HashMap::from([(opt_auth_dict, auth_dict)]);
+                let opt_dict = HashMap::from([(kC4ReplicatorOptionAuthentication, auth_dict)]);
                 serde_fleece::to_fl_slice_result(&opt_dict)
             }
             ReplicatorAuthentication::Basic { username, password } => {
-                let auth_type = str_without_null_char(kC4AuthTypeBasic);
-                let opt_username = str_without_null_char(kC4ReplicatorAuthUserName);
-                let opt_password = str_without_null_char(kC4ReplicatorAuthPassword);
-
                 let auth_dict = HashMap::from([
-                    (opt_auth_type, auth_type),
-                    (opt_username, username.as_str()),
-                    (opt_password, password.as_str()),
+                    (kC4ReplicatorAuthType, kC4AuthTypeBasic),
+                    (kC4ReplicatorAuthUserName, username.as_str()),
+                    (kC4ReplicatorAuthPassword, password.as_str()),
                 ]);
 
-                let opt_dict = HashMap::from([(opt_auth_dict, auth_dict)]);
+                let opt_dict = HashMap::from([(kC4ReplicatorOptionAuthentication, auth_dict)]);
 
                 serde_fleece::to_fl_slice_result(&opt_dict)
             }
@@ -323,16 +315,64 @@ impl TryFrom<C4ReplicatorStatus> for ReplicatorState {
     }
 }
 
-/// Convert C constant strings to slices excluding last null char
-#[inline]
-fn slice_without_null_char(cnst: &[u8]) -> &[u8] {
-    &cnst[0..(cnst.len() - 1)]
-}
+#[allow(non_upper_case_globals)]
+pub(crate) mod consts {
+    /// Convert C constant strings to slices excluding last null char
+    #[inline]
+    const fn slice_without_null_char(cnst: &'static [u8]) -> &'static [u8] {
+        match cnst.split_last() {
+            Some((last, elements)) => {
+                if *last != 0 {
+                    panic!("C string constant has no 0 character at the end");
+                }
+                elements
+            }
+            None => panic!("C string constant empty, not expected"),
+        }
+    }
 
-/// Convert C constant strings to str excluding last null char
-#[inline]
-fn str_without_null_char(cnst: &[u8]) -> &str {
-    std::str::from_utf8(slice_without_null_char(cnst)).expect("C constant should be string")
+    /// Convert C constant strings to str excluding last null char
+    #[inline]
+    const fn str_without_null_char(cnst: &'static [u8]) -> &'static str {
+        if !is_valid_ascii_str(cnst) {
+            panic!("C string constant not valid ascii string");
+        }
+        unsafe { std::str::from_utf8_unchecked(cnst) }
+    }
+
+    const fn is_valid_ascii_str(cnst: &'static [u8]) -> bool {
+        match cnst.split_first() {
+            Some((first, rest)) => first.is_ascii() && is_valid_ascii_str(rest),
+            None => true,
+        }
+    }
+
+    macro_rules! define_const_str {
+	($($name:ident,)+) => {
+	    $(pub(crate) const $name: &'static str = str_without_null_char($crate::ffi::$name);)*
+	};
+    }
+
+    define_const_str!(
+        kC4AuthTypeBasic,
+        kC4AuthTypeSession,
+        kC4ReplicatorAuthPassword,
+        kC4ReplicatorAuthToken,
+        kC4ReplicatorAuthType,
+        kC4ReplicatorAuthUserName,
+        kC4ReplicatorOptionAuthentication,
+    );
+
+    macro_rules! define_const_slice {
+	($($name:ident,)+) => {
+	    $(pub(crate) const $name: &'static [u8] = slice_without_null_char($crate::ffi::$name);)*
+	};
+    }
+    define_const_slice!(
+        kC4ReplicatorOptionExtraHeaders,
+        kC4ReplicatorOptionCookies,
+        kC4SocketOptionWSProtocols,
+    );
 }
 
 static WEBSOCKET_IMPL: Once = Once::new();

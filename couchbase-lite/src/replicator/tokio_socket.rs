@@ -2,16 +2,13 @@ use crate::{
     ffi::{
         c4Socket_getNativeHandle, c4Socket_setNativeHandle, c4error_make, c4socket_closeRequested,
         c4socket_closed, c4socket_completedWrite, c4socket_gotHTTPResponse, c4socket_opened,
-        c4socket_received, c4socket_registerFactory, kC4AuthTypeBasic, kC4AuthTypeSession,
-        kC4ReplicatorAuthPassword, kC4ReplicatorAuthToken, kC4ReplicatorAuthType,
-        kC4ReplicatorAuthUserName, kC4ReplicatorOptionAuthentication, kC4ReplicatorOptionCookies,
-        kC4ReplicatorOptionExtraHeaders, kC4SocketOptionWSProtocols, C4Address, C4Error,
-        C4ErrorDomain, C4NetworkErrorCode, C4Slice, C4SliceResult, C4Socket, C4SocketFactory,
-        C4SocketFraming, C4String, C4WebSocketCloseCode, FLDict_Get, FLEncoder_BeginDict,
-        FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey,
-        FLEncoder_WriteString, FLError, FLSliceResult, FLTrust, FLValue_AsDict, FLValue_FromData,
+        c4socket_received, c4socket_registerFactory, C4Address, C4Error, C4ErrorDomain,
+        C4NetworkErrorCode, C4Slice, C4SliceResult, C4Socket, C4SocketFactory, C4SocketFraming,
+        C4String, C4WebSocketCloseCode, FLDict_Get, FLEncoder_BeginDict, FLEncoder_EndDict,
+        FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey, FLEncoder_WriteString,
+        FLError, FLSliceResult, FLTrust, FLValue_AsDict, FLValue_FromData,
     },
-    replicator::slice_without_null_char,
+    replicator::consts::*,
     value::ValueRef,
 };
 use futures_util::{
@@ -417,7 +414,7 @@ unsafe fn c4address_to_request(
 
     if let ValueRef::Array(opts) = ValueRef::from(FLDict_Get(
         options.as_ptr(),
-        slice_without_null_char(kC4ReplicatorOptionExtraHeaders).into(),
+        kC4ReplicatorOptionExtraHeaders.into(),
     )) {
         // ExtraHeaders is an array, not a dict, so we need to split out the header keys
         let headers = request.headers_mut();
@@ -441,10 +438,9 @@ unsafe fn c4address_to_request(
 
     if let ValueRef::Dict(auth) = ValueRef::from(FLDict_Get(
         options.as_ptr(),
-        slice_without_null_char(kC4ReplicatorOptionAuthentication).into(),
+        kC4ReplicatorOptionAuthentication.into(),
     )) {
-        let auth_type = if let ValueRef::String(auth_type) =
-            auth.get(slice_without_null_char(kC4ReplicatorAuthType).into())
+        let auth_type = if let ValueRef::String(auth_type) = auth.get(kC4ReplicatorAuthType.into())
         {
             auth_type
         } else {
@@ -452,13 +448,9 @@ unsafe fn c4address_to_request(
             "Basic"
         };
 
-        if auth_type.as_bytes() == slice_without_null_char(kC4AuthTypeBasic) {
-            if let ValueRef::String(username) =
-                auth.get(slice_without_null_char(kC4ReplicatorAuthUserName).into())
-            {
-                if let ValueRef::String(password) =
-                    auth.get(slice_without_null_char(kC4ReplicatorAuthPassword).into())
-                {
+        if auth_type == kC4AuthTypeBasic {
+            if let ValueRef::String(username) = auth.get(kC4ReplicatorAuthUserName.into()) {
+                if let ValueRef::String(password) = auth.get(kC4ReplicatorAuthPassword.into()) {
                     let header =
                         http_auth_basic::Credentials::new(username, password).as_http_header();
 
@@ -471,10 +463,8 @@ unsafe fn c4address_to_request(
             } else {
                 panic!("Auth type Basic, but could not get username")
             }
-        } else if auth_type.as_bytes() == slice_without_null_char(kC4AuthTypeSession) {
-            if let ValueRef::String(token) =
-                auth.get(slice_without_null_char(kC4ReplicatorAuthToken).into())
-            {
+        } else if auth_type == kC4AuthTypeSession {
+            if let ValueRef::String(token) = auth.get(kC4ReplicatorAuthToken.into()) {
                 let token_cookie = format!("{}={}", "SyncGatewaySession", token);
                 cookies.push(token_cookie);
             }
@@ -485,14 +475,14 @@ unsafe fn c4address_to_request(
 
     if let ValueRef::String(cookie) = ValueRef::from(FLDict_Get(
         options.as_ptr(),
-        slice_without_null_char(kC4ReplicatorOptionCookies).into(),
+        kC4ReplicatorOptionCookies.into(),
     )) {
         cookies.push(cookie.to_string());
     }
 
     if let ValueRef::String(protocol) = ValueRef::from(FLDict_Get(
         options.as_ptr(),
-        slice_without_null_char(kC4SocketOptionWSProtocols).into(),
+        kC4SocketOptionWSProtocols.into(),
     )) {
         request
             .headers_mut()

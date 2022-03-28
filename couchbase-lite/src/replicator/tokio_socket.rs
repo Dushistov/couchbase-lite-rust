@@ -2,11 +2,11 @@ use crate::{
     ffi::{
         c4Socket_getNativeHandle, c4Socket_setNativeHandle, c4error_make, c4socket_closeRequested,
         c4socket_closed, c4socket_completedWrite, c4socket_gotHTTPResponse, c4socket_opened,
-        c4socket_received, c4socket_registerFactory, C4Address, C4Error, C4ErrorDomain,
-        C4NetworkErrorCode, C4Slice, C4SliceResult, C4Socket, C4SocketFactory, C4SocketFraming,
-        C4String, C4WebSocketCloseCode, FLDict_Get, FLEncoder_BeginDict, FLEncoder_EndDict,
-        FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey, FLEncoder_WriteString,
-        FLError, FLSliceResult, FLTrust, FLValue_AsDict, FLValue_FromData,
+        c4socket_received, c4socket_registerFactory, C4Address, C4Error, C4ErrorCode,
+        C4ErrorDomain, C4NetworkErrorCode, C4Slice, C4SliceResult, C4Socket, C4SocketFactory,
+        C4SocketFraming, C4String, C4WebSocketCloseCode, FLDict_Get, FLEncoder_BeginDict,
+        FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey,
+        FLEncoder_WriteString, FLError, FLSliceResult, FLTrust, FLValue_AsDict, FLValue_FromData,
     },
     replicator::consts::*,
     value::ValueRef,
@@ -419,18 +419,30 @@ unsafe fn c4address_to_request(
         // ExtraHeaders is an array, not a dict, so we need to split out the header keys
         let headers = request.headers_mut();
         for i in 0..opts.len() {
-            if let ValueRef::String(header) = opts.get(i) {
-                if let Some(index) = header.find(":") {
-                    let name = &header[..index];
-                    let value = &header[index + 1..];
-
-                    headers.insert(HeaderName::from_str(name)?, HeaderValue::from_str(value)?);
-                } else {
-                    panic!("Header value {header} does not appear to be valid");
+            let header = match opts.get(i) {
+                ValueRef::String(x) => x,
+                _ => {
+                    return Err(Error(c4error_make(
+                        C4ErrorDomain::LiteCoreDomain,
+                        C4ErrorCode::kC4ErrorInvalidParameter.0,
+                        "Header value was not string".into(),
+                    )))
                 }
-            } else {
-                panic!("Header value was not string");
-            }
+            };
+            let index = header.find(":").ok_or_else(|| {
+                Error(c4error_make(
+                    C4ErrorDomain::LiteCoreDomain,
+                    C4ErrorCode::kC4ErrorInvalidParameter.0,
+                    format!("Header value {header} does not appear to be valid")
+                        .as_str()
+                        .into(),
+                ))
+            })?;
+
+            let name = &header[..index];
+            let value = &header[index + 1..];
+
+            headers.insert(HeaderName::from_str(name)?, HeaderValue::from_str(value)?);
         }
     }
 
@@ -449,27 +461,38 @@ unsafe fn c4address_to_request(
         };
 
         if auth_type == kC4AuthTypeBasic {
-            if let ValueRef::String(username) = auth.get(kC4ReplicatorAuthUserName.into()) {
-                if let ValueRef::String(password) = auth.get(kC4ReplicatorAuthPassword.into()) {
-                    let header =
-                        http_auth_basic::Credentials::new(username, password).as_http_header();
-
-                    request
-                        .headers_mut()
-                        .insert("Authorization", HeaderValue::from_str(header.as_str())?);
-                } else {
-                    panic!("Auth type Basic, but could not get password")
+            let (username, password) = match (
+                auth.get(kC4ReplicatorAuthUserName.into()),
+                auth.get(kC4ReplicatorAuthPassword.into()),
+            ) {
+                (ValueRef::String(username), ValueRef::String(password)) => (username, password),
+                _ => {
+                    return Err(Error(c4error_make(
+                        C4ErrorDomain::LiteCoreDomain,
+                        C4ErrorCode::kC4ErrorInvalidParameter.0,
+                        "Can not get username or password for basic auth type".into(),
+                    )))
                 }
-            } else {
-                panic!("Auth type Basic, but could not get username")
-            }
+            };
+
+            let header = http_auth_basic::Credentials::new(username, password).as_http_header();
+
+            request
+                .headers_mut()
+                .insert("Authorization", HeaderValue::from_str(header.as_str())?);
         } else if auth_type == kC4AuthTypeSession {
             if let ValueRef::String(token) = auth.get(kC4ReplicatorAuthToken.into()) {
                 let token_cookie = format!("{}={}", "SyncGatewaySession", token);
                 cookies.push(token_cookie);
             }
         } else {
-            unimplemented!("Only Basic and Session auth types are implemented")
+            return Err(Error(c4error_make(
+                C4ErrorDomain::LiteCoreDomain,
+                C4ErrorCode::kC4ErrorInvalidParameter.0,
+                format!("Invalid {auth_type}, only Basic and Session auth types are implemented")
+                    .as_str()
+                    .into(),
+            )));
         }
     }
 

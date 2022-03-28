@@ -5,12 +5,12 @@ authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
 
 [features]
-default = ["bundled", "use-couchbase-lite-sqlite", "use-tokio-websocket", "native-tls"]
+default = ["bundled", "use-couchbase-lite-sqlite", "use-tokio-websocket", "use-native-tls"]
 bundled = ["couchbase-lite-core-sys/bundled", "serde-fleece/bundled"]
 use-couchbase-lite-sqlite = ["couchbase-lite-core-sys/use-couchbase-lite-sqlite", "serde-fleece/use-couchbase-lite-sqlite"]
 with-asan = ["couchbase-lite-core-sys/with-asan", "serde-fleece/with-asan"]
 use-tokio-websocket = ["tokio-tungstenite", "tokio", "futures-util", "http-auth-basic"]
-native-tls = ["tokio-tungstenite/native-tls"]
+use-native-tls = ["tokio-tungstenite/native-tls"]
 use-couchbase-lite-websocket = ["couchbase-lite-core-sys/use-couchbase-lite-websocket"]
 
 [dependencies]
@@ -28,6 +28,8 @@ serde = { version = "1.0", default-features = false, features = ["std"] }
 uuid = { version = "0.8", default-features = false, features = ["v4", "serde"] }
 bitflags = { version = "1.0", default-features = false }
 fallible-streaming-iterator = "0.1.9"
+# becase of ios build bug: https://github.com/sfackler/rust-native-tls/issues/218
+native-tls = { version = "=0.2.8" }
 
 [dev-dependencies]
 tempfile = "3.0"

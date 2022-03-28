@@ -474,6 +474,19 @@ fn test_fleece_macro() {
         r#"{"f1":17}"#,
         fleece_encoded_to_json(fleece!({ "f1": 17 }).unwrap())
     );
+    assert_eq!("{}", fleece_encoded_to_json(fleece!({}).unwrap()));
+
+    const AUTH: &str = "auth";
+    const AUTH_TYPE: &str = "type";
+    const AUTH_SESSION: &str = "Session";
+    const AUTH_TOKEN: &str = "token";
+    let token = "aaa=bbb".to_string();
+    assert_eq!(
+        r#"{"auth":{"token":"aaa=bbb","type":"Session"}}"#,
+        fleece_encoded_to_json(
+            fleece!({ AUTH: {AUTH_TYPE: AUTH_SESSION, AUTH_TOKEN: token} }).unwrap()
+        )
+    );
 }
 
 fn to_fleece_to_json<T: Serialize>(value: &T) -> String {

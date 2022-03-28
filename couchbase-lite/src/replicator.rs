@@ -214,12 +214,9 @@ impl Replicator {
             ReplicatorAuthentication::SessionToken(token) => {
                 let auth_type = str_without_null_char(kC4AuthTypeSession);
                 let opt_token = str_without_null_char(kC4ReplicatorAuthToken);
-                let token_cookie = format!("{}={}", "SyncGatewaySession", token);
 
-                let auth_dict = HashMap::from([
-                    (opt_auth_type, auth_type),
-                    (opt_token, token_cookie.as_str()),
-                ]);
+                let auth_dict =
+                    HashMap::from([(opt_auth_type, auth_type), (opt_token, token.as_str())]);
 
                 let opt_dict = HashMap::from([(opt_auth_dict, auth_dict)]);
                 serde_fleece::to_fl_slice_result(&opt_dict)

@@ -4,6 +4,7 @@ use crate::{FLHeapSlice, FLSlice, FLSliceResult, FLSliceResult_Release, FLString
 use std::{borrow::Cow, os::raw::c_void, ptr, slice, str};
 
 impl Default for FLSlice {
+    #[inline]
     fn default() -> Self {
         Self {
             buf: ptr::null(),
@@ -13,6 +14,7 @@ impl Default for FLSlice {
 }
 
 impl<'a> From<&'a str> for FLSlice {
+    #[inline]
     fn from(s: &'a str) -> Self {
         Self {
             buf: if !s.is_empty() {
@@ -26,6 +28,7 @@ impl<'a> From<&'a str> for FLSlice {
 }
 
 impl<'a> From<&'a [u8]> for FLSlice {
+    #[inline]
     fn from(ba: &'a [u8]) -> Self {
         Self {
             buf: if !ba.is_empty() {
@@ -39,12 +42,14 @@ impl<'a> From<&'a [u8]> for FLSlice {
 }
 
 impl<'a> From<FLSlice> for &'a [u8] {
+    #[inline]
     fn from(s: FLSlice) -> Self {
         unsafe { slice::from_raw_parts(s.buf as *const u8, s.size) }
     }
 }
 
 impl Drop for FLSliceResult {
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             FLSliceResult_Release(FLSliceResult {
@@ -56,6 +61,7 @@ impl Drop for FLSliceResult {
 }
 
 impl Default for FLSliceResult {
+    #[inline]
     fn default() -> Self {
         Self {
             buf: ptr::null(),
@@ -88,7 +94,7 @@ impl FLSliceResult {
 
 impl<'a> TryFrom<FLString> for &'a str {
     type Error = str::Utf8Error;
-
+    #[inline]
     fn try_from(value: FLString) -> Result<Self, Self::Error> {
         let bytes: &'a [u8] = value.into();
         str::from_utf8(bytes)

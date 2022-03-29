@@ -28,8 +28,6 @@ serde = { version = "1.0", default-features = false, features = ["std"] }
 uuid = { version = "0.8", default-features = false, features = ["v4", "serde"] }
 bitflags = { version = "1.0", default-features = false }
 fallible-streaming-iterator = "0.1.9"
-# becase of ios build bug: https://github.com/sfackler/rust-native-tls/issues/218
-native-tls = { version = "=0.2.8" }
 
 [dev-dependencies]
 tempfile = "3.0"

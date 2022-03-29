@@ -34,7 +34,7 @@ pub fn resolve_conflict(
             (doc.selected_revision().flags & mask) == mask
         } else {
             let ok = select_next_conflicting_revision(&doc)?;
-            rev_id = Some(<&[u8]>::from(doc.revision_id()).to_vec().into());
+            rev_id = Some(doc.revision_id().to_vec().into());
             ok
         };
         if !ok {
@@ -99,12 +99,18 @@ fn default_conflict_resolver<'b>(
     match (local_doc, remote_doc) {
         (None, None) | (None, Some(_)) | (Some(_), None) => None,
         (Some(local_doc), Some(remote_doc)) => {
-            if remote_doc.generation() > local_doc.generation() {
+            let remote_gen = remote_doc.generation();
+            let local_gen = local_doc.generation();
+            if remote_gen > local_gen {
                 Some(remote_doc)
-            } else if remote_doc.generation() < local_doc.generation() {
+            } else if remote_gen < local_gen {
                 Some(local_doc)
-            } else if unsafe { FLSlice_Compare(local_doc.revision_id(), remote_doc.revision_id()) }
-                > 0
+            } else if unsafe {
+                FLSlice_Compare(
+                    local_doc.revision_id().into(),
+                    remote_doc.revision_id().into(),
+                )
+            } > 0
             {
                 Some(local_doc)
             } else {
@@ -165,7 +171,7 @@ fn do_resolve_conflict(
         c4doc_resolveConflict(
             conflict_doc.0.as_ptr(),
             winner,
-            loser,
+            loser.into(),
             merge_body,
             merge_flags,
             &mut c4err,

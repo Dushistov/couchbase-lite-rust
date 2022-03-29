@@ -3,7 +3,7 @@ use crate::{
     ffi::{
         c4doc_getRevisionBody, c4doc_loadRevisionBody, c4doc_release, c4rev_getGeneration,
         kDocConflicted, kDocDeleted, kDocExists, kDocHasAttachments, C4Document, C4DocumentFlags,
-        C4Revision, FLSlice, FLSliceResult,
+        C4Revision, FLSliceResult,
     },
 };
 use bitflags::bitflags;
@@ -111,7 +111,7 @@ impl Document {
     pub fn revision_id(&self) -> Option<&str> {
         self.inner
             .as_ref()
-            .map(|p| str::from_utf8(p.revision_id().into()).ok())
+            .map(|p| str::from_utf8(p.revision_id()).ok())
             .unwrap_or(None)
     }
 
@@ -183,12 +183,12 @@ impl C4DocumentOwner {
         }
     }
     #[inline]
-    pub(crate) fn revision_id(&self) -> FLSlice {
-        unsafe { self.0.as_ref() }.revID.as_fl_slice()
+    pub(crate) fn revision_id(&self) -> &[u8] {
+        unsafe { self.0.as_ref() }.revID.as_fl_slice().into()
     }
     #[inline]
     pub(crate) fn generation(&self) -> c_uint {
-        unsafe { c4rev_getGeneration(self.revision_id()) }
+        unsafe { c4rev_getGeneration(self.revision_id().into()) }
     }
     pub(crate) fn load_body(&self) -> Result<&[u8]> {
         let mut c4err = c4error_init();

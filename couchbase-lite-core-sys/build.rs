@@ -219,12 +219,14 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
 fn cmake_build_src_dir(is_msvc: bool) -> (PathBuf, PathBuf) {
     let src_dir = Path::new("couchbase-lite-core");
     let mut cmake_config = cmake::Config::new(src_dir);
-    let cmake_config = cmake_config
+    cmake_config
         .define("DISABLE_LTO_BUILD", "True")
-        .define("MAINTAINER_MODE", "False")
         .define("ENABLE_TESTING", "False")
-        .define("LITECORE_BUILD_TESTS", "False")
-        .define("SQLITE_ENABLE_RTREE", "True");
+        .define("LITECORE_BUILD_TESTS", "False");
+    if !cfg!(feature = "use-couchbase-lite-sqlite") {
+        println!("disable build of sqlite");
+        cmake_config.define("MAINTAINER_MODE", "False");
+    }
     if cfg!(feature = "with-asan") {
         let cc_flags = "-fno-omit-frame-pointer -fsanitize=address";
         let ld_flags = "-fsanitize=address";

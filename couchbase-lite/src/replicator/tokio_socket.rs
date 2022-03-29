@@ -429,7 +429,7 @@ unsafe fn c4address_to_request(
                     )))
                 }
             };
-            let index = header.find(":").ok_or_else(|| {
+            let index = header.find(':').ok_or_else(|| {
                 Error(c4error_make(
                     C4ErrorDomain::LiteCoreDomain,
                     C4ErrorCode::kC4ErrorInvalidParameter.0,

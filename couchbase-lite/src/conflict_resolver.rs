@@ -9,7 +9,7 @@ use crate::{
     Database,
 };
 use log::{info, warn};
-use std::{borrow::Cow, ptr};
+use std::{borrow::Cow, os::raw::c_uint, ptr};
 
 /// Resolves a replication conflict in a document
 pub fn resolve_conflict(
@@ -34,7 +34,11 @@ pub fn resolve_conflict(
             (doc.selected_revision().flags & mask) == mask
         } else {
             let ok = select_next_conflicting_revision(&doc)?;
-            rev_id = Some(doc.revision_id().to_vec().into());
+            rev_id = Some(
+                <&[u8]>::from(doc.selected_revision().revID.as_fl_slice())
+                    .to_vec()
+                    .into(),
+            );
             ok
         };
         if !ok {
@@ -96,22 +100,20 @@ fn default_conflict_resolver<'b>(
     local_doc: Option<&'b C4DocumentOwner>,
     remote_doc: Option<&'b C4DocumentOwner>,
 ) -> Option<&'b C4DocumentOwner> {
+    fn selected_rev_gen(doc: &C4DocumentOwner) -> (&[u8], c_uint) {
+        let rev_id: &[u8] = doc.selected_revision().revID.as_fl_slice().into();
+        (rev_id, C4DocumentOwner::generation(rev_id))
+    }
     match (local_doc, remote_doc) {
         (None, None) | (None, Some(_)) | (Some(_), None) => None,
         (Some(local_doc), Some(remote_doc)) => {
-            let remote_gen = remote_doc.generation();
-            let local_gen = local_doc.generation();
+            let (remote_rev, remote_gen) = selected_rev_gen(remote_doc);
+            let (local_rev, local_gen) = selected_rev_gen(local_doc);
             if remote_gen > local_gen {
                 Some(remote_doc)
             } else if remote_gen < local_gen {
                 Some(local_doc)
-            } else if unsafe {
-                FLSlice_Compare(
-                    local_doc.revision_id().into(),
-                    remote_doc.revision_id().into(),
-                )
-            } > 0
-            {
+            } else if unsafe { FLSlice_Compare(local_rev.into(), remote_rev.into()) } > 0 {
                 Some(local_doc)
             } else {
                 Some(remote_doc)

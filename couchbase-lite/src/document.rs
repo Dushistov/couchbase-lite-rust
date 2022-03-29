@@ -124,7 +124,10 @@ impl Document {
 
     #[inline]
     pub fn generation(&self) -> c_uint {
-        self.inner.as_ref().map(|d| d.generation()).unwrap_or(0)
+        self.inner
+            .as_ref()
+            .map(|d| C4DocumentOwner::generation(d.revision_id()))
+            .unwrap_or(0)
     }
 
     /// Just check `Document::flags` to see if document exists
@@ -187,8 +190,8 @@ impl C4DocumentOwner {
         unsafe { self.0.as_ref() }.revID.as_fl_slice().into()
     }
     #[inline]
-    pub(crate) fn generation(&self) -> c_uint {
-        unsafe { c4rev_getGeneration(self.revision_id().into()) }
+    pub(crate) fn generation(rev_id: &[u8]) -> c_uint {
+        unsafe { c4rev_getGeneration(rev_id.into()) }
     }
     pub(crate) fn load_body(&self) -> Result<&[u8]> {
         let mut c4err = c4error_init();

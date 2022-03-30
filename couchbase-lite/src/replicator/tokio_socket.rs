@@ -475,11 +475,11 @@ unsafe fn c4address_to_request(
                 }
             };
 
-            let header = http_auth_basic::Credentials::new(username, password).as_http_header();
+            let header = http_basic_auth_header(username, password);
 
             request
                 .headers_mut()
-                .insert("Authorization", HeaderValue::from_str(header.as_str())?);
+                .insert("Authorization", HeaderValue::from_str(&header)?);
         } else if auth_type == kC4AuthTypeSession {
             if let ValueRef::String(token) = auth.get(kC4ReplicatorAuthToken.into()) {
                 let token_cookie = format!("{}={}", "SyncGatewaySession", token);
@@ -811,4 +811,19 @@ impl CloseControl {
             let _ = stop_tx.send(());
         }
     }
+}
+
+fn http_basic_auth_header(user_id: &str, password: &str) -> String {
+    let credentials = format!("{}:{}", user_id, password);
+    let mut ret = "Basic ".to_string();
+    base64::encode_config_buf(credentials.as_bytes(), base64::STANDARD, &mut ret);
+    ret
+}
+
+#[test]
+fn test_basic_auth_encode() {
+    assert_eq!(
+        "Basic Ym9iOnNlY3JldA==",
+        http_basic_auth_header("bob", "secret")
+    );
 }

@@ -268,13 +268,20 @@ fn cmake_build_src_dir(_is_msvc: bool) -> (PathBuf, PathBuf) {
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "linux"))]
 fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std::error::Error>> {
     use std::{
-        collections::HashSet,
         io::{Read, Write},
         process::Stdio,
     };
 
-    let mut include_dirs = HashSet::new();
-    let mut framework_dirs = HashSet::new();
+    let mut include_dirs = Vec::new();
+    let mut framework_dirs = Vec::new();
+
+    fn extend_unique(v: &mut Vec<PathBuf>, addon: impl IntoIterator<Item = PathBuf>) {
+        for it in addon {
+            if !v.iter().any(|e| *e == it) {
+                v.push(it);
+            }
+        }
+    }
 
     for lang in &["c", "c++"] {
         let cc_build = cc::Build::new();
@@ -315,7 +322,8 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std:
 
         const FRAMEWORK_PAT: &str = " (framework directory)";
 
-        include_dirs.extend(
+        extend_unique(
+            &mut include_dirs,
             (&cc_output[start_includes..end_includes])
                 .split('\n')
                 .filter_map(|s| {
@@ -327,7 +335,8 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std:
                 }),
         );
 
-        framework_dirs.extend(
+        extend_unique(
+            &mut framework_dirs,
             (&cc_output[start_includes..end_includes])
                 .split('\n')
                 .filter_map(|s| {
@@ -341,10 +350,7 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std:
                 }),
         );
     }
-    Ok((
-        include_dirs.into_iter().collect(),
-        framework_dirs.into_iter().collect(),
-    ))
+    Ok((include_dirs, framework_dirs))
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "linux")))]

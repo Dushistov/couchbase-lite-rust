@@ -14,6 +14,7 @@ fn main() {
     }
 
     let (bdir, sdir) = cmake_build_src_dir(is_msvc);
+    println!("build directory: {:?}\nsource directory {:?}", bdir, sdir);
 
     println!("cargo:rustc-link-search=native={}", bdir.display());
     println!(

@@ -14,7 +14,7 @@ use-native-tls = ["tokio-tungstenite/native-tls"]
 use-couchbase-lite-websocket = ["couchbase-lite-core-sys/use-couchbase-lite-websocket"]
 
 [dependencies]
-couchbase-lite-core-sys = { version = "0.5.0", default-features = false }
+couchbase-lite-core-sys = { version = "0.5.1", default-features = false }
 serde-fleece = { version = "0.1.0", default-features = false }
 log = "0.4"
 tokio = { version = "1.16.1", optional = true, default-features = false, features = ["rt", "sync", "macros", "time"] }

@@ -3,6 +3,12 @@ name = "couchbase-lite-core-sys"
 version = "0.6.0"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
+license = "BSD-3-Clause"
+description = "Native bindings to the couchbase-lite-core library"
+documentation = "https://docs.rs/couchbase-lite-core-sys"
+repository = "https://github.com/dushistov/couchbase-lite-rust"
+readme = "../README.md"
+keywords = ["ffi", "couchbase", "couchbase-lite-core"]
 
 [features]
 default = ["build", "git-download", "use-couchbase-lite-sqlite"]

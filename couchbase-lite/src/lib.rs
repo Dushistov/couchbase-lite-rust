@@ -70,3 +70,5 @@ pub use crate::{
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;
 pub use ffi::C4QueryLanguage as QueryLanguage;
+
+pub use serde_fleece;

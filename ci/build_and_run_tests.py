@@ -26,8 +26,7 @@ def get_src_root_path(my_path: str) -> str:
 @show_timing
 def build_and_test_cpp_part(src_root: str) -> None:
     cmake_build_dir = os.path.join(src_root, "build-cmake")
-    cmake_src_dir = os.path.join(src_root, "couchbase-lite-core-sys",
-                                 "couchbase-lite-core")
+    cmake_src_dir = os.environ["CORE_SRC"]
     mkdir_if_not_exists(cmake_build_dir)
     print("Current path: %s" % os.environ["PATH"])
     check_call(["cmake", "-DCMAKE_BUILD_TYPE=RelWithDebInfo", cmake_src_dir],
@@ -58,7 +57,7 @@ def build_and_test_rust_part_for_ios(src_root: str) -> None:
     print("build for iOS")
     # Because of https://github.com/alexcrichton/cmake-rs/issues/96 , cmake-rs can not
     # handle build for iOS, so time for manual build
-    cpp_src = os.path.join(src_root, "couchbase-lite-core-sys", "couchbase-lite-core")
+    cpp_src = os.environ["CORE_SRC"]
     cpp_build_dir = os.path.join(cpp_src, "build-ios")
     mkdir_if_not_exists(cpp_build_dir)
     check_call(["cmake", cpp_src, "-DCMAKE_OSX_ARCHITECTURES=arm64", "-DCMAKE_OSX_SYSROOT=iphoneos", "-DCMAKE_OSX_DEPLOYMENT_TARGET=10.0", "-DCMAKE_SYSTEM_NAME=iOS", "-DDISABLE_LTO_BUILD=True", "-DMAINTAINER_MODE=False", "-DENABLE_TESTING=False", "-DLITECORE_BUILD_TESTS=False", "-DSQLITE_ENABLE_RTREE=True", "-DCMAKE_C_FLAGS=-fPIC --target=aarch64-apple-ios -fembed-bitcode", "-DCMAKE_C_COMPILER=/usr/bin/clang", "-DCMAKE_CXX_FLAGS=-fPIC --target=aarch64-apple-ios -fembed-bitcode", "-DCMAKE_CXX_COMPILER=/usr/bin/clang++", "-DCMAKE_ASM_FLAGS=-fPIC --target=aarch64-apple-ios -fembed-bitcode", "-DCMAKE_ASM_COMPILER=/usr/bin/clang", "-DCMAKE_BUILD_TYPE=Debug"], cwd = cpp_build_dir)

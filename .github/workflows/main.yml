@@ -26,10 +26,17 @@ jobs:
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Checkout couchbase-lite-core
+        uses: actions/checkout@v3
         with:
+          repository: 'couchbase/couchbase-lite-core'
+          ref: 'bdb7abe064a3366281b2399bf823cfe6a255f7d2'
           submodules: 'recursive'
-
+          path: 'couchbase-lite-core'
+      - name: Export path to c++ library
+        run: |
+          echo "CORE_SRC=$GITHUB_WORKSPACE/couchbase-lite-core" >> $GITHUB_ENV
       # We need to disable the existing toolchain to avoid updating rust-docs
       # which takes a long time. The fastest way to do this is to rename the
       # existing folder, as deleting it takes about as much time as not doing
@@ -97,9 +104,17 @@ jobs:
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Checkout couchbase-lite-core
+        uses: actions/checkout@v3
         with:
+          repository: 'couchbase/couchbase-lite-core'
+          ref: 'bdb7abe064a3366281b2399bf823cfe6a255f7d2'
           submodules: 'recursive'
+          path: 'couchbase-lite-core'
+      - name: Export path to c++ library
+        run: |
+          echo "CORE_SRC=$GITHUB_WORKSPACE/couchbase-lite-core" >> $GITHUB_ENV
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -138,9 +153,17 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Checkout couchbase-lite-core
+        uses: actions/checkout@v3
         with:
+          repository: 'couchbase/couchbase-lite-core'
+          ref: 'bdb7abe064a3366281b2399bf823cfe6a255f7d2'
           submodules: 'recursive'
+          path: 'couchbase-lite-core'
+      - name: Export path to c++ library
+        run: |
+          echo "CORE_SRC=$GITHUB_WORKSPACE/couchbase-lite-core" >> $GITHUB_ENV
       - uses: actions/setup-python@v2
         with:
           python-version: '3.8.2'
@@ -166,9 +189,17 @@ jobs:
     name: Checks with rustc/nightly
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Checkout couchbase-lite-core
+        uses: actions/checkout@v3
         with:
+          repository: 'couchbase/couchbase-lite-core'
+          ref: 'bdb7abe064a3366281b2399bf823cfe6a255f7d2'
           submodules: 'recursive'
+          path: 'couchbase-lite-core'
+      - name: Export path to c++ library
+        run: |
+          echo "COUCHBASE_LITE_CORE_SRC_DIR=$GITHUB_WORKSPACE/couchbase-lite-core" >> $GITHUB_ENV
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -176,16 +207,10 @@ jobs:
           toolchain: nightly
           override: true
           components: rust-src,rustfmt,clippy
-      - uses: actions-rs/cargo@v1
-        with:
-          # Need to use `cargo rustdoc` to actually get it to respect -D
-          # warnings... Note: this also requires nightly.
-          command: rustdoc
-          args: -p couchbase-lite -- -D warnings
-      - uses: actions-rs/cargo@v1
-        with:
-          command: rustdoc
-          args: -p couchbase-lite-core-sys -- -D warnings
+      - name: rustdoc for couchbase-lite
+        run: cargo rustdoc -p couchbase-lite --no-default-features --features="build-cpp,use-couchbase-lite-sqlite,use-tokio-websocket,use-native-tls" -- -D warnings
+      - name: rustdoc for couchbase-lite-core-sys
+        run: cargo rustdoc -p couchbase-lite-core-sys --no-default-features --features="build,use-couchbase-lite-sqlite" -- -D warnings
       - name: Tests with asan
         env:
           RUSTFLAGS: -Zsanitizer=address -Cdebuginfo=0
@@ -196,4 +221,4 @@ jobs:
           # leak sanitization, but we don't care about backtraces here, so long
           # as the other tests have them.
           RUST_BACKTRACE: "0"
-        run: cargo -Z build-std test --features="bundled,use-couchbase-lite-sqlite,with-asan" --target x86_64-unknown-linux-gnu
+        run: cargo -Z build-std test --no-default-features --features="build-cpp,use-couchbase-lite-sqlite,use-tokio-websocket,use-native-tls,with-asan" --target x86_64-unknown-linux-gnu

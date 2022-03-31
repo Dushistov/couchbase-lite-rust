@@ -1,6 +1,6 @@
 [package]
 name = "couchbase-lite"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
 license = "BSD-3-Clause"
@@ -19,10 +19,11 @@ with-asan = ["couchbase-lite-core-sys/with-asan", "serde-fleece/with-asan"]
 use-tokio-websocket = ["tokio-tungstenite", "tokio", "futures-util"]
 use-native-tls = ["tokio-tungstenite/native-tls"]
 use-couchbase-lite-websocket = ["couchbase-lite-core-sys/use-couchbase-lite-websocket"]
+docs-rs = ["couchbase-lite-core-sys/docs-rs", "serde-fleece/docs-rs"]
 
 [dependencies]
-couchbase-lite-core-sys = { version = "0.6.0", default-features = false }
-serde-fleece = { version = "0.2.0", default-features = false }
+couchbase-lite-core-sys = { version = "0.6.1", default-features = false }
+serde-fleece = { version = "0.2.1", default-features = false }
 log = "0.4"
 tokio = { version = "1.16.1", optional = true, default-features = false, features = ["rt", "sync", "macros", "time"] }
 tokio-tungstenite = { version = "0.17.1", optional = true, default-features = false, features = ["connect"] }
@@ -41,3 +42,6 @@ tempfile = "3.0"
 env_logger = "0.9"
 serde = { version = "1.0.104", default-features = false, features = ["derive", "std"] }
 tokio = { version = "1.16.1", default-features = false, features = ["sync", "rt", "net", "time"] }
+
+[package.metadata.docs.rs]
+features = [ "docs-rs" ] # This feature will be enabled during the docs.rs build

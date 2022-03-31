@@ -6,15 +6,14 @@ edition = "2021"
 
 [features]
 default = ["build-cpp", "git-download-cpp", "use-couchbase-lite-sqlite", "use-tokio-websocket"]
-build-cpp = ["couchbase-lite/build-cpp", "serde-fleece/build-cpp"]
-git-download-cpp = ["couchbase-lite/git-download-cpp", "serde-fleece/git-download-cpp"]
+build-cpp = ["couchbase-lite/build-cpp"]
+git-download-cpp = ["couchbase-lite/git-download-cpp"]
 use-couchbase-lite-sqlite = ["couchbase-lite/use-couchbase-lite-sqlite"]
 use-couchbase-lite-websocket = ["couchbase-lite/use-couchbase-lite-websocket"]
 use-tokio-websocket = ["couchbase-lite/use-tokio-websocket", "couchbase-lite/use-native-tls"]
 
 [dependencies]
 couchbase-lite = { version = "0.7.0", default-features = false }
-serde-fleece = { version = "0.2.0", default-features = false }
 env_logger = "0.9"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }

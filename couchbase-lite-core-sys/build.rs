@@ -129,8 +129,11 @@ fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::erro
     const COMMIT_SHA1: &str = "bdb7abe064a3366281b2399bf823cfe6a255f7d2";
 
     let git_path = which("git")?;
-    let out_dir = getenv_unwrap("OUT_DIR");
-    let src_dir = Path::new(&out_dir).join("couchbase-lite-core");
+    let cur_dir = env::current_dir()?;
+    let parent_dir = cur_dir
+        .parent()
+        .ok_or_else(|| format!("Can not find parent directory for current"))?;
+    let src_dir = Path::new(&parent_dir).join("couchbase-lite-core");
 
     if !src_dir.exists() {
         fs::create_dir(&src_dir)?;

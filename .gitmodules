@@ -1,3 +1,0 @@
-[submodule "couchbase-lite-core-sys/couchbase-lite-core"]
-	path = couchbase-lite-core-sys/couchbase-lite-core
-	url = https://github.com/couchbase/couchbase-lite-core

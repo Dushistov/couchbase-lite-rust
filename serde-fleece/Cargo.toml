@@ -1,16 +1,17 @@
 [package]
 name = "serde-fleece"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [features]
-default = ["bundled", "use-couchbase-lite-sqlite"]
-bundled = ["couchbase-lite-core-sys/bundled"]
+default = ["build-cpp", "git-download-cpp", "use-couchbase-lite-sqlite"]
+build-cpp = ["couchbase-lite-core-sys/build"]
+git-download-cpp = ["couchbase-lite-core-sys/git-download"]
 use-couchbase-lite-sqlite = ["couchbase-lite-core-sys/use-couchbase-lite-sqlite"]
 with-asan = ["couchbase-lite-core-sys/with-asan"]
 
 [dependencies]
-couchbase-lite-core-sys = { version = "0.5", default-features = false }
+couchbase-lite-core-sys = { version = "0.6.0", default-features = false }
 serde = { version = "1.0", default-features = false }
 itoa = "1.0"
 ryu = "1.0"

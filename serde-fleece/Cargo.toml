@@ -2,6 +2,13 @@
 name = "serde-fleece"
 version = "0.2.0"
 edition = "2021"
+authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
+license = "BSD-3-Clause"
+description = "Fleece (binary json) support for serde"
+documentation = "https://docs.rs/serde-fleece"
+repository = "https://github.com/dushistov/couchbase-lite-rust"
+readme = "../README.md"
+keywords = ["ffi", "fleece", "couchbase-lite-core", "serde", "database"]
 
 [features]
 default = ["build-cpp", "git-download-cpp", "use-couchbase-lite-sqlite"]
@@ -12,9 +19,9 @@ with-asan = ["couchbase-lite-core-sys/with-asan"]
 
 [dependencies]
 couchbase-lite-core-sys = { version = "0.6.0", default-features = false }
-serde = { version = "1.0", default-features = false }
-itoa = "1.0"
-ryu = "1.0"
+serde = { version = "1.0.136", default-features = false, features = ["std"] }
+itoa = "1.0.1"
+ryu = "1.0.9"
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["std", "derive"] }

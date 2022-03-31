@@ -4,6 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[cfg(feature = "docs-rs")]
+fn main() {}
+
+#[cfg(not(feature = "docs-rs"))]
 fn main() {
     env_logger::init();
     let target = getenv_unwrap("TARGET");

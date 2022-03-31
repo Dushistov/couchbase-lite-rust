@@ -8,7 +8,11 @@
     clippy::all
 )]
 
+#[cfg(not(feature = "docs-rs"))]
 include!(concat!(env!("OUT_DIR"), "/c4_header.rs"));
+
+#[cfg(feature = "docs-rs")]
+include!("c4_header_for_docs.rs");
 
 // bindgen can not handle inline functions,
 // see https://github.com/rust-lang/rust-bindgen/issues/1344

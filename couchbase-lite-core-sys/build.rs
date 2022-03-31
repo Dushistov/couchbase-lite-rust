@@ -9,11 +9,13 @@ fn main() {
     let target = getenv_unwrap("TARGET");
     let is_msvc = target.contains("msvc");
 
-    if cfg!(feature = "with-asan") && !cfg!(feature = "bundled") {
-        panic!("Invalid set of options: with-asan should be used with bundled");
+    if cfg!(feature = "with-asan") && !cfg!(feature = "build") {
+        panic!("Invalid set of options: with-asan should be used with build");
     }
 
-    let (bdir, sdir) = cmake_build_src_dir(is_msvc);
+    let sdir = download_source_code_via_git_if_needed().expect("download of source code failed");
+
+    let bdir = cmake_build_src_dir(&sdir, is_msvc);
     println!("build directory: {:?}\nsource directory {:?}", bdir, sdir);
 
     println!("cargo:rustc-link-search=native={}", bdir.display());
@@ -112,6 +114,91 @@ fn main() {
         &out_dir.join("c4_header.rs"),
     )
     .expect("bindgen failed");
+}
+
+#[cfg(feature = "git-download")]
+fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    use std::{fs, process::Command, str};
+    use which::which;
+
+    const URL: &str = "https://github.com/couchbase/couchbase-lite-core";
+    const COMMIT_SHA1: &str = "bdb7abe064a3366281b2399bf823cfe6a255f7d2";
+
+    let git_path = which("git")?;
+    let out_dir = getenv_unwrap("OUT_DIR");
+    let src_dir = Path::new(&out_dir).join("couchbase-lite-core");
+
+    if !src_dir.exists() {
+        fs::create_dir(&src_dir)?;
+    }
+
+    let run_git_cmd = |args: &[&str]| -> Result<(), Box<dyn std::error::Error>> {
+        let mut child = Command::new(&git_path)
+            .args(args)
+            .current_dir(&src_dir)
+            .spawn()?;
+        let ecode = child.wait()?;
+
+        if ecode.success() {
+            Ok(())
+        } else {
+            Err(format!("git {args:?} failed").into())
+        }
+    };
+
+    if !src_dir.join(".git").exists() {
+        run_git_cmd(&["init"])?;
+    }
+    let output = Command::new(&git_path)
+        .arg("remote")
+        .arg("-v")
+        .current_dir(&src_dir)
+        .output()?;
+    if !output.status.success() {
+        return Err("git remote -v failed".into());
+    }
+    let remote_output = str::from_utf8(&output.stdout)?;
+    let remote_output = remote_output.trim();
+    println!("git remote -v output: {remote_output}");
+    if remote_output.is_empty() {
+        run_git_cmd(&["remote", "add", "origin", URL])?;
+    }
+
+    let mut commit_ok = false;
+    let output = Command::new(&git_path)
+        .arg("rev-parse")
+        .arg("HEAD")
+        .current_dir(&src_dir)
+        .output()?;
+    if output.status.success() {
+        let current_commit = str::from_utf8(&output.stdout)?;
+        let current_commit = current_commit.trim();
+        if current_commit == COMMIT_SHA1 {
+            println!("git repo has proper commit: {current_commit}");
+            commit_ok = true;
+        }
+    }
+    if !commit_ok {
+        println!("fetching {COMMIT_SHA1} from {URL}");
+        run_git_cmd(&["fetch", "--depth", "1", "origin", COMMIT_SHA1])?;
+        run_git_cmd(&["reset", "--hard", "FETCH_HEAD"])?;
+        run_git_cmd(&[
+            "submodule",
+            "update",
+            "--depth",
+            "1",
+            "--init",
+            "--recursive",
+        ])?;
+    }
+
+    Ok(src_dir.into())
+}
+
+#[cfg(not(feature = "git-download"))]
+fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    println!("cargo:rerun-if-env-changed=COUCHBASE_LITE_CORE_SRC_DIR");
+    Ok(getenv_unwrap("COUCHBASE_LITE_CORE_SRC_DIR").into())
 }
 
 fn run_bindgen_for_c_headers<P: AsRef<Path>>(
@@ -216,9 +303,8 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     Ok(())
 }
 
-#[cfg(feature = "bundled")]
-fn cmake_build_src_dir(is_msvc: bool) -> (PathBuf, PathBuf) {
-    let src_dir = Path::new("couchbase-lite-core");
+#[cfg(feature = "build")]
+fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> PathBuf {
     let mut cmake_config = cmake::Config::new(src_dir);
     cmake_config
         .define("DISABLE_LTO_BUILD", "True")
@@ -245,25 +331,17 @@ fn cmake_build_src_dir(is_msvc: bool) -> (PathBuf, PathBuf) {
     println!("cargo:rerun-if-env-changed=CC");
     println!("cargo:rerun-if-env-changed=CXX");
 
-    (
-        if !is_msvc {
-            dst
-        } else {
-            dst.join(cmake_profile)
-        },
-        src_dir.into(),
-    )
+    if !is_msvc {
+        dst
+    } else {
+        dst.join(cmake_profile)
+    }
 }
 
-#[cfg(not(feature = "bundled"))]
-fn cmake_build_src_dir(_is_msvc: bool) -> (PathBuf, PathBuf) {
+#[cfg(not(feature = "build"))]
+fn cmake_build_src_dir(_src_dir: &Path, _is_msvc: bool) -> PathBuf {
     println!("cargo:rerun-if-env-changed=COUCHBASE_LITE_CORE_BUILD_DIR");
-    println!("cargo:rerun-if-env-changed=COUCHBASE_LITE_CORE_SRC_DIR");
-
-    (
-        getenv_unwrap("COUCHBASE_LITE_CORE_BUILD_DIR").into(),
-        getenv_unwrap("COUCHBASE_LITE_CORE_SRC_DIR").into(),
-    )
+    getenv_unwrap("COUCHBASE_LITE_CORE_BUILD_DIR").into()
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "linux"))]

@@ -1,13 +1,14 @@
 [package]
 name = "couchbase-lite-core-sys"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
 
 [features]
-default = ["bundled", "use-couchbase-lite-sqlite"]
-# use bundled couchbase-lite-core
-bundled = ["cmake"]
+default = ["build", "git-download", "use-couchbase-lite-sqlite"]
+# build couchbase-lite-core from source code
+build = ["cmake"]
+git-download = ["which"]
 # use bundled sqlite in bundled couchbase-lite-core
 use-couchbase-lite-sqlite = []
 with-asan = []
@@ -18,4 +19,5 @@ cmake = { version = "0.1.45", optional = true }
 cc = { version = "1.0.53", default-features = false }
 # we don't need clap, because of don't use bindgen as executable
 bindgen = { version = "0.59.2", default-features = false, features = ["runtime", "which-rustfmt"] }
+which = { version = "4.2.1", optional = true, default-features = false }
 env_logger = "0.9"

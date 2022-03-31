@@ -8,7 +8,7 @@ description = "Native bindings to the couchbase-lite-core library"
 documentation = "https://docs.rs/couchbase-lite-core-sys"
 repository = "https://github.com/dushistov/couchbase-lite-rust"
 readme = "../README.md"
-keywords = ["ffi", "couchbase", "couchbase-lite-core"]
+keywords = ["ffi", "couchbase", "couchbase-lite-core", "database"]
 
 [features]
 default = ["build", "git-download", "use-couchbase-lite-sqlite"]

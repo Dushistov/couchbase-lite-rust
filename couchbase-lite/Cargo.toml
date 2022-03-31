@@ -3,6 +3,12 @@ name = "couchbase-lite"
 version = "0.7.0"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
+license = "BSD-3-Clause"
+description = "Ergonomic wrapper for couchbase-lite-core library"
+documentation = "https://docs.rs/couchbase-lite"
+repository = "https://github.com/dushistov/couchbase-lite-rust"
+readme = "../README.md"
+keywords = ["ffi", "couchbase", "couchbase-lite-core", "database"]
 
 [features]
 default = ["build-cpp", "git-download-cpp", "use-couchbase-lite-sqlite", "use-tokio-websocket", "use-native-tls"]

@@ -19,46 +19,25 @@ fn main() {
 
     let sdir = download_source_code_via_git_if_needed().expect("download of source code failed");
 
-    let bdir = cmake_build_src_dir(&sdir, is_msvc);
-    println!("build directory: {:?}\nsource directory {:?}", bdir, sdir);
+    let bdirs = cmake_build_src_dir(&sdir, is_msvc);
+    println!("build directory: {:?}\nsource directory {:?}", bdirs, sdir);
 
-    println!("cargo:rustc-link-search=native={}", bdir.display());
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor").join("fleece").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("Networking").join("BLIP").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor").join("sqlite3-unicodesn").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor")
-            .join("mbedtls")
-            .join("crypto")
-            .join("library")
-            .display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor")
-            .join("mbedtls")
-            .join("library")
-            .display()
-    );
+    if bdirs.is_empty() {
+        panic!("You didn't specify build directory for couchbase-lite-core");
+    } else if bdirs.len() == 1 {
+        specify_library_search_dirs_for_std_layout(&bdirs[0]);
+    } else {
+        for d in &bdirs {
+            println!("cargo:rustc-link-search=native={}", d.display());
+        }
+    }
 
     if cfg!(feature = "use-couchbase-lite-sqlite") {
         println!("cargo:rustc-link-lib=static=CouchbaseSqlite3");
     }
-
     if cfg!(feature = "use-couchbase-lite-websocket") {
         println!("cargo:rustc-link-lib=static=LiteCoreWebSocket");
     }
-
     println!("cargo:rustc-link-lib=static=LiteCoreStatic");
     println!("cargo:rustc-link-lib=static=FleeceStatic");
     println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
@@ -118,6 +97,37 @@ fn main() {
         &out_dir.join("c4_header.rs"),
     )
     .expect("bindgen failed");
+}
+
+fn specify_library_search_dirs_for_std_layout(bdir: &Path) {
+    println!("cargo:rustc-link-search=native={}", bdir.display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("vendor").join("fleece").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("Networking").join("BLIP").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("vendor").join("sqlite3-unicodesn").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("vendor")
+            .join("mbedtls")
+            .join("crypto")
+            .join("library")
+            .display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        bdir.join("vendor")
+            .join("mbedtls")
+            .join("library")
+            .display()
+    );
 }
 
 #[cfg(feature = "git-download")]
@@ -311,7 +321,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
 }
 
 #[cfg(feature = "build")]
-fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> PathBuf {
+fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> Vec<PathBuf> {
     let mut cmake_config = cmake::Config::new(src_dir);
     cmake_config
         .define("DISABLE_LTO_BUILD", "True")
@@ -338,17 +348,28 @@ fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> PathBuf {
     println!("cargo:rerun-if-env-changed=CC");
     println!("cargo:rerun-if-env-changed=CXX");
 
-    if !is_msvc {
+    vec![if !is_msvc {
         dst
     } else {
         dst.join(cmake_profile)
-    }
+    }]
 }
 
 #[cfg(not(feature = "build"))]
-fn cmake_build_src_dir(_src_dir: &Path, _is_msvc: bool) -> PathBuf {
+fn cmake_build_src_dir(_src_dir: &Path, _is_msvc: bool) -> Vec<PathBuf> {
+    if let Ok(dirs) = env::var("COUCHBASE_LITE_CORE_BUILD_DIRS") {
+        println!("cargo:rerun-if-env-changed=COUCHBASE_LITE_CORE_BUILD_DIRS");
+        let mut ret = vec![];
+        for d in dirs.split('^') {
+            let d: PathBuf = d.into();
+            if !ret.iter().any(|e| *e == d) {
+                ret.push(d);
+            }
+        }
+        return ret;
+    }
     println!("cargo:rerun-if-env-changed=COUCHBASE_LITE_CORE_BUILD_DIR");
-    getenv_unwrap("COUCHBASE_LITE_CORE_BUILD_DIR").into()
+    vec![getenv_unwrap("COUCHBASE_LITE_CORE_BUILD_DIR").into()]
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "linux"))]

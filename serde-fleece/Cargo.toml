@@ -1,6 +1,6 @@
 [package]
 name = "serde-fleece"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 license = "BSD-3-Clause"
@@ -16,9 +16,10 @@ build-cpp = ["couchbase-lite-core-sys/build"]
 git-download-cpp = ["couchbase-lite-core-sys/git-download"]
 use-couchbase-lite-sqlite = ["couchbase-lite-core-sys/use-couchbase-lite-sqlite"]
 with-asan = ["couchbase-lite-core-sys/with-asan"]
+docs-rs = ["couchbase-lite-core-sys/docs-rs"]
 
 [dependencies]
-couchbase-lite-core-sys = { version = "0.6.0", default-features = false }
+couchbase-lite-core-sys = { version = "0.6.1", default-features = false }
 serde = { version = "1.0.136", default-features = false, features = ["std"] }
 itoa = "1.0.1"
 ryu = "1.0.9"
@@ -26,3 +27,6 @@ ryu = "1.0.9"
 [dev-dependencies]
 serde = { version = "1.0", features = ["std", "derive"] }
 rustc-hash = "1.0.1"
+
+[package.metadata.docs.rs]
+features = [ "docs-rs" ] # This feature will be enabled during the docs.rs build

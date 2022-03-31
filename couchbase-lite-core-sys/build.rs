@@ -457,6 +457,18 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std:
                 }),
         );
     }
+
+    if cfg!(target_os = "macos") {
+        // in case CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc
+        // we can not extract right path to frameworks, so add this
+        extend_unique(
+            &mut framework_dirs,
+            [PathBuf::from(
+                "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks",
+            )],
+        );
+    }
+
     Ok((include_dirs, framework_dirs))
 }
 

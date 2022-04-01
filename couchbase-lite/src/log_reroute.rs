@@ -1,6 +1,6 @@
 use crate::ffi::{
-    kC4DatabaseLog, kC4DefaultLog, kC4QueryLog, kC4SyncLog, kC4WebSocketLog, C4LogDomain,
-    C4LogLevel,
+    c4log_getDomainName, kC4DatabaseLog, kC4DefaultLog, kC4QueryLog, kC4SyncLog, kC4WebSocketLog,
+    C4LogDomain, C4LogLevel,
 };
 use std::{ffi::CStr, os::raw::c_char};
 use va_list::VaList;
@@ -32,6 +32,10 @@ unsafe extern "C" fn db_log_callback(
     fmt: *const c_char,
     _va: VaList,
 ) {
+    fn lifetime_marker(ptr_ref: &*const c_char) -> &CStr {
+        unsafe { CStr::from_ptr(*ptr_ref) }
+    }
+    let c_domain_name;
     let domain_name = if domain == kC4DefaultLog {
         "def"
     } else if domain == kC4DatabaseLog {
@@ -43,7 +47,9 @@ unsafe extern "C" fn db_log_callback(
     } else if domain == kC4WebSocketLog {
         "websock"
     } else {
-        "unkndmn"
+        c_domain_name = c4log_getDomainName(domain);
+        let name = lifetime_marker(&c_domain_name);
+        name.to_str().unwrap_or("unkndmn")
     };
 
     use log::Level::*;
@@ -58,9 +64,6 @@ unsafe extern "C" fn db_log_callback(
     };
 
     if !fmt.is_null() {
-        fn lifetime_marker(ptr_ref: &*const c_char) -> &CStr {
-            unsafe { CStr::from_ptr(*ptr_ref) }
-        }
         let msg = lifetime_marker(&fmt);
         log::log!(target: "couchbase", level, "{} {}", domain_name, msg.to_string_lossy());
     } else {

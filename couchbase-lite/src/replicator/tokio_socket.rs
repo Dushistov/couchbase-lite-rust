@@ -646,11 +646,11 @@ async fn main_read_loop(
                         warn!("unsupport Message::Frame format"),
                     Message::Ping(_) => {
                         trace!("c4sock {:?}: ping frame was received", c4sock);
-                        todo!();
+                        warn!("ping handling not implemented");
                     }
                     Message::Pong(_) => {
                         trace!("c4sock {:?}: pong frame was received", c4sock);
-                        todo!();
+                        warn!("pong handling not implemented");
                     }
                 }
 

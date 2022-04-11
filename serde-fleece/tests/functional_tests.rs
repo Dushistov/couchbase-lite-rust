@@ -436,6 +436,19 @@ fn test_de_collections() {
     m.insert(Millimeters(5), 35);
     m.insert(Millimeters(6), 42);
     assert_eq!(m, ser_deser(&m).unwrap());
+
+    #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
+    enum E1 {
+        A,
+        B,
+        C,
+    }
+    let mut m = FxHashMap::<E1, String>::default();
+    m.insert(E1::B, "ABBA".to_string());
+    assert_eq!(m, ser_deser(&m).unwrap());
+
+    m.insert(E1::C, "CATCH".to_string());
+    assert_eq!(m, ser_deser(&m).unwrap());
 }
 
 #[test]

@@ -142,7 +142,7 @@ fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::erro
     let cur_dir = env::current_dir()?;
     let parent_dir = cur_dir
         .parent()
-        .ok_or_else(|| format!("Can not find parent directory for current"))?;
+        .ok_or_else(|| format!("Can not find parent directory for current({:?})", cur_dir))?;
     let src_dir = Path::new(&parent_dir).join("couchbase-lite-core");
 
     if !src_dir.exists() {
@@ -209,7 +209,7 @@ fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::erro
         ])?;
     }
 
-    Ok(src_dir.into())
+    Ok(src_dir)
 }
 
 #[cfg(not(feature = "git-download"))]

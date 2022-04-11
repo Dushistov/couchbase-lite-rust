@@ -22,12 +22,15 @@ pub enum ValueRef<'a> {
 }
 
 impl ValueRef<'_> {
+    #[inline]
     pub fn as_str(&self) -> Result<&str> {
         FromValueRef::column_result(*self)
     }
+    #[inline]
     pub fn as_u64(&self) -> Result<u64> {
         FromValueRef::column_result(*self)
     }
+    #[inline]
     pub fn is_null(&self) -> bool {
         matches!(self, ValueRef::Null)
     }

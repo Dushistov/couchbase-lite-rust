@@ -7,7 +7,7 @@ use crate::{
     },
     Error,
 };
-use serde::de;
+use serde::de::{self, IntoDeserializer};
 use std::{marker::PhantomData, mem::MaybeUninit, str::FromStr};
 
 pub(crate) struct EnumAccess<'a> {
@@ -383,12 +383,12 @@ impl<'de, 'a> de::Deserializer<'de> for DictKeySerializer<'a> {
         self,
         _name: &'static str,
         _variants: &'static [&'static str],
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: de::Visitor<'de>,
     {
-        Err(Error::Unsupported("Can not deserialize dict key from enum"))
+        visitor.visit_enum(self.0.into_deserializer())
     }
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>

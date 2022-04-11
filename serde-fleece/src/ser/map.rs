@@ -112,9 +112,9 @@ where
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        Err(Error::Unsupported("key must be a string (unit variant)"))
+        encoder_write!(self.ser, FLEncoder_WriteKey, variant.into())
     }
 
     fn serialize_newtype_struct<T: ?Sized>(

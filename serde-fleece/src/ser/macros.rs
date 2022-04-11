@@ -1,4 +1,4 @@
-use crate::ffi::{FLEncoder_WriteInt, FLEncoder_WriteString, _FLEncoder};
+use crate::ffi::{FLEncoder_WriteBool, FLEncoder_WriteInt, FLEncoder_WriteString, _FLEncoder};
 use std::ptr::NonNull;
 
 mod private {
@@ -29,6 +29,13 @@ impl private::Sealed for String {}
 impl EncodeValue for String {
     fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
         self.as_str().encode(enc)
+    }
+}
+
+impl private::Sealed for bool {}
+impl EncodeValue for bool {
+    fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
+        unsafe { FLEncoder_WriteBool(enc.as_ptr(), *self) }
     }
 }
 
@@ -70,17 +77,6 @@ macro_rules! fleece {
     (@object $enc:ident $all_ok:ident ($($key:tt)+) (: null $($rest:tt)*) $copy:tt) => {
         $crate::fleece!(@object $enc $all_ok [$($key)+] (fleece!(null)) $($rest)*);
     };
-
-    // Next value is `true`.
-    (@object $enc:ident $all_ok:ident ($($key:tt)+) (: true $($rest:tt)*) $copy:tt) => {
-        $crate::fleece!(@object $enc $all_ok [$($key)+] (fleece!(true)) $($rest)*);
-    };
-
-    // Next value is `false`.
-    (@object $enc:ident $all_ok:ident ($($key:tt)+) (: false $($rest:tt)*) $copy:tt) => {
-        $crate::fleece!(@object $enc $all_ok [$($key)+] (fleece!(false)) $($rest)*);
-    };
-
     // Next value is an array.
     (@object $enc:ident $all_ok:ident ($($key:tt)+) (: [$($array:tt)*] $($rest:tt)*) $copy:tt) => {
         $crate::fleece!(@object $enc $all_ok [$($key)+] (fleece!([$($array)*])) $($rest)*);

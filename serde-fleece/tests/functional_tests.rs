@@ -487,6 +487,24 @@ fn test_fleece_macro() {
             fleece!({ AUTH: {AUTH_TYPE: AUTH_SESSION, AUTH_TOKEN: token} }).unwrap()
         )
     );
+
+    assert_eq!(
+        r#"{"f1":true}"#,
+        fleece_encoded_to_json(fleece!({ "f1": true }).unwrap())
+    );
+    assert_eq!(
+        r#"{"f1":true,"f2":"boo"}"#,
+        fleece_encoded_to_json(fleece!({ "f1": true, "f2": "boo" }).unwrap())
+    );
+
+    assert_eq!(
+        r#"{"channels":["a","b"]}"#,
+        fleece_encoded_to_json(fleece!({ "channels": ["a", "b"] }).unwrap())
+    );
+    assert_eq!(
+        r#"{"channels":["a","b"],"f2":"boo"}"#,
+        fleece_encoded_to_json(fleece!({ "channels": ["a", "b"], "f2" : "boo" }).unwrap())
+    );
 }
 
 fn to_fleece_to_json<T: Serialize>(value: &T) -> String {

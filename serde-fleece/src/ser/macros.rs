@@ -1,4 +1,4 @@
-use crate::ffi::{FLEncoder_WriteInt, FLEncoder_WriteString, _FLEncoder};
+use crate::ffi::{FLEncoder_WriteBool, FLEncoder_WriteInt, FLEncoder_WriteString, _FLEncoder};
 use std::ptr::NonNull;
 
 mod private {
@@ -13,6 +13,7 @@ pub trait EncodeValue: private::Sealed {
 
 impl<'a> private::Sealed for &'a str {}
 impl<'a> EncodeValue for &'a str {
+    #[inline]
     fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
         unsafe { FLEncoder_WriteString(enc.as_ptr(), (*self).into()) }
     }
@@ -20,6 +21,7 @@ impl<'a> EncodeValue for &'a str {
 
 impl private::Sealed for i64 {}
 impl EncodeValue for i64 {
+    #[inline]
     fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
         unsafe { FLEncoder_WriteInt(enc.as_ptr(), *self) }
     }
@@ -27,14 +29,39 @@ impl EncodeValue for i64 {
 
 impl private::Sealed for String {}
 impl EncodeValue for String {
+    #[inline]
     fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
         self.as_str().encode(enc)
+    }
+}
+
+impl private::Sealed for bool {}
+impl EncodeValue for bool {
+    #[inline]
+    fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
+        unsafe { FLEncoder_WriteBool(enc.as_ptr(), *self) }
     }
 }
 
 /// Macros to simplify creation of fleece encoded data
 #[macro_export]
 macro_rules! fleece {
+    //////////////////////////////////////////////////////////////////////////
+    // TT muncher for parsing the inside of an array [...].
+    //
+    // Must be invoked as: fleece!(@array [$($tt)*])
+    //////////////////////////////////////////////////////////////////////////
+    // Done with trailing comma.
+    (@array $enc:ident $all_ok:ident [$($elems:expr,)*]) => {
+        $($all_ok &= $crate::EncodeValue::encode(& $elems, $enc);)*
+    };
+
+    // Done without trailing comma.
+    (@array $enc:ident $all_ok:ident [$($elems:expr),*]) => {
+        $($all_ok &= $crate::EncodeValue::encode(& $elems, $enc);)*
+    };
+
+
     //////////////////////////////////////////////////////////////////////////
     // TT muncher for parsing the inside of an object {...}. Each entry is
     // inserted into the given map variable.
@@ -70,20 +97,20 @@ macro_rules! fleece {
     (@object $enc:ident $all_ok:ident ($($key:tt)+) (: null $($rest:tt)*) $copy:tt) => {
         $crate::fleece!(@object $enc $all_ok [$($key)+] (fleece!(null)) $($rest)*);
     };
-
-    // Next value is `true`.
-    (@object $enc:ident $all_ok:ident ($($key:tt)+) (: true $($rest:tt)*) $copy:tt) => {
-        $crate::fleece!(@object $enc $all_ok [$($key)+] (fleece!(true)) $($rest)*);
+    // Next value is an array without trailing comma
+    (@object $enc:ident $all_ok:ident ($($key:tt)+) (: [$($array:tt)*]) $copy:tt) => {
+        $all_ok &= $crate::ffi::FLEncoder_WriteKey($enc.as_ptr(), ($($key)+).into());
+        $all_ok &= $crate::ffi::FLEncoder_BeginArray($enc.as_ptr(), count_tts!($($array)*));
+        $crate::fleece!(@array $enc $all_ok [$($array)*]);
+        $all_ok &= $crate::ffi::FLEncoder_EndArray($enc.as_ptr());
     };
-
-    // Next value is `false`.
-    (@object $enc:ident $all_ok:ident ($($key:tt)+) (: false $($rest:tt)*) $copy:tt) => {
-        $crate::fleece!(@object $enc $all_ok [$($key)+] (fleece!(false)) $($rest)*);
-    };
-
-    // Next value is an array.
-    (@object $enc:ident $all_ok:ident ($($key:tt)+) (: [$($array:tt)*] $($rest:tt)*) $copy:tt) => {
-        $crate::fleece!(@object $enc $all_ok [$($key)+] (fleece!([$($array)*])) $($rest)*);
+    // Next value is an array with trailing comma
+    (@object $enc:ident $all_ok:ident ($($key:tt)+) (: [$($array:tt)*] , $($rest:tt)+) $copy:tt) => {
+        $all_ok &= $crate::ffi::FLEncoder_WriteKey($enc.as_ptr(), ($($key)+).into());
+        $all_ok &= $crate::ffi::FLEncoder_BeginArray($enc.as_ptr(), count_tts!($($array)*));
+        $crate::fleece!(@array $enc $all_ok [$($array)*]);
+        $all_ok &= $crate::ffi::FLEncoder_EndArray($enc.as_ptr());
+        $crate::fleece!(@object $enc $all_ok () ($($rest)*) ($($rest)*));
     };
 
     // Next value is a map plus values.
@@ -207,4 +234,12 @@ macro_rules! fleece {
 #[doc(hidden)]
 macro_rules! fleece_unexpected {
     () => {};
+}
+
+#[macro_export]
+#[doc(hidden)]
+macro_rules! count_tts {
+    () => {0usize};
+    ($_head:tt , $($tail:tt)*) => {1usize + count_tts!($($tail)*)};
+    ($item:tt) => {1usize};
 }

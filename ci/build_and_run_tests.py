@@ -5,6 +5,7 @@ import os, time, sys
 from pathlib import Path
 from subprocess import check_call
 from multiprocessing import cpu_count
+from typing import List
 
 def show_timing(function):
     def _wrapper(*args, **kwargs):
@@ -38,15 +39,22 @@ def build_and_test_cpp_part(src_root: str) -> None:
     check_call(["./CppTests", "-r", "list"], cwd = os.path.join(cmake_build_dir, "LiteCore", "tests"))
     check_call(["./C4Tests", "-r", "list"], cwd = os.path.join(cmake_build_dir, "C", "tests"))
 
+def build_tests(cmd: List[str], src_root: str) -> None:
+    no_run_cmd = cmd.copy()
+    no_run_cmd.append("--no-run")
+    check_call(no_run_cmd, cwd = src_root)
+
 @show_timing
 def build_and_test_rust_part(src_root: str, use_valgrind: bool) -> None:
     print("running tests in debug mode")
     cmd = ["cargo", "test", "--all", "-vv"]
+    build_tests(cmd, src_root)
     if use_valgrind:
        cmd.insert(1, "valgrind")
     check_call(cmd, cwd = src_root)
     print("running tests in release mode")
     cmd = ["cargo", "test", "--all", "--release", "-vv"]
+    build_tests(cmd, src_root)
     if use_valgrind:
        cmd.insert(1, "valgrind")
     check_call(cmd, cwd = src_root)

@@ -108,11 +108,14 @@ impl<'de> Deserializer<'de> {
     }
 
     fn parse_str(&self) -> Result<&'de str, Error> {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) } == FLValueType::kFLString {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLString {
             let s: &str = unsafe { FLValue_AsString(self.value.as_ptr()) }.try_into()?;
             Ok(s)
         } else {
-            Err(Error::InvalidFormat("data type is not boolean".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLString, got {ty:?}").into(),
+            ))
         }
     }
 }
@@ -180,10 +183,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) } == FLValueType::kFLBoolean {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLBoolean {
             visitor.visit_bool(unsafe { FLValue_AsBool(self.value.as_ptr()) })
         } else {
-            Err(Error::InvalidFormat("data type is not boolean".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLBoolean, got {ty:?}").into(),
+            ))
         }
     }
 
@@ -247,10 +253,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber } {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLNumber {
             visitor.visit_f32(unsafe { FLValue_AsFloat(self.value.as_ptr()) })
         } else {
-            Err(Error::InvalidFormat("data type is not number".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLNumber, got {ty:?}").into(),
+            ))
         }
     }
 
@@ -258,10 +267,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber } {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLNumber {
             visitor.visit_f64(unsafe { FLValue_AsDouble(self.value.as_ptr()) })
         } else {
-            Err(Error::InvalidFormat("data type is not f64".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLNumber, got {ty:?}").into(),
+            ))
         }
     }
 

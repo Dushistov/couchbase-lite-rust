@@ -1,6 +1,6 @@
 [package]
 name = "serde-fleece"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 license = "BSD-3-Clause"

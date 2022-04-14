@@ -76,10 +76,8 @@ impl<'de> Deserializer<'de> {
     }
 
     fn parse_signed<T: Integer + TryFrom<i64>>(&self) -> Result<T, Error> {
-        if unsafe {
-            FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber
-                && FLValue_IsInteger(self.value.as_ptr())
-        } {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLNumber && unsafe { FLValue_IsInteger(self.value.as_ptr()) } {
             let ret: T = unsafe { FLValue_AsInt(self.value.as_ptr()) }
                 .try_into()
                 .map_err(|_err| {
@@ -87,15 +85,15 @@ impl<'de> Deserializer<'de> {
                 })?;
             Ok(ret)
         } else {
-            Err(Error::InvalidFormat("data type is not integer".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLNumber and integer, got {ty:?}").into(),
+            ))
         }
     }
 
     fn parse_unsigned<T: Integer + TryFrom<u64>>(&self) -> Result<T, Error> {
-        if unsafe {
-            FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber
-                && FLValue_IsInteger(self.value.as_ptr())
-        } {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLNumber && unsafe { FLValue_IsInteger(self.value.as_ptr()) } {
             let ret: T = unsafe { FLValue_AsUnsigned(self.value.as_ptr()) }
                 .try_into()
                 .map_err(|_err| {
@@ -103,16 +101,21 @@ impl<'de> Deserializer<'de> {
                 })?;
             Ok(ret)
         } else {
-            Err(Error::InvalidFormat("data type is not integer".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLNumber and integer, got {ty:?}").into(),
+            ))
         }
     }
 
     fn parse_str(&self) -> Result<&'de str, Error> {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) } == FLValueType::kFLString {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLString {
             let s: &str = unsafe { FLValue_AsString(self.value.as_ptr()) }.try_into()?;
             Ok(s)
         } else {
-            Err(Error::InvalidFormat("data type is not boolean".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLString, got {ty:?}").into(),
+            ))
         }
     }
 }
@@ -180,10 +183,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) } == FLValueType::kFLBoolean {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLBoolean {
             visitor.visit_bool(unsafe { FLValue_AsBool(self.value.as_ptr()) })
         } else {
-            Err(Error::InvalidFormat("data type is not boolean".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLBoolean, got {ty:?}").into(),
+            ))
         }
     }
 
@@ -247,10 +253,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber } {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLNumber {
             visitor.visit_f32(unsafe { FLValue_AsFloat(self.value.as_ptr()) })
         } else {
-            Err(Error::InvalidFormat("data type is not number".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLNumber, got {ty:?}").into(),
+            ))
         }
     }
 
@@ -258,10 +267,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) == FLValueType::kFLNumber } {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLNumber {
             visitor.visit_f64(unsafe { FLValue_AsDouble(self.value.as_ptr()) })
         } else {
-            Err(Error::InvalidFormat("data type is not f64".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLNumber, got {ty:?}").into(),
+            ))
         }
     }
 
@@ -362,7 +374,8 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: de::Visitor<'de>,
     {
-        if unsafe { FLValue_GetType(self.value.as_ptr()) } == FLValueType::kFLArray {
+        let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
+        if ty == FLValueType::kFLArray {
             let arr = unsafe { FLValue_AsArray(self.value.as_ptr()) };
             let arr = NonNullConst::new(arr)
                 .ok_or_else(|| Error::InvalidFormat("array is not array type".into()))?;
@@ -372,7 +385,9 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             })?;
             visitor.visit_seq(ArrayAccess::new(arr, n))
         } else {
-            Err(Error::InvalidFormat("data type is not array".into()))
+            Err(Error::InvalidFormat(
+                format!("Wrong data type: expect kFLArray, got {ty:?}").into(),
+            ))
         }
     }
 

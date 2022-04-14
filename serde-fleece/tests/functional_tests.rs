@@ -14,8 +14,9 @@ struct Millimeters(u8);
 fn test_ser_primitive() {
     assert_eq!("true", to_fleece_to_json(&true));
     assert_eq!("false", to_fleece_to_json(&false));
-    assert_eq!("-9223372036854775808", to_fleece_to_json(&i64::min_value()));
-    assert_eq!("9223372036854775807", to_fleece_to_json(&i64::max_value()));
+    assert_eq!("-9223372036854775808", to_fleece_to_json(&i64::MIN));
+    assert_eq!("9223372036854775807", to_fleece_to_json(&i64::MAX));
+    assert_eq!("18446744073709551615", to_fleece_to_json(&u64::MAX));
     assert_eq!("0", to_fleece_to_json(&0_i64));
     assert_eq!(
         "\"This is text, привет\"",
@@ -38,11 +39,11 @@ fn test_ser_primitive_with_shared_encoder() {
     assert_eq!("false", to_fleece_to_json_enc(&false, enc.session()));
     assert_eq!(
         "-9223372036854775808",
-        to_fleece_to_json_enc(&i64::min_value(), enc.session())
+        to_fleece_to_json_enc(&i64::MIN, enc.session())
     );
     assert_eq!(
         "9223372036854775807",
-        to_fleece_to_json_enc(&i64::max_value(), enc.session())
+        to_fleece_to_json_enc(&i64::MAX, enc.session())
     );
     assert_eq!("0", to_fleece_to_json_enc(&0_i64, enc.session()));
     assert_eq!(
@@ -163,9 +164,9 @@ fn test_ser_json() {
 macro_rules! test_primive_ser_deser {
     ($($ty:ty)*) => {
         $(
-            let expect = <$ty>::min_value();
+            let expect = <$ty>::MIN;
             assert_eq!(expect, ser_deser(&expect).unwrap());
-            let expect = <$ty>::max_value();
+            let expect = <$ty>::MAX;
             assert_eq!(expect, ser_deser(&expect).unwrap());
             let expect = 0 as $ty;
             assert_eq!(expect, ser_deser(&expect).unwrap());

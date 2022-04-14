@@ -16,6 +16,7 @@ fn test_ser_primitive() {
     assert_eq!("false", to_fleece_to_json(&false));
     assert_eq!("-9223372036854775808", to_fleece_to_json(&i64::MIN));
     assert_eq!("9223372036854775807", to_fleece_to_json(&i64::MAX));
+    assert_eq!("18446744073709551615", to_fleece_to_json(&u64::MAX));
     assert_eq!("0", to_fleece_to_json(&0_i64));
     assert_eq!(
         "\"This is text, привет\"",

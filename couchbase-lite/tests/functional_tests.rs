@@ -1,10 +1,9 @@
 #[cfg(feature = "use-tokio-websocket")]
 mod need_sync_gateway;
 
-use couchbase_lite::*;
-use fallible_streaming_iterator::FallibleStreamingIterator;
+use couchbase_lite::{ffi::FLSlice, *};
 use serde::{Deserialize, Serialize};
-use std::{str, time::Instant};
+use std::{collections::HashMap, fs, str, time::Instant};
 use tempfile::tempdir;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -667,4 +666,125 @@ fn test_n1ql_query_with_parameter() {
         assert_eq!(expected, query_ret);
     }
     tmp_dir.close().expect("Can not close tmp_dir");
+}
+
+#[test]
+fn test_all_types_in_query() {
+    #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+    #[serde(tag = "type")]
+    struct Boo {
+        b: bool,
+        int: i32,
+        long: i64,
+        ulong: u64,
+        float: f32,
+        double: f64,
+        s: String,
+        arr: [String; 3],
+        m: HashMap<String, i32>,
+    }
+    let boo = Boo {
+        b: true,
+        int: i32::MIN,
+        long: i64::MIN,
+        ulong: u64::MAX,
+        float: f32::MAX,
+        double: f64::MIN,
+        s: "Boo::s".into(),
+        arr: ["a".into(), "b".into(), "c".into()],
+        m: {
+            let mut m = HashMap::new();
+            m.insert("a".into(), 17);
+            m.insert("b".into(), 18);
+            m
+        },
+    };
+
+    let _ = env_logger::try_init();
+    let tmp_dir = tempdir().expect("Can not create tmp directory");
+    let tmp_path = tmp_dir.into_path();
+    println!("we create tempdir at {tmp_path:?}");
+    let db_path = tmp_path.join("a.cblite2");
+    {
+        let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
+
+        let mut trans = db.transaction().unwrap();
+        let enc = trans.shared_encoder_session().unwrap();
+        let mut doc = Document::new(&boo, enc).unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+
+        let query = db
+            .n1ql_query(
+                "SELECT b,int,long,ulong,float,double,s,arr,m FROM _default WHERE _id=$doc_id",
+            )
+            .unwrap();
+        query
+            .set_parameters_fleece(serde_fleece::fleece!({"doc_id": doc.id() }))
+            .unwrap();
+        let mut iter = query.run().unwrap();
+        let item = iter.next().unwrap().unwrap();
+        let b = item.get_raw_checked(0).unwrap().as_bool().unwrap();
+        assert_eq!(b, boo.b);
+        let int = item.get_raw_checked(1).unwrap().as_i32().unwrap();
+        assert_eq!(int, boo.int);
+        let long = item.get_raw_checked(2).unwrap().as_i64().unwrap();
+        assert_eq!(long, boo.long);
+        let ulong = item.get_raw_checked(3).unwrap().as_u64().unwrap();
+        assert_eq!(ulong, boo.ulong);
+
+        let float = item.get_raw_checked(4).unwrap().as_f32().unwrap();
+        assert_eq!(float, boo.float);
+        let double = item.get_raw_checked(5).unwrap().as_f64().unwrap();
+        assert_eq!(double, boo.double);
+
+        assert_eq!(item.get_raw_checked(6).unwrap().as_str().unwrap(), boo.s);
+
+        let arr_value = item.get_raw_checked(7).unwrap();
+        let ValueRef::Array(arr) = arr_value else {
+            panic!("Expect array type, got {arr_value:?}");
+        };
+        assert_eq!(3, arr.len());
+        let arr: Vec<String> = (0..arr.len())
+            .map(|i| arr.get(i).as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(arr, boo.arr);
+
+        let m_value = item.get_raw_checked(8).unwrap();
+        let ValueRef::Dict(m) = m_value else {
+            panic!("Expect dict type, got {m_value:?}");
+        };
+        assert_eq!(2, m.len());
+        assert_eq!(17, m.get(FLSlice::from("a".as_bytes())).as_i32().unwrap());
+        assert_eq!(18, m.get(FLSlice::from("b".as_bytes())).as_i32().unwrap());
+
+        drop(iter);
+        drop(query);
+
+        println!("Check types, when float/double can be converted to integer");
+        let boo = Boo {
+            float: 17.0,
+            double: 18.0,
+            ..boo
+        };
+        let mut trans = db.transaction().unwrap();
+        let enc = trans.shared_encoder_session().unwrap();
+        let mut doc = Document::new(&boo, enc).unwrap();
+        trans.save(&mut doc).unwrap();
+        trans.commit().unwrap();
+
+        let query = db
+            .n1ql_query("SELECT float,double FROM _default WHERE _id=$doc_id")
+            .unwrap();
+        query
+            .set_parameters_fleece(serde_fleece::fleece!({"doc_id": doc.id() }))
+            .unwrap();
+        let mut iter = query.run().unwrap();
+        let item = iter.next().unwrap().unwrap();
+        let float = item.get_raw_checked(0).unwrap().as_f32().unwrap();
+        assert_eq!(float, boo.float);
+        let double = item.get_raw_checked(1).unwrap().as_f64().unwrap();
+        assert_eq!(double, boo.double);
+    }
+    fs::remove_dir_all(tmp_path).expect("Can not remove tmp_dir");
 }

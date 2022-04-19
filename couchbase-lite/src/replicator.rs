@@ -7,11 +7,12 @@ use crate::{
         c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_start, c4repl_stop,
         C4Address, C4DocumentEnded, C4Replicator, C4ReplicatorActivityLevel,
         C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode, C4ReplicatorParameters,
-        C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, C4String, FLSliceResult,
+        C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, C4ReplicatorValidationFunction,
+        C4RevisionFlags, C4String, FLDict, FLSliceResult,
     },
     Database,
 };
-use log::{debug, error, info, trace};
+use log::{error, info, trace};
 use std::{
     convert::TryFrom,
     mem::{self, MaybeUninit},
@@ -26,6 +27,7 @@ use std::{
 
 pub(crate) struct Replicator {
     inner: NonNull<C4Replicator>,
+    validation: C4ReplicatorValidationFunction,
     c_callback_on_status_changed: C4ReplicatorStatusChangedCallback,
     c_callback_on_documents_ended: C4ReplicatorDocumentsEndedCallback,
     free_callback_f: unsafe fn(_: *mut c_void),
@@ -33,11 +35,13 @@ pub(crate) struct Replicator {
 }
 
 struct CallbackContext<
-    StateCallback: FnMut(C4ReplicatorStatus) + Send + 'static,
-    DocumentsEndedCallback: FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
+    ValidationCb: ReplicatorValidationFunction,
+    StateCb: ReplicatorStatusChangedCallback,
+    DocumentsEndedCb: ReplicatorDocumentsEndedCallback,
 > {
-    state_cb: StateCallback,
-    docs_ended_cb: DocumentsEndedCallback,
+    validation_cb: ValidationCb,
+    state_cb: StateCb,
+    docs_ended_cb: DocumentsEndedCb,
 }
 
 #[derive(Clone)]
@@ -61,34 +65,84 @@ impl Drop for Replicator {
     }
 }
 
+macro_rules! define_trait_alias {
+    ($alias:ident, $($tt:tt)+) => {
+        pub(crate) trait $alias: $($tt)+ {}
+        impl<T> $alias for T where T: $($tt)+ {}
+    };
+}
+
+define_trait_alias!(ReplicatorValidationFunction, FnMut(&str, &str, &str, C4RevisionFlags, FLDict) -> bool + Send + 'static);
+define_trait_alias!(
+    ReplicatorStatusChangedCallback,
+    FnMut(C4ReplicatorStatus) + Send + 'static
+);
+define_trait_alias!(
+    ReplicatorDocumentsEndedCallback,
+    FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static
+);
+
 impl Replicator {
     /// # Arguments
     /// * `url` - should be something like "ws://192.168.1.132:4984/demo/"
     /// * `state_changed_callback` - reports back change of replicator state
     /// * `documents_ended_callback` - reports about the replication status of documents
-    pub(crate) fn new<StateCallback, DocumentsEndedCallback>(
+    pub(crate) fn new<StateCallback, DocumentsEndedCallback, ValidationF>(
         db: &Database,
         url: &str,
         auth: ReplicatorAuthentication,
+        validation_cb: ValidationF,
         state_changed_callback: StateCallback,
         documents_ended_callback: DocumentsEndedCallback,
     ) -> Result<Self>
     where
-        StateCallback: FnMut(C4ReplicatorStatus) + Send + 'static,
-        DocumentsEndedCallback:
-            FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
+        ValidationF: ReplicatorValidationFunction,
+        StateCallback: ReplicatorStatusChangedCallback,
+        DocumentsEndedCallback: ReplicatorDocumentsEndedCallback,
     {
-        unsafe extern "C" fn call_on_status_changed<F, F2>(
+        unsafe extern "C" fn call_validation<F, F2, F3>(
+            coll_name: C4String,
+            doc_id: C4String,
+            rev_id: C4String,
+            flags: C4RevisionFlags,
+            body: FLDict,
+            ctx: *mut c_void,
+        ) -> bool
+        where
+            F: ReplicatorValidationFunction,
+            F2: ReplicatorStatusChangedCallback,
+            F3: ReplicatorDocumentsEndedCallback,
+        {
+            let coll_name: &str = str::from_utf8_unchecked(coll_name.into());
+            let doc_id: &str = str::from_utf8_unchecked(doc_id.into());
+            let rev_id: &str = str::from_utf8_unchecked(rev_id.into());
+            trace!("validation {coll_name} {doc_id} {rev_id}");
+            let r = catch_unwind(|| {
+                let ctx = ctx as *mut CallbackContext<F, F2, F3>;
+                assert!(
+                    !ctx.is_null(),
+                    "Replicator::call_validation: Internal error - null function pointer"
+                );
+                ((*ctx).validation_cb)(coll_name, doc_id, rev_id, flags, body)
+            });
+            r.unwrap_or_else(|_| {
+                error!("Replicator::call_validation: catch panic aborting");
+                abort();
+            })
+        }
+
+        unsafe extern "C" fn call_on_status_changed<F1, F, F3>(
             c4_repl: *mut C4Replicator,
             status: C4ReplicatorStatus,
             ctx: *mut c_void,
         ) where
-            F: FnMut(C4ReplicatorStatus) + Send + 'static,
-            F2: FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
+            F1: ReplicatorValidationFunction,
+            F: ReplicatorStatusChangedCallback,
+            F3: ReplicatorDocumentsEndedCallback,
         {
             info!("on_status_changed: repl {:?}, status {:?}", c4_repl, status);
             let r = catch_unwind(|| {
-                let ctx = ctx as *mut CallbackContext<F, F2>;
+                let ctx = ctx as *mut CallbackContext<F1, F, F3>;
                 assert!(
                     !ctx.is_null(),
                     "Replicator::call_on_status_changed: Internal error - null function pointer"
@@ -101,22 +155,25 @@ impl Replicator {
             }
         }
 
-        unsafe extern "C" fn call_on_documents_ended<F1, F>(
+        unsafe extern "C" fn call_on_documents_ended<F1, F2, F>(
             c4_repl: *mut C4Replicator,
             pushing: bool,
             num_docs: usize,
             docs: *mut *const C4DocumentEnded,
             ctx: *mut ::std::os::raw::c_void,
         ) where
-            F1: FnMut(C4ReplicatorStatus) + Send + 'static,
-            F: FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
+            F1: ReplicatorValidationFunction,
+            F2: ReplicatorStatusChangedCallback,
+            F: ReplicatorDocumentsEndedCallback,
         {
-            debug!(
+            trace!(
                 "on_documents_ended: repl {:?} pushing {}, num_docs {}",
-                c4_repl, pushing, num_docs
+                c4_repl,
+                pushing,
+                num_docs
             );
             let r = catch_unwind(|| {
-                let ctx = ctx as *mut CallbackContext<F1, F>;
+                let ctx = ctx as *mut CallbackContext<F1, F2, F>;
                 assert!(
                     !ctx.is_null(),
                     "Replicator::call_on_documents_ended: Internal error - null function pointer"
@@ -132,6 +189,7 @@ impl Replicator {
         }
 
         let ctx = Box::new(CallbackContext {
+            validation_cb,
             state_cb: state_changed_callback,
             docs_ended_cb: documents_ended_callback,
         });
@@ -140,10 +198,11 @@ impl Replicator {
             db,
             url,
             auth,
-            free_boxed_value::<CallbackContext<StateCallback, DocumentsEndedCallback>>,
+            free_boxed_value::<CallbackContext<ValidationF, StateCallback, DocumentsEndedCallback>>,
             unsafe { NonNull::new_unchecked(ctx_p as *mut c_void) },
-            Some(call_on_status_changed::<StateCallback, DocumentsEndedCallback>),
-            Some(call_on_documents_ended::<StateCallback, DocumentsEndedCallback>),
+            Some(call_validation::<ValidationF, StateCallback, DocumentsEndedCallback>),
+            Some(call_on_status_changed::<ValidationF, StateCallback, DocumentsEndedCallback>),
+            Some(call_on_documents_ended::<ValidationF, StateCallback, DocumentsEndedCallback>),
         )
     }
 
@@ -167,6 +226,7 @@ impl Replicator {
             inner: prev_inner,
             free_callback_f,
             boxed_callback_f,
+            validation,
             c_callback_on_status_changed,
             c_callback_on_documents_ended,
         } = self;
@@ -181,6 +241,7 @@ impl Replicator {
             auth,
             free_callback_f,
             boxed_callback_f,
+            validation,
             c_callback_on_status_changed,
             c_callback_on_documents_ended,
         )?;
@@ -194,6 +255,7 @@ impl Replicator {
         auth: ReplicatorAuthentication,
         free_callback_f: unsafe fn(_: *mut c_void),
         boxed_callback_f: NonNull<c_void>,
+        validation: C4ReplicatorValidationFunction,
         call_on_status_changed: C4ReplicatorStatusChangedCallback,
         call_on_documents_ended: C4ReplicatorDocumentsEndedCallback,
     ) -> Result<Self> {
@@ -230,7 +292,7 @@ impl Replicator {
             pull: C4ReplicatorMode::kC4Continuous,
             optionsDictFleece: options_dict.as_fl_slice(),
             pushFilter: None,
-            validationFunc: None,
+            validationFunc: validation,
             onStatusChanged: call_on_status_changed,
             onDocumentsEnded: call_on_documents_ended,
             onBlobProgress: None,
@@ -255,6 +317,7 @@ impl Replicator {
                 inner,
                 free_callback_f,
                 boxed_callback_f,
+                validation,
                 c_callback_on_status_changed: call_on_status_changed,
                 c_callback_on_documents_ended: call_on_documents_ended,
             })

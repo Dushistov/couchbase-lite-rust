@@ -7,7 +7,7 @@ use crate::{
         c4db_getSharedFleeceEncoder, c4db_openNamed, c4db_release, kC4DB_Create, kC4DB_NoUpgrade,
         kC4DB_NonObservable, kC4DB_ReadOnly, C4Database, C4DatabaseConfig2, C4DocContentLevel,
         C4DocumentEnded, C4EncryptionAlgorithm, C4EncryptionKey, C4ErrorCode, C4ErrorDomain,
-        C4IndexOptions, C4IndexType,
+        C4IndexOptions, C4IndexType, C4RevisionFlags, FLDict,
     },
     index::{DbIndexesListIterator, IndexInfo, IndexOptions, IndexType},
     log_reroute::c4log_to_log_init,
@@ -243,14 +243,21 @@ impl Database {
     }
 
     /// starts database replication
-    pub fn start_replicator<StatusF, DocsReplF>(
+    /// * `validation_cb` - Callback that can reject incoming revisions.
+    ///    Arguments: collection_name, doc_id, rev_id, rev_flags, doc_body.
+    ///    It should return false to reject document.
+    /// * `repl_status_changed` - Callback to be invoked when replicator's status changes.
+    /// * `repl_docs_ended` - Callback notifying status of individual documents.
+    pub fn start_replicator<StatusF, DocsReplF, ValidationF>(
         &mut self,
         url: &str,
         auth: ReplicatorAuthentication,
+        validation_cb: ValidationF,
         mut repl_status_changed: StatusF,
         repl_docs_ended: DocsReplF,
     ) -> Result<()>
     where
+        ValidationF: FnMut(&str, &str, &str, C4RevisionFlags, FLDict) -> bool + Send + 'static,
         StatusF: FnMut(ReplicatorState) + Send + 'static,
         DocsReplF: FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
     {
@@ -258,6 +265,7 @@ impl Database {
             self,
             url,
             auth.clone(),
+            validation_cb,
             move |status| match ReplicatorState::try_from(status) {
                 Ok(state) => repl_status_changed(state),
                 Err(err) => {

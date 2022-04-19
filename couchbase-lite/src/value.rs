@@ -34,32 +34,27 @@ impl ValueRef<'_> {
     pub fn is_null(&self) -> bool {
         matches!(self, ValueRef::Null)
     }
-}
-
-impl<'a> From<FLValue> for ValueRef<'a> {
-    fn from(value: FLValue) -> ValueRef<'a> {
+    pub(crate) unsafe fn new(value: FLValue) -> Self {
         use FLValueType::*;
-        match unsafe { FLValue_GetType(value) } {
+        match FLValue_GetType(value) {
             kFLUndefined | kFLNull => ValueRef::Null,
-            kFLBoolean => ValueRef::Bool(unsafe { FLValue_AsBool(value) }),
+            kFLBoolean => ValueRef::Bool(FLValue_AsBool(value)),
             kFLNumber => {
-                if unsafe { FLValue_IsInteger(value) } {
-                    ValueRef::SignedInt(unsafe { FLValue_AsInt(value) })
-                } else if unsafe { FLValue_IsUnsigned(value) } {
-                    ValueRef::UnsignedInt(unsafe { FLValue_AsUnsigned(value) })
+                if FLValue_IsInteger(value) {
+                    ValueRef::SignedInt(FLValue_AsInt(value))
+                } else if FLValue_IsUnsigned(value) {
+                    ValueRef::UnsignedInt(FLValue_AsUnsigned(value))
                 } else {
-                    assert!(unsafe { FLValue_IsDouble(value) });
-                    ValueRef::Double(unsafe { FLValue_AsDouble(value) })
+                    assert!(FLValue_IsDouble(value));
+                    ValueRef::Double(FLValue_AsDouble(value))
                 }
             }
             kFLString => {
-                let s: &str = unsafe { FLValue_AsString(value) }
-                    .try_into()
-                    .expect("not valid utf-8");
+                let s: &str = FLValue_AsString(value).try_into().expect("not valid utf-8");
                 ValueRef::String(s)
             }
-            kFLArray => ValueRef::Array(ValueRefArray(unsafe { FLValue_AsArray(value) })),
-            kFLDict => ValueRef::Dict(ValueRefDict(unsafe { FLValue_AsDict(value) })),
+            kFLArray => ValueRef::Array(ValueRefArray(FLValue_AsArray(value))),
+            kFLDict => ValueRef::Dict(ValueRefDict(FLValue_AsDict(value))),
             kFLData => unimplemented!(),
         }
     }
@@ -80,7 +75,7 @@ impl ValueRefArray {
         FLArray_Get(self.0, idx)
     }
     pub fn get(&self, idx: u32) -> ValueRef {
-        unsafe { self.get_raw(idx) }.into()
+        unsafe { ValueRef::new(self.get_raw(idx)) }
     }
 }
 
@@ -99,7 +94,7 @@ impl ValueRefDict {
         FLDict_Get(self.0, key)
     }
     pub fn get(&self, key: FLSlice) -> ValueRef {
-        unsafe { self.get_raw(key) }.into()
+        unsafe { ValueRef::new(self.get_raw(key)) }
     }
 }
 

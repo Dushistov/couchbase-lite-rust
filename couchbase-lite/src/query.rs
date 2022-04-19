@@ -148,7 +148,7 @@ impl<'a> Enumerator<'a> {
     pub fn get_raw_checked(&self, i: u32) -> Result<ValueRef<'a>> {
         let value = self.do_get_raw_checked(i)?;
 
-        let val: ValueRef = value.into();
+        let val = unsafe { ValueRef::new(value) };
         Ok(val)
     }
 

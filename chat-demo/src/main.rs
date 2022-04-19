@@ -1,5 +1,8 @@
 use couchbase_lite::{
-    fallible_streaming_iterator::FallibleStreamingIterator, ffi::kRevIsConflict, resolve_conflict,
+    fallible_streaming_iterator::FallibleStreamingIterator,
+    ffi::kRevIsConflict,
+    resolve_conflict,
+    serde_fleece::{from_fl_dict, Dict},
     Database, DatabaseFlags, DocEnumeratorFlags, Document, ReplicatorAuthentication,
     ReplicatorState,
 };
@@ -44,6 +47,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             db.start_replicator(
                 &sync_url,
                 auth,
+                |coll_name, doc_id, rev_id, flags, body| {
+                    println!("Input filter: {coll_name} {doc_id} {rev_id} {flags:?}");
+                    let body = match Dict::new(&body) {
+                        Some(x) => x,
+                        None => {
+                            eprintln!("skip {doc_id}, body is null");
+                            return false;
+                        }
+                    };
+                    match body.get_as_str("type") {
+                        Some("Message") => {
+                            from_fl_dict::<Message, _>(body).is_ok()
+                        }
+                        Some(_) | None => false,
+                    }
+                },
                 move |repl_state| {
                     println!("replicator state changed: {:?}", repl_state);
                     match repl_state {
@@ -289,14 +308,14 @@ fn print_external_changes(db: &mut Option<Database>) -> Result<(), Box<dyn std::
         let doc = match db.get_existing(doc_id.as_str()) {
             Ok(x) => x,
             Err(err) => {
-                eprintln!("Can not get {}: {}", doc_id, err);
+                eprintln!("Can not get {doc_id}: {err}");
                 continue;
             }
         };
         let db_msg: Message = match doc.decode_body() {
             Ok(x) => x,
             Err(err) => {
-                eprintln!("Can not decode data: {}", err);
+                eprintln!("Can not decode data for {doc_id}: {err}");
                 continue;
             }
         };

@@ -3,8 +3,9 @@ use crate::{
     ffi::{
         FLArray, FLArray_Count, FLArray_Get, FLArray_IsEmpty, FLDict, FLDict_Count, FLDict_Get,
         FLDict_IsEmpty, FLSlice, FLValue, FLValueType, FLValue_AsArray, FLValue_AsBool,
-        FLValue_AsDict, FLValue_AsDouble, FLValue_AsInt, FLValue_AsString, FLValue_AsUnsigned,
-        FLValue_GetType, FLValue_IsDouble, FLValue_IsInteger, FLValue_IsUnsigned,
+        FLValue_AsDict, FLValue_AsDouble, FLValue_AsFloat, FLValue_AsInt, FLValue_AsString,
+        FLValue_AsUnsigned, FLValue_GetType, FLValue_IsDouble, FLValue_IsInteger,
+        FLValue_IsUnsigned,
     },
 };
 use std::convert::TryFrom;
@@ -15,6 +16,7 @@ pub enum ValueRef<'a> {
     Bool(bool),
     SignedInt(i64),
     UnsignedInt(u64),
+    Float(f32),
     Double(f64),
     String(&'a str),
     Array(ValueRefArray),
@@ -23,11 +25,31 @@ pub enum ValueRef<'a> {
 
 impl ValueRef<'_> {
     #[inline]
-    pub fn as_str(&self) -> Result<&str> {
+    pub fn as_bool(&self) -> Result<bool> {
+        FromValueRef::column_result(*self)
+    }
+    #[inline]
+    pub fn as_i32(&self) -> Result<i32> {
+        FromValueRef::column_result(*self)
+    }
+    #[inline]
+    pub fn as_i64(&self) -> Result<i64> {
         FromValueRef::column_result(*self)
     }
     #[inline]
     pub fn as_u64(&self) -> Result<u64> {
+        FromValueRef::column_result(*self)
+    }
+    #[inline]
+    pub fn as_f32(&self) -> Result<f32> {
+        FromValueRef::column_result(*self)
+    }
+    #[inline]
+    pub fn as_f64(&self) -> Result<f64> {
+        FromValueRef::column_result(*self)
+    }
+    #[inline]
+    pub fn as_str(&self) -> Result<&str> {
         FromValueRef::column_result(*self)
     }
     #[inline]
@@ -40,13 +62,16 @@ impl ValueRef<'_> {
             kFLUndefined | kFLNull => ValueRef::Null,
             kFLBoolean => ValueRef::Bool(FLValue_AsBool(value)),
             kFLNumber => {
-                if FLValue_IsInteger(value) {
-                    ValueRef::SignedInt(FLValue_AsInt(value))
-                } else if FLValue_IsUnsigned(value) {
+                if FLValue_IsUnsigned(value) {
                     ValueRef::UnsignedInt(FLValue_AsUnsigned(value))
+                } else if FLValue_IsInteger(value) {
+                    ValueRef::SignedInt(FLValue_AsInt(value))
                 } else {
-                    assert!(FLValue_IsDouble(value));
-                    ValueRef::Double(FLValue_AsDouble(value))
+                    if FLValue_IsDouble(value) {
+                        ValueRef::Double(FLValue_AsDouble(value))
+                    } else {
+                        ValueRef::Float(FLValue_AsFloat(value))
+                    }
                 }
             }
             kFLString => {
@@ -108,6 +133,19 @@ pub trait FromValueRef<'a>: Sized {
     fn column_result(val: ValueRef<'a>) -> Result<Self>;
 }
 
+impl<'a> FromValueRef<'a> for bool {
+    #[inline]
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        if let ValueRef::Bool(x) = val {
+            Ok(x)
+        } else {
+            Err(Error::LogicError(format!(
+                "Wrong ValueRef type, expect Bool, got {val:?}"
+            )))
+        }
+    }
+}
+
 impl<'a> FromValueRef<'a> for &'a str {
     #[inline]
     fn column_result(val: ValueRef<'a>) -> Result<Self> {
@@ -136,6 +174,20 @@ impl<'a> FromValueRef<'a> for u16 {
             }),
             _ => Err(Error::LogicError(format!(
                 "Wrong ValueRef type, expect SignedInt|UnsignedInt (u16) got {val:?}"
+            ))),
+        }
+    }
+}
+
+impl<'a> FromValueRef<'a> for i32 {
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        match val {
+            ValueRef::SignedInt(val) => i32::try_from(val)
+                .map_err(|err| Error::LogicError(format!("i64->i32 conversation failure: {err}"))),
+            ValueRef::UnsignedInt(val) => i32::try_from(val)
+                .map_err(|err| Error::LogicError(format!("u64->i32 conversation failure: {err}"))),
+            _ => Err(Error::LogicError(format!(
+                "Wrong ValueRef type, expect SignedInt|UnsignedInt (i32) got {val:?}"
             ))),
         }
     }
@@ -208,6 +260,32 @@ impl<'a> FromValueRef<'a> for usize {
             }),
             _ => Err(Error::LogicError(format!(
                 "Wrong ValueRef type, expect SignedInt|UnsignedInt (usize) got {val:?}"
+            ))),
+        }
+    }
+}
+
+impl<'a> FromValueRef<'a> for f32 {
+    #[inline]
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        if let ValueRef::Float(x) = val {
+            Ok(x)
+        } else {
+            Err(Error::LogicError(format!(
+                "Wrong ValueRef type, expect Float, got {val:?}"
+            )))
+        }
+    }
+}
+
+impl<'a> FromValueRef<'a> for f64 {
+    #[inline]
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        match val {
+            ValueRef::Float(x) => Ok(f64::from(x)),
+            ValueRef::Double(x) => Ok(x),
+            _ => Err(Error::LogicError(format!(
+                "Wrong ValueRef type, expect Float/Double, got {val:?}"
             ))),
         }
     }

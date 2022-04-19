@@ -412,7 +412,7 @@ unsafe fn c4address_to_request(
         ))
     })?;
 
-    if let ValueRef::Array(opts) = ValueRef::from(FLDict_Get(
+    if let ValueRef::Array(opts) = ValueRef::new(FLDict_Get(
         options.as_ptr(),
         kC4ReplicatorOptionExtraHeaders.into(),
     )) {
@@ -448,7 +448,7 @@ unsafe fn c4address_to_request(
 
     let mut cookies = Vec::<String>::new();
 
-    if let ValueRef::Dict(auth) = ValueRef::from(FLDict_Get(
+    if let ValueRef::Dict(auth) = ValueRef::new(FLDict_Get(
         options.as_ptr(),
         kC4ReplicatorOptionAuthentication.into(),
     )) {
@@ -496,14 +496,14 @@ unsafe fn c4address_to_request(
         }
     }
 
-    if let ValueRef::String(cookie) = ValueRef::from(FLDict_Get(
+    if let ValueRef::String(cookie) = ValueRef::new(FLDict_Get(
         options.as_ptr(),
         kC4ReplicatorOptionCookies.into(),
     )) {
         cookies.push(cookie.to_string());
     }
 
-    if let ValueRef::String(protocol) = ValueRef::from(FLDict_Get(
+    if let ValueRef::String(protocol) = ValueRef::new(FLDict_Get(
         options.as_ptr(),
         kC4SocketOptionWSProtocols.into(),
     )) {

@@ -63,7 +63,7 @@ pub(crate) struct DbIndexesListIterator {
 impl DbIndexesListIterator {
     pub(crate) fn new(enc_data: C4SliceResult) -> Result<Self> {
         let fvalue = unsafe { FLValue_FromData(enc_data.as_fl_slice(), FLTrust::kFLTrusted) };
-        let val: ValueRef = fvalue.into();
+        let val = unsafe { ValueRef::new(fvalue) };
         let array = match val {
             ValueRef::Array(arr) => arr,
             _ => {

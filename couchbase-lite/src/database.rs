@@ -243,6 +243,8 @@ impl Database {
     }
 
     /// starts database replication
+    /// * `reset` - If true, the replicator will reset its checkpoint
+    ///             and start replication from the beginning.
     /// * `validation_cb` - Callback that can reject incoming revisions.
     ///    Arguments: collection_name, doc_id, rev_id, rev_flags, doc_body.
     ///    It should return false to reject document.
@@ -252,6 +254,7 @@ impl Database {
         &mut self,
         url: &str,
         auth: ReplicatorAuthentication,
+        reset: bool,
         validation_cb: ValidationF,
         mut repl_status_changed: StatusF,
         repl_docs_ended: DocsReplF,
@@ -274,7 +277,7 @@ impl Database {
             },
             repl_docs_ended,
         )?;
-        db_replicator.start()?;
+        db_replicator.start(reset)?;
         self.db_replicator = Some(db_replicator);
         self.replicator_params = Some(ReplicatorParams {
             url: url.into(),

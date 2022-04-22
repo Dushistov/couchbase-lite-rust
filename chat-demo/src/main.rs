@@ -47,6 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             db.start_replicator(
                 &sync_url,
                 auth,
+                false,
                 |coll_name, doc_id, rev_id, flags, body| {
                     println!("Input filter: {coll_name} {doc_id} {rev_id} {flags:?}");
                     let body = match Dict::new(&body) {

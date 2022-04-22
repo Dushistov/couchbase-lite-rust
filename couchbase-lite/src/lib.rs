@@ -4,10 +4,9 @@
 //! # extern crate serde;
 //! # use serde::{Serialize, Deserialize};
 //! use couchbase_lite::{
-//!     Database, DatabaseConfig, Document, DatabaseFlags,
+//!     Database, Document, DatabaseFlags,
 //!     fallible_streaming_iterator::FallibleStreamingIterator
 //! };
-//! use std::path::Path;
 //!
 //! #[derive(Serialize, Deserialize, Debug)]
 //! #[serde(tag = "type")]
@@ -29,7 +28,7 @@
 //!         trans.commit()?;
 //!     }
 //!     println!("we have {} documents in db", db.document_count());
-//!     let query = db.query(r#"{"WHAT": ["._id"], "WHERE": ["=", [".type"], "Message"]}"#)?;
+//!     let query = db.n1ql_query("SELECT _id FROM _default WHERE type='Message'")?;
 //!     let mut iter = query.run()?;
 //!     while let Some(item) = iter.next()? {
 //!         let id = item.get_raw_checked(0)?;

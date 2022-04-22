@@ -652,6 +652,7 @@ fn test_double_replicator_restart() {
         db.start_replicator(
             "ws://127.0.0.1:4984/demo/",
             ReplicatorAuthentication::None,
+            false,
             |collection, doc_id, rev_id, rev_flags, _body| {
                 println!("Pull filter: {collection} , {doc_id}, {rev_id}, {rev_flags:?}");
                 true

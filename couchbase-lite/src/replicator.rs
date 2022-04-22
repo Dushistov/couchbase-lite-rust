@@ -206,8 +206,8 @@ impl Replicator {
         )
     }
 
-    pub(crate) fn start(&mut self) -> Result<()> {
-        unsafe { c4repl_start(self.inner.as_ptr(), false) };
+    pub(crate) fn start(&mut self, reset: bool) -> Result<()> {
+        unsafe { c4repl_start(self.inner.as_ptr(), reset) };
         let status: ReplicatorState = self.status().try_into()?;
         if let ReplicatorState::Stopped(err) = status {
             Err(err)
@@ -245,7 +245,7 @@ impl Replicator {
             c_callback_on_status_changed,
             c_callback_on_documents_ended,
         )?;
-        repl.start()?;
+        repl.start(false)?;
         Ok(repl)
     }
 

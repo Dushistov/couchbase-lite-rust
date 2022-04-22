@@ -5,7 +5,7 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_start, c4repl_stop,
-        C4Address, C4DocumentEnded, C4Replicator, C4ReplicatorActivityLevel,
+        C4Address, C4DocumentEnded, C4Progress, C4Replicator, C4ReplicatorActivityLevel,
         C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode, C4ReplicatorParameters,
         C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, C4ReplicatorValidationFunction,
         C4RevisionFlags, C4String, FLDict, FLSliceResult,
@@ -337,6 +337,12 @@ impl Replicator {
     }
 }
 
+/// Represents the current progress of a replicator.
+/// The `units` fields should not be used directly, but divided (`unitsCompleted`/`unitsTotal`)
+/// to give a _very_ approximate progress fraction.
+
+pub type ReplicatorProgress = C4Progress;
+
 /// The possible states of a replicator
 #[derive(Debug)]
 pub enum ReplicatorState {
@@ -349,7 +355,7 @@ pub enum ReplicatorState {
     /// Continuous replicator has caught up and is waiting for changes.
     Idle,
     ///< Connected and actively working.
-    Busy,
+    Busy(ReplicatorProgress),
 }
 
 unsafe fn free_boxed_value<T>(p: *mut c_void) {
@@ -366,8 +372,8 @@ impl TryFrom<C4ReplicatorStatus> for ReplicatorState {
             C4ReplicatorActivityLevel::kC4Offline => Ok(ReplicatorState::Offline),
             C4ReplicatorActivityLevel::kC4Connecting => Ok(ReplicatorState::Connecting),
             C4ReplicatorActivityLevel::kC4Idle => Ok(ReplicatorState::Idle),
-            C4ReplicatorActivityLevel::kC4Busy => Ok(ReplicatorState::Busy),
-            _ => Err(Error::LogicError(format!("unknown level for {:?}", status))),
+            C4ReplicatorActivityLevel::kC4Busy => Ok(ReplicatorState::Busy(status.progress)),
+            _ => Err(Error::LogicError(format!("unknown level for {status:?}"))),
         }
     }
 }

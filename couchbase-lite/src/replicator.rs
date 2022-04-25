@@ -221,6 +221,7 @@ impl Replicator {
         db: &Database,
         url: &str,
         auth: ReplicatorAuthentication,
+        reset: bool,
     ) -> Result<Self> {
         let Replicator {
             inner: prev_inner,
@@ -245,7 +246,7 @@ impl Replicator {
             c_callback_on_status_changed,
             c_callback_on_documents_ended,
         )?;
-        repl.start(false)?;
+        repl.start(reset)?;
         Ok(repl)
     }
 

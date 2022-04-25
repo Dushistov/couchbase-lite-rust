@@ -287,7 +287,29 @@ impl Database {
     }
     /// restart database replicator, gives error if `Database::start_replicator`
     /// haven't called yet
+    #[inline]
     pub fn restart_replicator(&mut self) -> Result<()> {
+        self.do_restart_replicator(None, false)
+    }
+
+    /// restart database replicator with new auth information,
+    /// gives error if `Database::start_replicator` haven't called yet
+    /// * `reset` - If true, the replicator will reset its checkpoint
+    ///             and start replication from the beginning.
+    #[inline]
+    pub fn restart_replicator_with_new_auth(
+        &mut self,
+        auth: ReplicatorAuthentication,
+        reset: bool,
+    ) -> Result<()> {
+        self.do_restart_replicator(Some(auth), reset)
+    }
+
+    fn do_restart_replicator(
+        &mut self,
+        auth: Option<ReplicatorAuthentication>,
+        reset: bool,
+    ) -> Result<()> {
         let replicator_params = self.replicator_params.as_ref().ok_or_else(|| {
             Error::LogicError(
                 "you call restart_replicator, but have not yet call start_replicator (params)"
@@ -299,8 +321,15 @@ impl Database {
                 "you call restart_replicator, but have not yet call start_replicator (repl)".into(),
             )
         })?;
-        self.db_replicator =
-            Some(repl.restart(self, &replicator_params.url, replicator_params.auth.clone())?);
+        self.db_replicator = Some(repl.restart(
+            self,
+            &replicator_params.url,
+            match auth {
+                Some(auth) => auth,
+                None => replicator_params.auth.clone(),
+            },
+            reset,
+        )?);
         Ok(())
     }
 

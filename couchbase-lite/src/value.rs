@@ -99,119 +99,88 @@ impl ValueRefDict {
 }
 
 pub trait FromValueRef<'a>: Sized {
-    fn column_result(value: ValueRef<'a>) -> Result<Self>;
+    fn column_result(val: ValueRef<'a>) -> Result<Self>;
 }
 
 impl<'a> FromValueRef<'a> for &'a str {
-    fn column_result(value: ValueRef<'a>) -> Result<Self> {
-        if let ValueRef::String(x) = value {
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        if let ValueRef::String(x) = val {
             Ok(x)
         } else {
             Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect String, got {:?}",
-                value
+                "Wrong ValueRef type, expect String, got {val:?}"
             )))
         }
     }
 }
 
 impl<'a> FromValueRef<'a> for u16 {
-    fn column_result(value: ValueRef<'a>) -> Result<Self> {
-        match value {
-            ValueRef::SignedInt(x) => {
-                if x >= 0 && x <= u16::max_value() as i64 {
-                    Ok(x as u16)
-                } else {
-                    Err(Error::LogicError(format!(
-                        "ValueRef -> u16, SignedInt too big or negative: {}",
-                        x
-                    )))
-                }
-            }
-            ValueRef::UnsignedInt(x) => {
-                if x <= u16::max_value() as u64 {
-                    Ok(x as u16)
-                } else {
-                    Err(Error::LogicError(format!(
-                        "ValueRef -> u16, UnsignedInt too big: {}",
-                        x
-                    )))
-                }
-            }
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        match val {
+            ValueRef::SignedInt(x) => u16::try_from(x).map_err(|err| {
+                Error::LogicError(format!(
+                    "ValueRef(Signed) {x} to u16 conversation error: {err}"
+                ))
+            }),
+            ValueRef::UnsignedInt(x) => u16::try_from(x).map_err(|err| {
+                Error::LogicError(format!(
+                    "ValueRef(Unsigned) {x} to u16 conversation error: {err}"
+                ))
+            }),
             _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (u16) got {:?}",
-                value
+                "Wrong ValueRef type, expect SignedInt|UnsignedInt (u16) got {val:?}"
             ))),
         }
     }
 }
 
 impl<'a> FromValueRef<'a> for u32 {
-    fn column_result(value: ValueRef<'a>) -> Result<Self> {
-        match value {
-            ValueRef::SignedInt(x) => {
-                if x >= 0 && x <= u32::max_value() as i64 {
-                    Ok(x as u32)
-                } else {
-                    Err(Error::LogicError(format!(
-                        "ValueRef -> u32, SignedInt too big or negative: {}",
-                        x
-                    )))
-                }
-            }
-            ValueRef::UnsignedInt(x) => {
-                if x <= u32::max_value() as u64 {
-                    Ok(x as u32)
-                } else {
-                    Err(Error::LogicError(format!(
-                        "ValueRef -> u32, UnsignedInt too big: {}",
-                        x
-                    )))
-                }
-            }
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        match val {
+            ValueRef::SignedInt(x) => u32::try_from(x).map_err(|err| {
+                Error::LogicError(format!(
+                    "ValueRef(Signed) {x} to u32 conversation error: {err}"
+                ))
+            }),
+            ValueRef::UnsignedInt(x) => u32::try_from(x).map_err(|err| {
+                Error::LogicError(format!(
+                    "ValueRef(Unsigned) {x} to u32 conversation error: {err}"
+                ))
+            }),
             _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (u32) got {:?}",
-                value
+                "Wrong ValueRef type, expect SignedInt|UnsignedInt (u32) got {val:?}"
             ))),
         }
     }
 }
 
 impl<'a> FromValueRef<'a> for u64 {
-    fn column_result(value: ValueRef<'a>) -> Result<Self> {
-        match value {
-            ValueRef::SignedInt(x) => {
-                if x >= 0 {
-                    Ok(x as u64)
-                } else {
-                    Err(Error::LogicError(format!(
-                        "ValueRef -> u64, SignedInt negative: {}",
-                        x
-                    )))
-                }
-            }
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        match val {
+            ValueRef::SignedInt(x) => u64::try_from(x).map_err(|err| {
+                Error::LogicError(format!(
+                    "ValueRef(Signed) {x} to u32 conversation error: {err}"
+                ))
+            }),
             ValueRef::UnsignedInt(x) => Ok(x),
             _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (u64) got {:?}",
-                value
+                "Wrong ValueRef type, expect SignedInt|UnsignedInt (u64) got {val:?}"
             ))),
         }
     }
 }
 
 impl<'a> FromValueRef<'a> for i64 {
-    fn column_result(value: ValueRef<'a>) -> Result<Self> {
-        match value {
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        match val {
             ValueRef::SignedInt(x) => Ok(x),
             ValueRef::UnsignedInt(x) => i64::try_from(x).map_err(|err| {
                 Error::LogicError(format!(
-                    "ValueRef (UnsignedInt) to i64 conversation failed: {}",
-                    err
+                    "ValueRef (UnsignedInt) to i64 conversation failed: {err}"
                 ))
             }),
             _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (i64) got {:?}",
-                value
+                "Wrong ValueRef type, expect SignedInt|UnsignedInt (i64) got {val:?}"
             ))),
         }
     }

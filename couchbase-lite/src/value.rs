@@ -185,3 +185,23 @@ impl<'a> FromValueRef<'a> for i64 {
         }
     }
 }
+
+impl<'a> FromValueRef<'a> for usize {
+    fn column_result(val: ValueRef<'a>) -> Result<Self> {
+        match val {
+            ValueRef::SignedInt(x) => usize::try_from(x).map_err(|err| {
+                Error::LogicError(format!(
+                    "ValueRef(Signed) {x} to usize conversation error: {err}"
+                ))
+            }),
+            ValueRef::UnsignedInt(x) => usize::try_from(x).map_err(|err| {
+                Error::LogicError(format!(
+                    "ValueRef(Unsigned) {x} to usize conversation error: {err}"
+                ))
+            }),
+            _ => Err(Error::LogicError(format!(
+                "Wrong ValueRef type, expect SignedInt|UnsignedInt (usize) got {val:?}"
+            ))),
+        }
+    }
+}

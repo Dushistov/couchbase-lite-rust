@@ -129,7 +129,50 @@ fn test_write_read() {
             }
             trans.commit().unwrap();
         }
-        assert_eq!((ids_and_data.len() - n) as u64, db.document_count());
+        let rest = ids_and_data.len() - n;
+        {
+            println!("count result after delete");
+            assert_eq!(rest as u64, db.document_count());
+            let query = db.n1ql_query("SELECT COUNT(*) FROM _default").unwrap();
+            let mut iter = query.run().unwrap();
+            let count: usize = iter.next().unwrap().unwrap().get_checked(0).unwrap();
+            assert_eq!(rest, count);
+            assert_eq!(
+                ids_and_data.len(),
+                db.enumerate_all_docs(
+                    DocEnumeratorFlags::INCLUDE_DELETED
+                        | DocEnumeratorFlags::INCLUDE_NON_CONFLICTED
+                )
+                .unwrap()
+                .count()
+                .unwrap()
+            );
+        }
+        {
+            let mut trans = db.transaction().unwrap();
+            for doc_id in ids_and_data.iter().take(n).map(|x| x.0.as_str()) {
+                trans.purge_by_id(doc_id).unwrap();
+            }
+            trans.commit().unwrap();
+        }
+        {
+            println!("count result after purge");
+            assert_eq!(rest as u64, db.document_count());
+            let query = db.n1ql_query("SELECT COUNT(*) FROM _default").unwrap();
+            let mut iter = query.run().unwrap();
+            let count: usize = iter.next().unwrap().unwrap().get_checked(0).unwrap();
+            assert_eq!(rest, count);
+            assert_eq!(
+                rest,
+                db.enumerate_all_docs(
+                    DocEnumeratorFlags::INCLUDE_DELETED
+                        | DocEnumeratorFlags::INCLUDE_NON_CONFLICTED
+                )
+                .unwrap()
+                .count()
+                .unwrap()
+            );
+        }
     }
 
     tmp_dir.close().expect("Can not close tmp_dir");

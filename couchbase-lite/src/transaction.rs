@@ -2,8 +2,8 @@ use crate::{
     document::{C4DocumentOwner, Document},
     error::{c4error_init, Error, Result},
     ffi::{
-        c4db_beginTransaction, c4db_endTransaction, c4db_getSharedFleeceEncoder, c4doc_put,
-        c4doc_update, kRevDeleted, C4DocPutRequest, C4ErrorCode, C4ErrorDomain, FLSlice,
+        c4db_beginTransaction, c4db_endTransaction, c4db_getSharedFleeceEncoder, c4db_purgeDoc,
+        c4doc_put, c4doc_update, kRevDeleted, C4DocPutRequest, C4ErrorCode, C4ErrorDomain, FLSlice,
         FLSliceResult,
     },
     Database,
@@ -53,6 +53,15 @@ impl Transaction<'_> {
 
     pub fn delete(&mut self, doc: &mut Document) -> Result<()> {
         self.main_save(doc, true)
+    }
+    /// Removes all trace of a document and its revisions from the database.
+    pub fn purge_by_id(&mut self, doc_id: &str) -> Result<()> {
+        let mut c4err = c4error_init();
+        if unsafe { c4db_purgeDoc(self.db.inner.0.as_ptr(), doc_id.into(), &mut c4err) } {
+            Ok(())
+        } else {
+            Err(c4err.into())
+        }
     }
 
     /// Get shared "fleece" encoder, `&mut self` to make possible

@@ -221,10 +221,10 @@ impl Database {
         }
     }
 
-    pub fn replicator_state(&self) -> Result<ReplicatorState> {
+    pub fn replicator_state(&self) -> Result<Option<ReplicatorState>> {
         match self.db_replicator.as_ref() {
-            Some(repl) => repl.status().try_into(),
-            None => Ok(ReplicatorState::Offline),
+            Some(repl) => Ok(Some(repl.status().try_into()?)),
+            None => Ok(None),
         }
     }
 

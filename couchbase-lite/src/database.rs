@@ -6,14 +6,13 @@ use crate::{
         c4db_createIndex, c4db_getDoc, c4db_getDocumentCount, c4db_getIndexesInfo, c4db_getName,
         c4db_getSharedFleeceEncoder, c4db_openNamed, c4db_release, kC4DB_Create, kC4DB_NoUpgrade,
         kC4DB_NonObservable, kC4DB_ReadOnly, C4Database, C4DatabaseConfig2, C4DocContentLevel,
-        C4DocumentEnded, C4EncryptionAlgorithm, C4EncryptionKey, C4ErrorCode, C4ErrorDomain,
-        C4IndexOptions, C4IndexType, C4RevisionFlags, FLDict,
+        C4EncryptionAlgorithm, C4EncryptionKey, C4ErrorCode, C4ErrorDomain, C4IndexOptions,
+        C4IndexType,
     },
     index::{DbIndexesListIterator, IndexInfo, IndexOptions, IndexType},
     log_reroute::c4log_to_log_init,
     observer::{DatabaseObserver, ObserverdChangesIter},
     query::Query,
-    replicator::{Replicator, ReplicatorAuthentication, ReplicatorState},
     transaction::Transaction,
     QueryLanguage,
 };
@@ -80,13 +79,6 @@ pub struct Database {
     pub(crate) inner: DbInner,
     pub(crate) db_events: Arc<Mutex<HashSet<usize>>>,
     pub(crate) db_observers: Vec<DatabaseObserver>,
-    db_replicator: Option<Replicator>,
-    replicator_params: Option<ReplicatorParams>,
-}
-
-struct ReplicatorParams {
-    url: String,
-    auth: ReplicatorAuthentication,
 }
 
 pub(crate) struct DbInner(pub NonNull<C4Database>);
@@ -104,9 +96,6 @@ impl Drop for DbInner {
 
 impl Drop for Database {
     fn drop(&mut self) {
-        if let Some(repl) = self.db_replicator.take() {
-            repl.stop();
-        }
         self.db_observers.clear();
     }
 }
@@ -124,9 +113,7 @@ impl Database {
             .map(|inner| Database {
                 inner: DbInner(inner),
                 db_events: Arc::new(Mutex::new(HashSet::new())),
-                db_observers: vec![],
-                db_replicator: None,
-                replicator_params: None,
+                db_observers: Vec::new(),
             })
             .ok_or_else(|| error.into())
     }
@@ -221,13 +208,6 @@ impl Database {
         }
     }
 
-    pub fn replicator_state(&self) -> Result<Option<ReplicatorState>> {
-        match self.db_replicator.as_ref() {
-            Some(repl) => Ok(Some(repl.status().try_into()?)),
-            None => Ok(None),
-        }
-    }
-
     /// Intialize socket implementation for replication
     /// (builtin couchbase-lite websocket library)
     #[cfg(feature = "use-couchbase-lite-websocket")]
@@ -240,104 +220,6 @@ impl Database {
     #[cfg(feature = "use-tokio-websocket")]
     pub fn init_socket_impl(handle: tokio::runtime::Handle) {
         crate::replicator::init_tokio_socket_impl(handle);
-    }
-
-    /// starts database replication
-    /// * `reset` - If true, the replicator will reset its checkpoint
-    ///             and start replication from the beginning.
-    /// * `validation_cb` - Callback that can reject incoming revisions.
-    ///    Arguments: collection_name, doc_id, rev_id, rev_flags, doc_body.
-    ///    It should return false to reject document.
-    /// * `repl_status_changed` - Callback to be invoked when replicator's status changes.
-    /// * `repl_docs_ended` - Callback notifying status of individual documents.
-    pub fn start_replicator<StatusF, DocsReplF, ValidationF>(
-        &mut self,
-        url: &str,
-        auth: ReplicatorAuthentication,
-        reset: bool,
-        validation_cb: ValidationF,
-        mut repl_status_changed: StatusF,
-        repl_docs_ended: DocsReplF,
-    ) -> Result<()>
-    where
-        ValidationF: FnMut(&str, &str, &str, C4RevisionFlags, FLDict) -> bool + Send + 'static,
-        StatusF: FnMut(ReplicatorState) + Send + 'static,
-        DocsReplF: FnMut(bool, &mut dyn Iterator<Item = &C4DocumentEnded>) + Send + 'static,
-    {
-        let mut db_replicator = Replicator::new(
-            self,
-            url,
-            auth.clone(),
-            validation_cb,
-            move |status| match ReplicatorState::try_from(status) {
-                Ok(state) => repl_status_changed(state),
-                Err(err) => {
-                    error!("replicator status change: invalid status {}", err);
-                }
-            },
-            repl_docs_ended,
-        )?;
-        db_replicator.start(reset)?;
-        self.db_replicator = Some(db_replicator);
-        self.replicator_params = Some(ReplicatorParams {
-            url: url.into(),
-            auth,
-        });
-        Ok(())
-    }
-    /// restart database replicator, gives error if `Database::start_replicator`
-    /// haven't called yet
-    #[inline]
-    pub fn restart_replicator(&mut self) -> Result<()> {
-        self.do_restart_replicator(None, false)
-    }
-
-    /// restart database replicator with new auth information,
-    /// gives error if `Database::start_replicator` haven't called yet
-    /// * `reset` - If true, the replicator will reset its checkpoint
-    ///             and start replication from the beginning.
-    #[inline]
-    pub fn restart_replicator_with_new_auth(
-        &mut self,
-        auth: ReplicatorAuthentication,
-        reset: bool,
-    ) -> Result<()> {
-        self.do_restart_replicator(Some(auth), reset)
-    }
-
-    fn do_restart_replicator(
-        &mut self,
-        auth: Option<ReplicatorAuthentication>,
-        reset: bool,
-    ) -> Result<()> {
-        let replicator_params = self.replicator_params.as_ref().ok_or_else(|| {
-            Error::LogicError(
-                "you call restart_replicator, but have not yet call start_replicator (params)"
-                    .into(),
-            )
-        })?;
-        let repl = self.db_replicator.take().ok_or_else(|| {
-            Error::LogicError(
-                "you call restart_replicator, but have not yet call start_replicator (repl)".into(),
-            )
-        })?;
-        self.db_replicator = Some(repl.restart(
-            self,
-            &replicator_params.url,
-            match auth {
-                Some(auth) => auth,
-                None => replicator_params.auth.clone(),
-            },
-            reset,
-        )?);
-        Ok(())
-    }
-
-    /// stop database replication
-    pub fn stop_replicator(&mut self) {
-        if let Some(repl) = self.db_replicator.take() {
-            repl.stop();
-        }
     }
 
     /// Get shared "fleece" encoder, `&mut self` to make possible

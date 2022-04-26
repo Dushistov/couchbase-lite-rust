@@ -2316,15 +2316,12 @@ extern "C" {
         arg2: *mut C4Error,
     ) -> bool;
 }
-impl C4QueryLanguage {
-    pub const kC4JSONQuery: C4QueryLanguage = C4QueryLanguage(0);
-}
-impl C4QueryLanguage {
-    pub const kC4N1QLQuery: C4QueryLanguage = C4QueryLanguage(1);
-}
-#[repr(transparent)]
+#[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct C4QueryLanguage(pub u32);
+pub enum C4QueryLanguage {
+    kC4JSONQuery = 0,
+    kC4N1QLQuery = 1,
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct C4QueryOptions {
@@ -2985,27 +2982,16 @@ impl C4ReplicatorMode {
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct C4ReplicatorMode(pub i32);
-impl C4ReplicatorActivityLevel {
-    pub const kC4Stopped: C4ReplicatorActivityLevel = C4ReplicatorActivityLevel(0);
-}
-impl C4ReplicatorActivityLevel {
-    pub const kC4Offline: C4ReplicatorActivityLevel = C4ReplicatorActivityLevel(1);
-}
-impl C4ReplicatorActivityLevel {
-    pub const kC4Connecting: C4ReplicatorActivityLevel = C4ReplicatorActivityLevel(2);
-}
-impl C4ReplicatorActivityLevel {
-    pub const kC4Idle: C4ReplicatorActivityLevel = C4ReplicatorActivityLevel(3);
-}
-impl C4ReplicatorActivityLevel {
-    pub const kC4Busy: C4ReplicatorActivityLevel = C4ReplicatorActivityLevel(4);
-}
-impl C4ReplicatorActivityLevel {
-    pub const kC4Stopping: C4ReplicatorActivityLevel = C4ReplicatorActivityLevel(5);
-}
-#[repr(transparent)]
+#[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct C4ReplicatorActivityLevel(pub i32);
+pub enum C4ReplicatorActivityLevel {
+    kC4Stopped = 0,
+    kC4Offline = 1,
+    kC4Connecting = 2,
+    kC4Idle = 3,
+    kC4Busy = 4,
+    kC4Stopping = 5,
+}
 extern "C" {
     pub static kC4ReplicatorActivityLevelNames: [*const ::std::os::raw::c_char; 6usize];
 }

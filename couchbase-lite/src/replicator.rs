@@ -4,11 +4,11 @@ mod tokio_socket;
 use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
-        c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_start, c4repl_stop,
-        C4Address, C4DocumentEnded, C4Progress, C4Replicator, C4ReplicatorActivityLevel,
-        C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode, C4ReplicatorParameters,
-        C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, C4ReplicatorValidationFunction,
-        C4RevisionFlags, C4String, FLDict, FLSliceResult,
+        c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_retry, c4repl_start,
+        c4repl_stop, C4Address, C4DocumentEnded, C4Progress, C4Replicator,
+        C4ReplicatorActivityLevel, C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode,
+        C4ReplicatorParameters, C4ReplicatorStatus, C4ReplicatorStatusChangedCallback,
+        C4ReplicatorValidationFunction, C4RevisionFlags, C4String, FLDict, FLSliceResult,
     },
     Database,
 };
@@ -25,7 +25,8 @@ use std::{
     sync::Once,
 };
 
-pub(crate) struct Replicator {
+/// Replicator of database
+pub struct Replicator {
     inner: NonNull<C4Replicator>,
     validation: C4ReplicatorValidationFunction,
     c_callback_on_status_changed: C4ReplicatorStatusChangedCallback,
@@ -67,15 +68,15 @@ impl Drop for Replicator {
 
 macro_rules! define_trait_alias {
     ($alias:ident, $($tt:tt)+) => {
-        pub(crate) trait $alias: $($tt)+ {}
+        pub trait $alias: $($tt)+ {}
         impl<T> $alias for T where T: $($tt)+ {}
     };
 }
 
-define_trait_alias!(ReplicatorValidationFunction, FnMut(&str, &str, &str, C4RevisionFlags, FLDict) -> bool + Send + 'static);
+define_trait_alias!(ReplicatorValidationFunction, FnMut(C4String, C4String, C4String, C4RevisionFlags, FLDict) -> bool + Send + 'static);
 define_trait_alias!(
     ReplicatorStatusChangedCallback,
-    FnMut(C4ReplicatorStatus) + Send + 'static
+    FnMut(ReplicatorState) + Send + 'static
 );
 define_trait_alias!(
     ReplicatorDocumentsEndedCallback,
@@ -85,12 +86,15 @@ define_trait_alias!(
 impl Replicator {
     /// # Arguments
     /// * `url` - should be something like "ws://192.168.1.132:4984/demo/"
+    /// * `validation_cb` - Callback that can reject incoming revisions.
+    ///    Arguments: collection_name, doc_id, rev_id, rev_flags, doc_body.
+    ///    It should return false to reject document.
     /// * `state_changed_callback` - reports back change of replicator state
     /// * `documents_ended_callback` - reports about the replication status of documents
-    pub(crate) fn new<StateCallback, DocumentsEndedCallback, ValidationF>(
+    pub fn new<StateCallback, DocumentsEndedCallback, ValidationF>(
         db: &Database,
         url: &str,
-        auth: ReplicatorAuthentication,
+        auth: &ReplicatorAuthentication,
         validation_cb: ValidationF,
         state_changed_callback: StateCallback,
         documents_ended_callback: DocumentsEndedCallback,
@@ -113,10 +117,6 @@ impl Replicator {
             F2: ReplicatorStatusChangedCallback,
             F3: ReplicatorDocumentsEndedCallback,
         {
-            let coll_name: &str = str::from_utf8_unchecked(coll_name.into());
-            let doc_id: &str = str::from_utf8_unchecked(doc_id.into());
-            let rev_id: &str = str::from_utf8_unchecked(rev_id.into());
-            trace!("validation {coll_name} {doc_id} {rev_id}");
             let r = catch_unwind(|| {
                 let ctx = ctx as *mut CallbackContext<F, F2, F3>;
                 assert!(
@@ -147,7 +147,12 @@ impl Replicator {
                     !ctx.is_null(),
                     "Replicator::call_on_status_changed: Internal error - null function pointer"
                 );
-                ((*ctx).state_cb)(status);
+                match ReplicatorState::try_from(status) {
+                    Ok(state) => ((*ctx).state_cb)(state),
+                    Err(err) => {
+                        error!("replicator status change: invalid status {}", err);
+                    }
+                }
             });
             if r.is_err() {
                 error!("Replicator::call_on_status_changed: catch panic aborting");
@@ -206,9 +211,12 @@ impl Replicator {
         )
     }
 
-    pub(crate) fn start(&mut self, reset: bool) -> Result<()> {
+    /// starts database replication
+    /// * `reset` - If true, the replicator will reset its checkpoint
+    ///             and start replication from the beginning.
+    pub fn start(&mut self, reset: bool) -> Result<()> {
         unsafe { c4repl_start(self.inner.as_ptr(), reset) };
-        let status: ReplicatorState = self.status().try_into()?;
+        let status: ReplicatorState = self.status().into();
         if let ReplicatorState::Stopped(err) = status {
             Err(err)
         } else {
@@ -216,11 +224,17 @@ impl Replicator {
         }
     }
 
-    pub(crate) fn restart(
+    /// Full recreation of database replicator except callbacks,
+    ///
+    /// * `url`   - new url
+    /// * `auth`  - new auth information
+    /// * `reset` - If true, the replicator will reset its checkpoint
+    ///             and start replication from the beginning.
+    pub fn restart(
         self,
         db: &Database,
         url: &str,
-        auth: ReplicatorAuthentication,
+        auth: &ReplicatorAuthentication,
         reset: bool,
     ) -> Result<Self> {
         let Replicator {
@@ -250,10 +264,23 @@ impl Replicator {
         Ok(repl)
     }
 
+    /// Tells a replicator that's in the offline state to reconnect immediately.
+    /// return `true` if the replicator will reconnect, `false` if it won't.
+    pub fn retry(&mut self) -> Result<bool> {
+        trace!("repl retry {:?}", self.inner.as_ptr());
+        let mut c4err = c4error_init();
+        let will_reconnect = unsafe { c4repl_retry(self.inner.as_ptr(), &mut c4err) };
+        if c4err.code == 0 {
+            Ok(will_reconnect)
+        } else {
+            Err(c4err.into())
+        }
+    }
+
     fn do_new(
         db: &Database,
         url: &str,
-        auth: ReplicatorAuthentication,
+        auth: &ReplicatorAuthentication,
         free_callback_f: unsafe fn(_: *mut c_void),
         boxed_callback_f: NonNull<c_void>,
         validation: C4ReplicatorValidationFunction,
@@ -273,15 +300,15 @@ impl Replicator {
             ReplicatorAuthentication::SessionToken(token) => serde_fleece::fleece!({
                 kC4ReplicatorOptionAuthentication: {
                     kC4ReplicatorAuthType: kC4AuthTypeSession,
-                    kC4ReplicatorAuthToken: token
+                    kC4ReplicatorAuthToken: token.as_str(),
                 }
             }),
             ReplicatorAuthentication::Basic { username, password } => {
                 serde_fleece::fleece!({
                     kC4ReplicatorOptionAuthentication: {
                         kC4ReplicatorAuthType: kC4AuthTypeBasic,
-                        kC4ReplicatorAuthUserName: username,
-                        kC4ReplicatorAuthPassword: password
+                        kC4ReplicatorAuthUserName: username.as_str(),
+                        kC4ReplicatorAuthPassword: password.as_str()
                     }
                 })
             }
@@ -327,12 +354,16 @@ impl Replicator {
                 c4err.into()
             })
     }
-
-    pub(crate) fn stop(self) {
+    #[inline]
+    pub fn stop(&mut self) {
         trace!("repl stop {:?}", self.inner.as_ptr());
         unsafe { c4repl_stop(self.inner.as_ptr()) };
     }
-
+    #[inline]
+    pub fn state(&self) -> ReplicatorState {
+        self.status().into()
+    }
+    #[inline]
     pub(crate) fn status(&self) -> C4ReplicatorStatus {
         unsafe { c4repl_getStatus(self.inner.as_ptr()) }
     }
@@ -363,18 +394,15 @@ unsafe fn free_boxed_value<T>(p: *mut c_void) {
     drop(Box::from_raw(p as *mut T));
 }
 
-impl TryFrom<C4ReplicatorStatus> for ReplicatorState {
-    type Error = Error;
-    fn try_from(status: C4ReplicatorStatus) -> Result<Self> {
+impl From<C4ReplicatorStatus> for ReplicatorState {
+    fn from(status: C4ReplicatorStatus) -> Self {
         match status.level {
-            C4ReplicatorActivityLevel::kC4Stopped => {
-                Ok(ReplicatorState::Stopped(status.error.into()))
-            }
-            C4ReplicatorActivityLevel::kC4Offline => Ok(ReplicatorState::Offline),
-            C4ReplicatorActivityLevel::kC4Connecting => Ok(ReplicatorState::Connecting),
-            C4ReplicatorActivityLevel::kC4Idle => Ok(ReplicatorState::Idle),
-            C4ReplicatorActivityLevel::kC4Busy => Ok(ReplicatorState::Busy(status.progress)),
-            _ => Err(Error::LogicError(format!("unknown level for {status:?}"))),
+            C4ReplicatorActivityLevel::kC4Stopped => ReplicatorState::Stopped(status.error.into()),
+            C4ReplicatorActivityLevel::kC4Offline => ReplicatorState::Offline,
+            C4ReplicatorActivityLevel::kC4Connecting => ReplicatorState::Connecting,
+            C4ReplicatorActivityLevel::kC4Idle => ReplicatorState::Idle,
+            C4ReplicatorActivityLevel::kC4Busy => ReplicatorState::Busy(status.progress),
+            C4ReplicatorActivityLevel::kC4Stopping => ReplicatorState::Busy(status.progress),
         }
     }
 }

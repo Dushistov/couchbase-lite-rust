@@ -1,14 +1,21 @@
 use couchbase_lite::{
     fallible_streaming_iterator::FallibleStreamingIterator,
-    ffi::kRevIsConflict,
+    ffi::{kRevDeleted, kRevIsConflict, kRevPurged, C4RevisionFlags, FLDict},
     resolve_conflict,
     serde_fleece::{from_fl_dict, Dict},
-    Database, DatabaseFlags, DocEnumeratorFlags, Document, ReplicatorAuthentication,
-    ReplicatorState,
+    C4DocumentEnded, C4String, Database, DatabaseFlags, DocEnumeratorFlags, Document, Replicator,
+    ReplicatorAuthentication, ReplicatorState,
 };
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, env, path::Path, str, sync::mpsc, time::Duration};
+use std::{
+    collections::HashSet,
+    env,
+    path::Path,
+    str,
+    sync::{mpsc, Arc},
+    time::Duration,
+};
 use tokio::io::AsyncBufReadExt;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,79 +45,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ReplicatorAuthentication::None
     };
 
-    let (db_thread, db_exec) = run_db_thread(db_path);
-    let db_exec_repl = db_exec.clone();
-    let db_exec2 = db_exec.clone();
-    db_exec.spawn(move |db| {
-        if let Some(db) = db.as_mut() {
-            fix_conflicts(db).expect("fix conflict failed");
-            db.start_replicator(
-                &sync_url,
-                auth,
-                false,
-                |coll_name, doc_id, rev_id, flags, body| {
-                    println!("Input filter: {coll_name} {doc_id} {rev_id} {flags:?}");
-                    let body = match Dict::new(&body) {
-                        Some(x) => x,
-                        None => {
-                            eprintln!("skip {doc_id}, body is null");
-                            return false;
-                        }
-                    };
-                    match body.get_as_str("type") {
-                        Some("Message") => {
-                            from_fl_dict::<Message, _>(body).is_ok()
-                        }
-                        Some(_) | None => false,
-                    }
-                },
-                move |repl_state| {
-                    println!("replicator state changed: {:?}", repl_state);
-                    match repl_state {
-                        ReplicatorState::Stopped(_) | ReplicatorState::Offline => {
-                            db_exec_repl.spawn(|db| {
-                                if let Some(db) = db.as_mut() {
-                                    println!("restarting replicator");
-                                    std::thread::sleep(std::time::Duration::from_secs(5));
-                                    db.restart_replicator().expect("restart_replicator failed");
-                                } else {
-                                    eprintln!("db is NOT open");
-                                }
-                            });
-                        }
-                        _ => {}
-                    }
-                },
-                move |pushing, doc_it| {
-                    for doc in doc_it {
-                        if !pushing && (doc.flags & kRevIsConflict) != 0 {
-                            let doc_id: &str = doc.docID.as_fl_slice().try_into().unwrap();
-                            let doc_id = doc_id.to_string();
-                            let rev_id = <&[u8]>::from(doc.revID.as_fl_slice()).to_vec();
-                            db_exec2.spawn(move |db| {
-                                println!("there is conflict for ({}, {:?}) during replication, trying resolve", doc_id, str::from_utf8(&rev_id));
-                                if let Some(db) = db.as_mut() {
-                                    resolve_conflict(db, &doc_id, Some(rev_id.into())).expect("resolve conflict failed");
-                                }
-                            });
-                        }
-                    }
-                },
-            )
-            .expect("replicator start failed");
+    let (db_thread, db_exec) = run_db_thread(db_path, sync_url, auth);
+    db_exec.spawn(move |mdb| {
+        if let Some(mdb) = mdb.as_mut() {
+            fix_conflicts(&mut mdb.db).expect("fix conflict failed");
         } else {
             eprintln!("db is NOT open");
         }
     });
 
     let db_exec_repl = db_exec.clone();
-    db_exec.spawn(move |db| {
-        if let Some(db) = db.as_mut() {
-            db.register_observer(move || {
-                db_exec_repl
-                    .spawn(|db| print_external_changes(db).expect("read external changes failed"));
-            })
-            .expect("register observer failed");
+    db_exec.spawn(move |mdb| {
+        if let Some(mdb) = mdb.as_mut() {
+            mdb.db
+                .register_observer(move || {
+                    db_exec_repl.spawn(|db| {
+                        print_external_changes(db).expect("read external changes failed")
+                    });
+                })
+                .expect("register observer failed");
         } else {
             eprintln!("db is NOT open");
         }
@@ -135,22 +88,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     break;
                 } else if let Some(id) = msg.strip_prefix("!edit ") {
                     edit_id = Some(id.to_string());
-                    println!("ready to edit message {:?}", edit_id);
+                    println!("ready to edit message {edit_id:?}");
                 } else if msg.starts_with("!list") {
                     db_exec_repl.spawn(move |db| {
                         if let Some(db) = db.as_mut() {
-                            print_all_messages(db).expect("read from db failed");
+                            print_all_messages(&mut db.db).expect("read from db failed");
                         }
                     });
                 } else {
-                    println!("Your message is '{}'", msg);
+                    println!("Your message is '{msg}'");
 
                     {
                         let msg = msg.to_string();
                         let edit_id = edit_id.take();
                         db_exec_repl.spawn(move |db| {
-                            if let Some(mut db) = db.as_mut() {
-                                save_msg(&mut db, &msg, edit_id.as_ref().map(String::as_str))
+                            if let Some(db) = db.as_mut() {
+                                save_msg(&mut db.db, &msg, edit_id.as_ref().map(String::as_str))
                                     .expect("save to db failed");
                             } else {
                                 eprintln!("db is NOT open");
@@ -165,8 +118,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("tokio runtime block_on done");
     db_exec.spawn(|db| {
         if let Some(db) = db.as_mut() {
-            db.clear_observers();
-            db.stop_replicator();
+            db.db.clear_observers();
+            todo!("stop replicator");
         } else {
             eprintln!("db is NOT open");
         }
@@ -205,38 +158,106 @@ fn fix_conflicts(db: &mut Database) -> Result<(), Box<dyn std::error::Error>> {
 
 type Job<T> = Box<dyn FnOnce(&mut Option<T>) + Send>;
 
+struct MyDb {
+    db: Database,
+    repl: Replicator,
+}
+
 #[derive(Clone)]
 struct DbQueryExecutor {
-    inner: mpsc::Sender<Job<Database>>,
+    inner: mpsc::Sender<Job<MyDb>>,
 }
 
 impl DbQueryExecutor {
-    pub fn spawn<F: FnOnce(&mut Option<Database>) + Send + 'static>(&self, job: F) {
+    pub fn spawn<F: FnOnce(&mut Option<MyDb>) + Send + 'static>(&self, job: F) {
         self.inner
             .send(Box::new(job))
             .expect("thread_pool::Executor::spawn failed");
     }
 }
 
-fn run_db_thread(db_path: &Path) -> (std::thread::JoinHandle<()>, DbQueryExecutor) {
-    let (sender, receiver) = std::sync::mpsc::channel::<Job<Database>>();
+fn run_db_thread(
+    db_path: &Path,
+    sync_url: String,
+    auth: ReplicatorAuthentication,
+) -> (std::thread::JoinHandle<()>, DbQueryExecutor) {
+    let (sender, receiver) = std::sync::mpsc::channel::<Job<MyDb>>();
+    let repl_spawn = DbQueryExecutor {
+        inner: sender.clone(),
+    };
     let db_path: std::path::PathBuf = db_path.into();
+    let sync_url: Arc<str> = sync_url.into();
+    let auth = Arc::new(auth);
     let join_handle = std::thread::spawn(move || {
-        let mut db = match Database::open_with_flags(&db_path, DatabaseFlags::CREATE) {
-            Ok(db) => {
+        let db = match Database::open_with_flags(&db_path, DatabaseFlags::CREATE) {
+            Ok(mut db) => {
                 println!("We read all messages after open:");
                 print_all_messages(&db).expect("read from db failed");
                 println!("read all messages after open done");
+                fix_conflicts(&mut db).expect("fix conflict failed");
                 Some(db)
             }
             Err(err) => {
-                error!("Initialiazion cause error: {}", err);
+                error!("Initialiazion cause error: {err}");
                 None
             }
         };
+
+        let repl_spawn2 = repl_spawn.clone();
+        let mut my_db = if let Some(db) = db {
+            let repl = Replicator::new(
+                &db,
+                &sync_url,
+                &*auth,
+                input_doc_filter,
+                move |repl_state| {
+                    println!("replicator state changed: {repl_state:?}");
+                    if let ReplicatorState::Offline = repl_state {
+                        repl_spawn.spawn(|mdb| {
+                            if let Some(mdb) = mdb.as_mut() {
+                                println!("restarting replicator");
+                                std::thread::sleep(std::time::Duration::from_secs(5));
+                                mdb.repl.retry().expect("restart_replicator failed");
+                            } else {
+                                eprintln!("db is NOT open");
+                            }
+                        });
+                    }
+                },
+                move |pushing: bool, doc_it: &mut dyn Iterator<Item = &C4DocumentEnded>| {
+                    for doc in doc_it {
+                        if !pushing && (doc.flags & kRevIsConflict) != 0 {
+                            let doc_id: &str = doc.docID.as_fl_slice().try_into().unwrap();
+                            let doc_id = doc_id.to_string();
+                            let rev_id = <&[u8]>::from(doc.revID.as_fl_slice()).to_vec();
+                            repl_spawn2.spawn(move |mdb| {
+                                println!("there is conflict for ({}, {:?}) during replication, trying resolve",
+                                         doc_id, str::from_utf8(&rev_id));
+                                if let Some(mdb) = mdb {
+                                    resolve_conflict(&mut mdb.db, &doc_id, Some(rev_id.into())).expect("resolve conflict failed");
+                                }
+                            });
+                        }
+                    }
+                },
+            );
+            match repl {
+                Ok(mut repl) => {
+                    repl.start(false).expect("repl start failed");
+                    Some(MyDb { db, repl })
+                }
+                Err(err) => {
+                    error!("Can not create replicator: {err}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         loop {
             match receiver.recv() {
-                Ok(x) => x(&mut db),
+                Ok(x) => x(&mut my_db),
                 Err(err) => {
                     trace!("db_thread: recv error: {}", err);
                     break;
@@ -289,11 +310,12 @@ fn print_all_messages(db: &Database) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn print_external_changes(db: &mut Option<Database>) -> Result<(), Box<dyn std::error::Error>> {
-    let db = db
+fn print_external_changes(mdb: &mut Option<MyDb>) -> Result<(), Box<dyn std::error::Error>> {
+    let mdb = mdb
         .as_mut()
         .ok_or_else(|| format!("print_external_changes: db not OPEN"))?;
     let mut doc_ids = HashSet::<String>::new();
+    let db = &mut mdb.db;
     for change in db.observed_changes() {
         println!(
             "observed change: doc id {} was changed, external {}, flags {}",
@@ -323,4 +345,36 @@ fn print_external_changes(db: &mut Option<Database>) -> Result<(), Box<dyn std::
         println!("external: {}", db_msg.msg);
     }
     Ok(())
+}
+
+fn input_doc_filter(
+    coll_name: C4String,
+    doc_id: C4String,
+    rev_id: C4String,
+    flags: C4RevisionFlags,
+    body: FLDict,
+) -> bool {
+    if (flags & (kRevDeleted | kRevPurged)) != 0 {
+        return true;
+    }
+    let (coll_name, doc_id, rev_id) = unsafe {
+        (
+            str::from_utf8_unchecked(coll_name.into()),
+            str::from_utf8_unchecked(doc_id.into()),
+            str::from_utf8_unchecked(rev_id.into()),
+        )
+    };
+
+    println!("Input filter: {coll_name} {doc_id} {rev_id} {flags:?}");
+    let body = match Dict::new(&body) {
+        Some(x) => x,
+        None => {
+            eprintln!("skip {doc_id}, body is null");
+            return false;
+        }
+    };
+    match body.get_as_str("type") {
+        Some("Message") => from_fl_dict::<Message, _>(body).is_ok(),
+        Some(_) | None => false,
+    }
 }

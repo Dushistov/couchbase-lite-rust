@@ -1,6 +1,6 @@
 [package]
 name = "couchbase-lite-core-sys"
-version = "0.6.3"
+version = "0.7.0"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
 license = "BSD-3-Clause"

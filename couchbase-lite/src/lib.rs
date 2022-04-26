@@ -64,11 +64,11 @@ pub use crate::{
     error::Error,
     fallible_streaming_iterator::FallibleStreamingIterator,
     index::IndexType,
-    replicator::{ReplicatorAuthentication, ReplicatorState},
+    replicator::{Replicator, ReplicatorAuthentication, ReplicatorState},
     value::{ValueRef, ValueRefArray},
 };
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;
-pub use ffi::C4QueryLanguage as QueryLanguage;
+pub use ffi::{C4DocumentEnded, C4QueryLanguage as QueryLanguage, C4String};
 
 pub use serde_fleece;

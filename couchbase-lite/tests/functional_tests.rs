@@ -1,7 +1,7 @@
 use couchbase_lite::*;
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+use std::{str, time::Instant};
 use tempfile::tempdir;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -673,6 +673,8 @@ fn test_double_replicator_restart() {
     use tokio::runtime;
 
     let _ = env_logger::try_init();
+    let url = "ws://127.0.0.1:4984/demo/";
+    let auth = ReplicatorAuthentication::None;
 
     let runtime = runtime::Builder::new_current_thread()
         .enable_io()
@@ -684,20 +686,23 @@ fn test_double_replicator_restart() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     Database::init_socket_impl(runtime.handle().clone());
-    let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
+    let db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
 
     let (sync_tx, sync_rx) = std::sync::mpsc::channel::<()>();
     let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
 
-    {
+    let mut repl = {
         let sync_tx = sync_tx.clone();
         let handle = runtime.handle().clone();
-        db.start_replicator(
-            "ws://127.0.0.1:4984/demo/",
-            ReplicatorAuthentication::None,
-            false,
-            |collection, doc_id, rev_id, rev_flags, _body| {
-                println!("Pull filter: {collection} , {doc_id}, {rev_id}, {rev_flags:?}");
+        let mut repl = Replicator::new(
+            &db,
+            url,
+            &auth,
+            |coll_name: C4String, doc_id: C4String, rev_id: C4String, rev_flags, _body| {
+                let coll_name: &str = unsafe { str::from_utf8_unchecked(coll_name.into()) };
+                let doc_id: &str = unsafe { str::from_utf8_unchecked(doc_id.into()) };
+                let rev_id: &str = unsafe { str::from_utf8_unchecked(rev_id.into()) };
+                println!("Pull filter: {coll_name}, {doc_id}, {rev_id}, {rev_flags:?}");
                 true
             },
             move |repl_state| {
@@ -710,7 +715,7 @@ fn test_double_replicator_restart() {
                     });
                 }
             },
-            move |pushing, doc_iter| {
+            move |pushing: bool, doc_iter: &mut dyn Iterator<Item = &C4DocumentEnded>| {
                 let docs: Vec<String> = doc_iter
                     .map(|x| {
                         let doc_id: &str = x.docID.as_fl_slice().try_into().unwrap();
@@ -721,7 +726,9 @@ fn test_double_replicator_restart() {
             },
         )
         .unwrap();
-    }
+        repl.start(false).unwrap();
+        repl
+    };
 
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
 
@@ -740,11 +747,11 @@ fn test_double_replicator_restart() {
     sync_rx.recv().unwrap();
     println!("got SYNC event that replicator was idle");
     for _ in 0..10 {
-        db.restart_replicator().unwrap();
+        repl = repl.restart(&db, url, &auth, false).unwrap();
     }
     println!("multi restart done");
     std::thread::sleep(std::time::Duration::from_secs(2));
-    db.stop_replicator();
+    repl.stop();
     stop_tx.send(()).unwrap();
     thread_join_handle.join().unwrap();
 

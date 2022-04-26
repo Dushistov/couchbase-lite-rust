@@ -261,10 +261,27 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         .allowlist_type("FL.*")
         .allowlist_function("_?FL.*")
         .newtype_enum("FLError")
-        .newtype_enum("C4.*")
+        // Can not use regex, because of
+        // https://github.com/rust-lang/rust-bindgen/issues/2195
+        .newtype_enum("C4ErrorDomain")
+        .newtype_enum("C4IndexType")
+        .newtype_enum("C4DocContentLevel")
+        .newtype_enum("C4EncryptionAlgorithm")
+        .newtype_enum("C4NetworkErrorCode")
+        .newtype_enum("C4LogLevel")
+        .newtype_enum("C4ErrorCode")
+        .newtype_enum("C4SocketFraming")
+        .newtype_enum("C4WebSocketCloseCode")
+        .newtype_enum("C4ReplicatorMode")
+        .newtype_enum("C4EncryptionKeySize")
+        .newtype_enum("C4MaintenanceType")
+        .newtype_enum("C4DocumentVersioning")
+        .newtype_enum("C4PrivateKeyRepresentation")
+        .newtype_enum("C4ReplicatorProgressLevel")
         .rustified_enum("FLValueType")
         .rustified_enum("FLTrust")
         .rustified_enum("C4QueryLanguage")
+        .rustified_enum("C4ReplicatorActivityLevel")
         .no_copy("FLSliceResult")
         // we not use string_view, and there is bindgen's bug:
         // https://github.com/rust-lang/rust-bindgen/issues/2152

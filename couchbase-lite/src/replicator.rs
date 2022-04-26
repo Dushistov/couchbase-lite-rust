@@ -53,7 +53,7 @@ pub enum ReplicatorAuthentication {
 }
 
 /// it should be safe to call replicator API from any thread
-/// according to https://github.com/couchbase/couchbase-lite-core/wiki/Thread-Safety
+/// according to <https://github.com/couchbase/couchbase-lite-core/wiki/Thread-Safety>
 unsafe impl Send for Replicator {}
 
 impl Drop for Replicator {

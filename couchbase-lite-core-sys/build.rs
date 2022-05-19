@@ -10,9 +10,12 @@ fn main() {
     env_logger::init();
 
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let cross_to_windows = target_os == "windows" && !cfg!(target_os = "windows");
-    let cross_to_macos = target_os == "macos" && !cfg!(target_os = "macos");
-    let cross_to_android = target_os == "android";
+    let cross_to_windows = target_os == "windows"
+        && !cfg!(target_os = "windows")
+        && !env::var("ONLY_CARGO_CHECK").is_ok();
+    let cross_to_macos =
+        target_os == "macos" && !cfg!(target_os = "macos") && !env::var("ONLY_CARGO_CHECK").is_ok();
+    let cross_to_android = target_os == "android" && !env::var("ONLY_CARGO_CHECK").is_ok();
 
     if cross_to_windows || cross_to_macos {
         println!("cargo:rustc-link-lib=dylib=LiteCore");
@@ -24,9 +27,18 @@ fn main() {
                 .define("ANDROID_ABI", env::var("ANDROID_ABI").unwrap())
                 .define("ANDROID_NDK", env::var("NDK_HOME").unwrap())
                 .define("CMAKE_BUILD_TYPE", "MinSizeRel")
-                .define("ANDROID_NATIVE_API_LEVEL", env::var("ANDROID_NATIVE_API_LEVEL").unwrap())
+                .define(
+                    "ANDROID_NATIVE_API_LEVEL",
+                    env::var("ANDROID_NATIVE_API_LEVEL").unwrap(),
+                )
                 .define("ANDROID_TOOLCHAIN", "clang")
-                .define("CMAKE_TOOLCHAIN_FILE", format!("{}/build/cmake/android.toolchain.cmake", env::var("NDK_HOME").unwrap()))
+                .define(
+                    "CMAKE_TOOLCHAIN_FILE",
+                    format!(
+                        "{}/build/cmake/android.toolchain.cmake",
+                        env::var("NDK_HOME").unwrap()
+                    ),
+                )
                 .define("DISABLE_LTO_BUILD", "True")
                 .build_target("LiteCore")
                 .build()
@@ -134,7 +146,7 @@ fn main() {
         ],
         &out_dir.join("c4_header.rs"),
     )
-        .expect("bindgen failed");
+    .expect("bindgen failed");
 
     let mut cc_builder = cc::Build::new();
 
@@ -238,8 +250,8 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
 }
 
 fn search_file_in_directory<P>(dirs: &[P], file: &str) -> Result<PathBuf, ()>
-    where
-        P: AsRef<Path>,
+where
+    P: AsRef<Path>,
 {
     for dir in dirs {
         let file_path = dir.as_ref().join(file);

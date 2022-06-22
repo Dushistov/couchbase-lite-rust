@@ -82,7 +82,7 @@ use crate::{
         kC4PredictiveIndex, kC4RevisionTrees, kC4SQLiteStorageEngine, kC4ValueIndex, C4Database,
         C4DatabaseConfig, C4DatabaseFlags, C4DocumentVersioning, C4EncryptionAlgorithm,
         C4EncryptionKey, C4IndexOptions, C4String, FLTrust_kFLTrusted, FLValue, FLValueType,
-        FLValue_AsString, FLValue_FromData, FLValue_GetType, c4db_compact, c4db_purgeDoc
+        FLValue_AsString, FLValue_FromData, FLValue_GetType, c4db_compact
     },
     fl_slice::{fl_slice_to_str_unchecked, AsFlSlice, FlSliceOwner},
     log_reroute::DB_LOGGER,
@@ -436,14 +436,6 @@ impl Database {
     pub fn compact(&self) -> Result<bool> {
         let mut c4err = c4error_init();
         let ok = unsafe { c4db_compact(self.inner.0.as_ptr(), &mut c4err) };
-        if !ok {
-            return Err(c4err.into());
-        }
-        Ok(ok)
-    }
-    pub fn purge_doc(&self, id: &str) -> Result<bool> {
-        let mut c4err = c4error_init();
-        let ok = unsafe { c4db_purgeDoc(self.inner.0.as_ptr(), id.as_flslice(), &mut c4err) };
         if !ok {
             return Err(c4err.into());
         }

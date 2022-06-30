@@ -3,7 +3,7 @@ use crate::{
     error::{c4error_init, Error},
     ffi::{
         c4db_beginTransaction, c4db_endTransaction, c4doc_create, c4doc_update, kC4ErrorConflict,
-        kC4ErrorNotFound, kRevDeleted, C4Document, C4RevisionFlags, LiteCoreDomain,
+        kC4ErrorNotFound, kRevDeleted, C4Document, C4RevisionFlags, LiteCoreDomain, c4db_purgeDoc
     },
     fl_slice::{AsFlSlice, FlSliceOwner},
     Database, Result,
@@ -48,6 +48,15 @@ impl Transaction<'_> {
 
     pub fn delete(&mut self, doc: &mut Document) -> Result<()> {
         self.main_save(doc, true)
+    }
+
+    pub fn purge_doc(&self, id: &str) -> Result<bool> {
+        let mut c4err = c4error_init();
+        let ok = unsafe { c4db_purgeDoc(self.db.inner.0.as_ptr(), id.as_flslice(), &mut c4err) };
+        if !ok {
+            return Err(c4err.into());
+        }
+        Ok(ok)
     }
 
     fn main_save(&mut self, doc: &mut Document, deletion: bool) -> Result<()> {

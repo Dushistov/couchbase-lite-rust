@@ -46,12 +46,11 @@ def build_tests(cmd: List[str], src_root: str) -> None:
 
 @show_timing
 def build_and_test_rust_part(src_root: str, use_valgrind: bool) -> None:
-    print("running tests in debug mode")
-    cmd = ["cargo", "test", "--all", "-vv"]
-    build_tests(cmd, src_root)
-    if use_valgrind:
-       cmd.insert(1, "valgrind")
-    check_call(cmd, cwd = src_root)
+    if not use_valgrind:
+        print("running tests in debug mode")
+        cmd = ["cargo", "test", "--all", "-vv"]
+        build_tests(cmd, src_root)
+        check_call(cmd, cwd = src_root)
     print("running tests in release mode")
     cmd = ["cargo", "test", "--all", "--release", "-vv"]
     build_tests(cmd, src_root)

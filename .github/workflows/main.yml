@@ -87,7 +87,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.rust == 'stable'
         run: |
           set -e
-          sudo snap install --classic valgrind
+          cat /etc/issue
+          curl -L https://github.com/Dushistov/valgrind/releases/download/dwarf5-fix1/valgrind-git-bin-18072022.tar.bz2 -o valgrind-git-bin.tar.bz2
+          sudo tar -xjvpf valgrind-git-bin.tar.bz2 -C /
           sudo apt-get update -y
           sudo apt-get install -y libc6-dbg
           valgrind --version

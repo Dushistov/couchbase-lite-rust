@@ -186,7 +186,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
     let c4sock = socket.c4sock;
 
     let writer = socket.writer.clone();
-    socket.handle.spawn(async move {
+    socket.handle.block_on(async move {
         let mut last_activity = socket.last_activity.lock().await;
         *last_activity = Instant::now();
 

@@ -25,7 +25,7 @@ use std::{
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
-    }, thread
+    }, thread,
 };
 use tokio::{
     net::TcpStream,
@@ -124,7 +124,7 @@ unsafe extern "C" fn ws_open(
         read_data_avaible: AtomicUsize::new(0),
         close_confirmied: Arc::new(Notify::new()),
         last_activity: Arc::new(TokioMutex::new(Instant::now())),
-        closed: Arc::new(TokioMutex::new(false))
+        closed: Arc::new(TokioMutex::new(false)),
     });
     trace!(
         "ws_open, c4sock {:x}, uri: {:?}",
@@ -186,7 +186,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
     let c4sock = socket.c4sock;
 
     let writer = socket.writer.clone();
-    socket.handle.spawn(async move {
+    socket.handle.block_on(async move {
         let mut last_activity = socket.last_activity.lock().await;
         *last_activity = Instant::now();
 
@@ -439,12 +439,16 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
                         };
                         match message {
                             Ok(m @ Message::Text(_)) | Ok(m @ Message::Binary(_)) => {
-                                let data = m.into_data();
-                                socket.read_data_avaible.store(data.len(), Ordering::Release);
-                                unsafe {
-                                    c4socket_received(sock_id as *mut _, data.as_slice().as_flslice());
+                                if !*socket.closed.lock().await {
+                                    let data = m.into_data();
+                                    socket.read_data_avaible.store(data.len(), Ordering::Release);
+                                    unsafe {
+                                        c4socket_received(sock_id as *mut _, data.as_slice().as_flslice());
+                                    }
+                                    read_confirmed.notified().await;
+                                } else {
+                                    warn!("socket closed so do not recieve data otherwise panic in c++ code");
                                 }
-                                read_confirmed.notified().await;
                             }
                             Ok(Message::Close(close_frame)) => {
                                 info!("read loop({:x}): close", sock_id);

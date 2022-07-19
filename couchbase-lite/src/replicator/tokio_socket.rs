@@ -140,8 +140,7 @@ unsafe extern "C" fn ws_open(
 
     let request = c4address_to_request(c4sock as *mut C4Socket as usize, addr, options);
     info!(
-        "c4sock {:?}: open was called with uri: {:?}",
-        c4sock as *const C4Socket,
+        "c4sock {c4sock:?}: open was called with uri: {:?}",
         request.as_ref().map(Request::uri)
     );
     let (stop_tx, stop_rx) = oneshot::channel();
@@ -180,7 +179,7 @@ unsafe extern "C" fn ws_open(
         {
             Ok(()) => {}
             Err(err) => {
-                trace!("c4sock {:?}: call c4socket_closed", c4sock);
+                trace!("c4sock {c4sock:?}: call c4socket_closed");
                 if !close_ctl.signaled.swap(true, Ordering::SeqCst) {
                     c4socket_closed(c4sock.0, err.0);
                 }
@@ -191,8 +190,7 @@ unsafe extern "C" fn ws_open(
 
 unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResult) {
     trace!(
-        "c4sock {:?}: write allocated_data.size {}",
-        c4sock,
+        "c4sock {c4sock:?}: write allocated_data.size {}",
         allocated_data.size
     );
     assert!(!c4sock.is_null());
@@ -209,7 +207,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
         if let Some(writer) = writer.as_mut() {
             let n = data.len();
             if let Err(err) = writer.send(Message::Binary(data)).await {
-                error!("c4sock {:?}: writer.send failure: {}", c4sock, err);
+                error!("c4sock {c4sock:?}: writer.send failure: {err}");
             } else {
                 c4socket_completedWrite(c4sock.0, n);
             }
@@ -218,11 +216,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
 }
 
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
-    trace!(
-        "c4sock {:?}: completedReceive, byte_count {}",
-        c4sock,
-        byte_count
-    );
+    trace!("c4sock {c4sock:?}: completedReceive, byte_count {byte_count}");
     assert!(!c4sock.is_null());
     let native = c4Socket_getNativeHandle(c4sock) as *mut SocketImpl;
     assert!(!native.is_null());
@@ -282,9 +276,7 @@ fn wait_signal() -> (WaitDoneSignal, DoneSignal) {
 
 unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, message: C4String) {
     trace!(
-        "c4sock {:?}: requestClose status {}, message: {:?}",
-        c4sock,
-        status,
+        "c4sock {c4sock:?}: requestClose status {status}, message: {:?}",
         std::str::from_utf8(message.into())
     );
     let code: CloseCode = u16::try_from(status).unwrap_or(1).into();
@@ -302,8 +294,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
 
     socket.handle.spawn(async move {
         trace!(
-            "c4sock {:?}: start closing, done signal addr {:?}",
-            c4sock,
+            "c4sock {c4sock:?}: start closing, done signal addr {:?}",
             Arc::as_ptr(&done_signal.inner)
         );
         let state = close_control.state.load(Ordering::Acquire);
@@ -324,22 +315,16 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
         );
         let mut writer = writer.lock().await;
         if let Some(writer) = writer.as_mut() {
-            trace!("c4sock {:?}: sending close message", c4sock);
+            trace!("c4sock {c4sock:?}: sending close message");
             if let Err(err) = writer
                 .send(Message::Close(Some(CloseFrame { code, reason })))
                 .await
             {
-                error!(
-                    "c4sock {:?}: requestClose, writer.send failure: {}",
-                    c4sock, err
-                );
+                error!("c4sock {c4sock:?}: requestClose, writer.send failure: {err}");
             }
         } else {
             close_control.signal_to_stop_read_loop(c4sock).await;
-            info!(
-                "c4sock {:?}: requestClose writer is None => not intialized",
-                c4sock
-            );
+            info!("c4sock {c4sock:?}: requestClose writer is None => not intialized");
             return;
         }
         if is_client_close {
@@ -349,7 +334,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
                 .await
                 .is_err()
             {
-                warn!("c4sock {:?}: timeout for waiting close ack expired", c4sock);
+                warn!("c4sock {c4sock:?}: timeout for waiting close ack expired");
                 close_control.signal_to_stop_read_loop(c4sock).await;
             }
         }
@@ -358,20 +343,18 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
         }
     });
     trace!(
-        "c4sock {:?}: waiting done signal {:?}",
-        c4sock,
+        "c4sock {c4sock:?}: waiting done signal {:?}",
         Arc::as_ptr(&wait_done.inner)
     );
     wait_done.wait();
     trace!(
-        "c4sock {:?}: got done signal {:?}",
-        c4sock,
+        "c4sock {c4sock:?}: got done signal {:?}",
         Arc::as_ptr(&wait_done.inner)
     );
 }
 
 unsafe extern "C" fn ws_dispose(c4sock: *mut C4Socket) {
-    trace!("c4sock {:?}: dispose", c4sock);
+    trace!("c4sock {c4sock:?}: dispose");
     assert!(!c4sock.is_null());
     let native = c4Socket_getNativeHandle(c4sock) as *mut SocketImpl;
     assert!(!native.is_null());
@@ -392,7 +375,7 @@ unsafe fn c4address_to_request(
         .authority(authority)
         .path_and_query(<&[u8]>::from(addr.path))
         .build()?;
-    trace!("c4address_to_request, marker {:x}, uri {:?}", marker, uri);
+    trace!("c4address_to_request, marker {marker:x}, uri {uri:?}");
     let mut request = uri
         .into_client_request()
         .map_err(|err| tungstenite_err_to_c4_err(err))?;
@@ -482,7 +465,7 @@ unsafe fn c4address_to_request(
                 .insert("Authorization", HeaderValue::from_str(&header)?);
         } else if auth_type == kC4AuthTypeSession {
             if let ValueRef::String(token) = auth.get(kC4ReplicatorAuthToken.into()) {
-                let token_cookie = format!("{}={}", "SyncGatewaySession", token);
+                let token_cookie = format!("SyncGatewaySession={token}");
                 cookies.push(token_cookie);
             }
         } else {
@@ -535,11 +518,11 @@ async fn do_open(
     let request = request?;
     let (ws_stream, http_resp) = tokio::select! {
         v = connect_async(request) => {
-            trace!("c4sock {:?}: connect_async finished", c4sock);
+            trace!("c4sock {c4sock:?}: connect_async finished");
             v.map_err(|err| unsafe { tungstenite_err_to_c4_err(err) })?
         }
         _ = (&mut stop_rx) => {
-            trace!("c4sock {:?}: do_open interrupted", c4sock);
+            trace!("c4sock {c4sock:?}: do_open interrupted");
             return Err(Error(unsafe {
                 c4error_make(
                     C4ErrorDomain::NetworkDomain,
@@ -609,8 +592,7 @@ async fn main_read_loop(
                     }
                     Message::Close(close_frame) => {
                         info!(
-                            "c4sock {:?}: close frame was received, state {:?}",
-                            c4sock,
+                            "c4sock {c4sock:?}: close frame was received, state {:?}",
                             close_control.state.load(Ordering::Acquire)
                         );
                         let (code, reason) = close_frame.map(|x| (u16::from(&x.code) as c_int, x.reason)).unwrap_or_else(|| {
@@ -632,8 +614,7 @@ async fn main_read_loop(
 
                             }
                             CloseState::Server => {
-                                warn!("c4sock {:?} duplicate close message from server: {} {}",
-                                      c4sock, code, reason);
+                                warn!("c4sock {c4sock:?} duplicate close message from server: {code} {reason}");
                                 continue 'read_loop;
                             }
                             CloseState::Client => {
@@ -645,11 +626,11 @@ async fn main_read_loop(
                     Message::Frame(_) =>
                         warn!("unsupport Message::Frame format"),
                     Message::Ping(_) => {
-                        trace!("c4sock {:?}: ping frame was received", c4sock);
+                        trace!("c4sock {c4sock:?}: ping frame was received");
                         warn!("ping handling not implemented");
                     }
                     Message::Pong(_) => {
-                        trace!("c4sock {:?}: pong frame was received", c4sock);
+                        trace!("c4sock {c4sock:?}: pong frame was received");
                         warn!("pong handling not implemented");
                     }
                 }
@@ -657,7 +638,7 @@ async fn main_read_loop(
             }
 
             _ = (&mut stop_rx) => {
-                info!("c4sock {:?}: read from websocket was interrupted by requestClose", c4sock);
+                info!("c4sock {c4sock:?}: read from websocket was interrupted by requestClose");
                 return Err(Error(unsafe {
                     c4error_make(
                         C4ErrorDomain::NetworkDomain,
@@ -669,7 +650,7 @@ async fn main_read_loop(
 
         };
     }
-    trace!("c4sock {:?}: main read loop end", c4sock);
+    trace!("c4sock {c4sock:?}: main read loop end");
     Ok(())
 }
 
@@ -814,7 +795,7 @@ impl CloseControl {
 }
 
 fn http_basic_auth_header(user_id: &str, password: &str) -> String {
-    let credentials = format!("{}:{}", user_id, password);
+    let credentials = format!("{user_id}:{password}");
     let mut ret = "Basic ".to_string();
     base64::encode_config_buf(credentials.as_bytes(), base64::STANDARD, &mut ret);
     ret

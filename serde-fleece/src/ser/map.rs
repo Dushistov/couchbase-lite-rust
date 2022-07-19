@@ -244,7 +244,7 @@ fn ryu_write_key<T: Float>(ser: &mut Serializer, v: T) -> Result<(), Error> {
     encoder_write!(ser, FLEncoder_WriteKey, s.into())
 }
 
-impl<'a> ser::SerializeMap for InvalidKey {
+impl ser::SerializeMap for InvalidKey {
     type Ok = ();
     type Error = Error;
 
@@ -267,7 +267,7 @@ impl<'a> ser::SerializeMap for InvalidKey {
     }
 }
 
-impl<'a> ser::SerializeSeq for InvalidKey {
+impl ser::SerializeSeq for InvalidKey {
     type Ok = ();
     type Error = Error;
     fn serialize_element<T>(&mut self, _value: &T) -> Result<(), Self::Error>
@@ -281,7 +281,7 @@ impl<'a> ser::SerializeSeq for InvalidKey {
     }
 }
 
-impl<'a> ser::SerializeTuple for InvalidKey {
+impl ser::SerializeTuple for InvalidKey {
     type Ok = ();
     type Error = Error;
     fn serialize_element<T>(&mut self, _value: &T) -> Result<(), Self::Error>
@@ -295,7 +295,7 @@ impl<'a> ser::SerializeTuple for InvalidKey {
     }
 }
 
-impl<'a> ser::SerializeTupleStruct for InvalidKey {
+impl ser::SerializeTupleStruct for InvalidKey {
     type Ok = ();
     type Error = Error;
 
@@ -311,7 +311,7 @@ impl<'a> ser::SerializeTupleStruct for InvalidKey {
     }
 }
 
-impl<'a> ser::SerializeTupleVariant for InvalidKey {
+impl ser::SerializeTupleVariant for InvalidKey {
     type Ok = ();
     type Error = Error;
     fn serialize_field<T>(&mut self, _value: &T) -> Result<(), Self::Error>
@@ -325,7 +325,7 @@ impl<'a> ser::SerializeTupleVariant for InvalidKey {
     }
 }
 
-impl<'a> ser::SerializeStruct for InvalidKey {
+impl ser::SerializeStruct for InvalidKey {
     type Ok = ();
     type Error = Error;
     fn serialize_field<T>(&mut self, _key: &'static str, _value: &T) -> Result<(), Self::Error>
@@ -339,7 +339,7 @@ impl<'a> ser::SerializeStruct for InvalidKey {
     }
 }
 
-impl<'a> ser::SerializeStructVariant for InvalidKey {
+impl ser::SerializeStructVariant for InvalidKey {
     type Ok = ();
     type Error = Error;
     fn serialize_field<T>(&mut self, _key: &'static str, _value: &T) -> Result<(), Self::Error>

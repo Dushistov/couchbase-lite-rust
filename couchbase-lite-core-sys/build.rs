@@ -437,18 +437,18 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std:
         const END_PAT: &str = "\nEnd of search list.\n";
         let start_includes = cc_output
             .find(BEGIN_PAT)
-            .ok_or_else(|| format!("No '{}' in output from cc", BEGIN_PAT))?
+            .ok_or_else(|| format!("No '{BEGIN_PAT}' in output from cc"))?
             + BEGIN_PAT.len();
-        let end_includes = (&cc_output[start_includes..])
+        let end_includes = cc_output[start_includes..]
             .find(END_PAT)
-            .ok_or_else(|| format!("No '{}' in output from cc", END_PAT))?
+            .ok_or_else(|| format!("No '{END_PAT}' in output from cc"))?
             + start_includes;
 
         const FRAMEWORK_PAT: &str = " (framework directory)";
 
         extend_unique(
             &mut include_dirs,
-            (&cc_output[start_includes..end_includes])
+            cc_output[start_includes..end_includes]
                 .split('\n')
                 .filter_map(|s| {
                     if !s.ends_with(FRAMEWORK_PAT) {
@@ -461,7 +461,7 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std:
 
         extend_unique(
             &mut framework_dirs,
-            (&cc_output[start_includes..end_includes])
+            cc_output[start_includes..end_includes]
                 .split('\n')
                 .filter_map(|s| {
                     if s.ends_with(FRAMEWORK_PAT) {

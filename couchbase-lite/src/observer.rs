@@ -174,7 +174,8 @@ impl<'db> Iterator for ObserverdChangesIter<'db> {
                 if db_events.is_empty() {
                     return None;
                 }
-                let obs_ptr = match db_events.iter().next() {
+                let next_event = db_events.iter().next();
+                let obs_ptr = match next_event {
                     Some(obs_ptr) => *obs_ptr,
                     None => return None,
                 };

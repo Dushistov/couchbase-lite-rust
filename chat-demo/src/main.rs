@@ -116,10 +116,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     println!("tokio runtime block_on done");
-    db_exec.spawn(|db| {
-        if let Some(db) = db.as_mut() {
+    db_exec.spawn(|db: &mut Option<MyDb>| {
+        if let Some(mut db) = db.take() {
             db.db.clear_observers();
-            todo!("stop replicator");
+            println!("stopping replicator");
+            db.repl.stop();
+            println!("replicator stopped");
         } else {
             eprintln!("db is NOT open");
         }
@@ -259,9 +261,13 @@ fn run_db_thread(
             match receiver.recv() {
                 Ok(x) => x(&mut my_db),
                 Err(err) => {
-                    trace!("db_thread: recv error: {}", err);
+                    trace!("db_thread: recv error: {err}");
                     break;
                 }
+            }
+            if my_db.is_none() {
+                println!("my_db becomes None, exiting");
+                break;
             }
         }
     });

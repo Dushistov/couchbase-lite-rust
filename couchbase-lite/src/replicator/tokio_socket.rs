@@ -31,7 +31,7 @@ use std::{
 };
 use tokio::{
     runtime::Handle,
-    sync::{oneshot, Mutex as TokioMutex, Notify},
+    sync::{mpsc, oneshot, Mutex as TokioMutex, Notify},
 };
 use tokio_tungstenite::{
     connect_async,
@@ -64,7 +64,8 @@ pub fn c4socket_init(handle: Handle) {
 struct SocketImpl {
     handle: Handle,
     read_push_pull: Arc<ReadPushPull>,
-    writer: Arc<TokioMutex<Option<WsWriter>>>,
+    writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Vec<u8>>)>>,
+    send_queue: mpsc::UnboundedSender<Vec<u8>>,
     close_control: Arc<CloseControl>,
 }
 
@@ -144,19 +145,21 @@ unsafe extern "C" fn ws_open(
         request.as_ref().map(Request::uri)
     );
     let (stop_tx, stop_rx) = oneshot::channel();
+    let (send_q_tx, send_q_rx) = mpsc::unbounded_channel();
     let sock_impl = Box::new(SocketImpl {
         handle: handle.clone(),
         read_push_pull: Arc::new(ReadPushPull {
             nbytes_avaible: AtomicUsize::new(0),
             confirm: Notify::new(),
         }),
-        writer: Arc::new(TokioMutex::new(None)),
+        writer: Arc::new(TokioMutex::new((None, send_q_rx))),
         close_control: Arc::new(CloseControl {
             state: AtomicCloseState::new(CloseState::None),
             confirm: Notify::new(),
             stop_read_loop: TokioMutex::new(Some(stop_tx)),
             signaled: AtomicBool::new(false),
         }),
+        send_queue: send_q_tx,
     });
     let read_push_pull = sock_impl.read_push_pull.clone();
     let writer = sock_impl.writer.clone();
@@ -201,18 +204,27 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
     //TODO: change this when `Vec` allocator API was stabilized
     // https://github.com/rust-lang/rust/issues/32838
     let data: Vec<u8> = allocated_data.as_bytes().to_vec();
+    socket
+        .send_queue
+        .send(data)
+        .expect("Inernal error write to send queue failed");
     let c4sock = C4SocketPtr(c4sock);
     socket.handle.spawn(async move {
         let mut writer = writer.lock().await;
-        if let Some(writer) = writer.as_mut() {
-            let n = data.len();
-            if let Err(err) = writer.send(Message::Binary(data)).await {
-                error!("c4sock {c4sock:?}: writer.send failure: {err}");
-            } else {
-                c4socket_completedWrite(c4sock.0, n);
-            }
+        let (writer, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) = &mut writer;
+        if let (Some(writer), Ok(data)) = (writer.as_mut(), send_rx.try_recv()) {
+            send_binary_msg(c4sock, writer, data).await;
         }
     });
+}
+
+async fn send_binary_msg(ctx: C4SocketPtr, writer: &mut WsWriter, data: Vec<u8>) {
+    let n = data.len();
+    if let Err(err) = writer.send(Message::Binary(data)).await {
+        error!("c4sock {ctx:?}: writer.send failure: {err}");
+    } else {
+        unsafe { c4socket_completedWrite(ctx.0, n) };
+    }
 }
 
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
@@ -314,7 +326,11 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
             reason.as_bytes().into(),
         );
         let mut writer = writer.lock().await;
+        let (writer, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) = &mut writer;
         if let Some(writer) = writer.as_mut() {
+            while let Ok(data) = send_rx.try_recv() {
+                send_binary_msg(c4sock, writer, data).await;
+            }
             trace!("c4sock {c4sock:?}: sending close message");
             if let Err(err) = writer
                 .send(Message::Close(Some(CloseFrame { code, reason })))
@@ -511,7 +527,7 @@ async fn do_open(
     request: Result<Request, Error>,
     mut stop_rx: oneshot::Receiver<()>,
     read_push_pull: Arc<ReadPushPull>,
-    writer: Arc<TokioMutex<Option<WsWriter>>>,
+    writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Vec<u8>>)>>,
     close_control: Arc<CloseControl>,
     handle: Handle,
 ) -> Result<(), Error> {
@@ -547,7 +563,7 @@ async fn do_open(
     let (ws_writer, ws_reader) = ws_stream.split();
     {
         let mut lock = writer.lock().await;
-        *lock = Some(ws_writer);
+        lock.0 = Some(ws_writer);
     }
     unsafe {
         c4socket_opened(c4sock.0);

@@ -101,7 +101,7 @@ fn test_wrong_sync_packets_order() {
     let runtime = runtime::Runtime::new().unwrap();
     Database::init_socket_impl(runtime.handle().clone());
 
-    start_repl_and_save_documents(tmp_dir.path(), "a", 1_000_000, url, auth).unwrap();
+    start_repl_and_save_documents(tmp_dir.path(), "a", 10_000, url, auth).unwrap();
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

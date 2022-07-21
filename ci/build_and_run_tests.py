@@ -74,6 +74,12 @@ def build_and_test_rust_part_for_ios(src_root: str) -> None:
     check_call(["cargo", "build", "-vv", "--no-default-features", "--features=use-couchbase-lite-sqlite,use-tokio-websocket", "--target=aarch64-apple-ios", "-p", "chat-demo"], cwd = src_root)
 
 @show_timing
+def run_tests_that_require_server(src_root: str) -> None:
+    for test_name in ["test_double_replicator_restart", "test_wrong_sync_packets_order"]:
+        check_call(["cargo", "test", "--release", "-p", "couchbase-lite",
+                    "-vv", test_name, "--", "--ignored"], cwd = src_root)
+
+@show_timing
 def main() -> None:
     ci_dir = Path(get_src_root_path(sys.argv[0]))
     src_root = ci_dir.parent
@@ -81,6 +87,7 @@ def main() -> None:
     RUST_TESTS = "rust"
     RUST_IOS_TESTS = "rust-ios"
     VALGRIND_TESTS = "valgrind"
+    WITH_SERVER_TESTS = "with-server"
     tests = set([CPP_TESTS, RUST_TESTS])
     if len(sys.argv) >= 2:
         if sys.argv[1] == "--rust-only":
@@ -91,6 +98,8 @@ def main() -> None:
             tests = set([RUST_IOS_TESTS])
         elif sys.argv[1] == "--rust-only-with-valigrind":
             tests = set([VALGRIND_TESTS, RUST_TESTS])
+        elif sys.argv[1] == "--with-server-only":
+            tests = set([WITH_SERVER_TESTS])
         else:
             raise Exception("Unknown option %s" % sys.argv[1])
 
@@ -100,6 +109,8 @@ def main() -> None:
         build_and_test_rust_part(src_root, VALGRIND_TESTS in tests)
     if RUST_IOS_TESTS in tests:
         build_and_test_rust_part_for_ios(src_root)
+    if WITH_SERVER_TESTS in tests:
+        run_tests_that_require_server(src_root)
 
 if __name__ == "__main__":
     main()

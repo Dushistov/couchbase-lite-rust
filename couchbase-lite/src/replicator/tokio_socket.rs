@@ -591,16 +591,15 @@ async fn main_read_loop(
                         read_push_pull.confirm.notified().await;
                     }
                     Message::Close(close_frame) => {
-                        info!(
-                            "c4sock {c4sock:?}: close frame was received, state {:?}",
-                            close_control.state.load(Ordering::Acquire)
-                        );
                         let (code, reason) = close_frame.map(|x| (u16::from(&x.code) as c_int, x.reason)).unwrap_or_else(|| {
                             (-1, "".into())
                         });
                         let state = close_control
                             .state
                             .load(Ordering::Acquire);
+                        info!(
+                            "c4sock {c4sock:?}: close frame was received, state {state:?}"
+                        );
                         match state {
                             CloseState::None => {
                                 close_control.state.store(CloseState::Server, Ordering::Release);

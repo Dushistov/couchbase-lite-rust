@@ -41,7 +41,7 @@ impl Document {
         Ok(Self {
             inner: None,
             unsaved_body,
-            id: Uuid::new_v4().to_hyphenated().to_string(),
+            id: Uuid::new_v4().hyphenated().to_string(),
         })
     }
     pub fn new_with_id<S, T>(doc_id: S, data: &T, enc: FlEncoderSession) -> Result<Self>

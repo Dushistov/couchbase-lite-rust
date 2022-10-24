@@ -63,7 +63,7 @@ impl Document {
         self.inner = doc;
     }
 
-    pub fn decode_data<T: DeserializeOwned>(self) -> Result<T> {
+    pub fn decode_data<T: DeserializeOwned>(&self) -> Result<T> {
         if let Some(ref json) = self.unsaved_json5_body {
             let x: T = json5::from_str(&json)?;
             return Ok(x);

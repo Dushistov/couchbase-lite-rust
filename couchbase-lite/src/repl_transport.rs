@@ -451,14 +451,18 @@ async fn open_connection(request: Result<Request, InvalidRequest>, socket: Arc<S
                                 }
                             }
                             Ok(Message::Close(close_frame)) => {
-                                info!("read loop({:x}): close", sock_id);
-                                let (code, reason) = close_frame.map(|x| (u16::from(&x.code) as c_int, x.reason)).unwrap_or_else(|| {
-                                    (-1, "".into())
-                                });
-                                unsafe {
-                                    c4socket_closeRequested(sock_id as *mut C4Socket, code, reason.as_bytes().as_flslice());
+                                if !*socket.closed.lock().await {
+                                    info!("read loop({:x}): close", sock_id);
+                                    let (code, reason) = close_frame.map(|x| (u16::from(&x.code) as c_int, x.reason)).unwrap_or_else(|| {
+                                        (-1, "".into())
+                                    });
+                                    unsafe
+                                        c4socket_closeRequested(sock_id as *mut C4Socket, code, reason.as_bytes().as_flslice());
+                                    }
+                                    close_confirmied.notified().await;
+                                } else {
+                                    warn!("socket closed so do not recieve data otherwise panic in c++ code");
                                 }
-                                close_confirmied.notified().await;
                                 break 'read_loop;
                             }
                             Ok(Message::Ping(_)) => {

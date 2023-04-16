@@ -95,6 +95,7 @@ impl Drop for DbInner {
 }
 
 impl Drop for Database {
+    #[inline]
     fn drop(&mut self) {
         self.db_observers.clear();
     }
@@ -120,18 +121,17 @@ impl Database {
     pub fn open_with_flags(path: &Path, flags: DatabaseFlags) -> Result<Self> {
         let parent_path = path
             .parent()
-            .ok_or_else(|| Error::LogicError(format!("path {:?} has no parent diretory", path)))?;
+            .ok_or_else(|| Error::LogicError(format!("path {path:?} has no parent diretory")))?;
         let cfg = DatabaseConfig::new(parent_path, flags);
         let db_name = path
             .file_name()
-            .ok_or_else(|| Error::LogicError(format!("path {:?} has no last part", path)))?
+            .ok_or_else(|| Error::LogicError(format!("path {path:?} has no last part")))?
             .to_str()
             .ok_or(Error::InvalidUtf8)?
             .strip_suffix(".cblite2")
             .ok_or_else(|| {
                 Error::LogicError(format!(
-                    "path {:?} should have last part with .cblite2 suffix",
-                    path
+                    "path {path:?} should have last part with .cblite2 suffix"
                 ))
             })?;
 
@@ -140,14 +140,17 @@ impl Database {
     /// Begin a new transaction, the transaction defaults to rolling back
     /// when it is dropped. If you want the transaction to commit,
     /// you must call `Transaction::commit`
+    #[inline]
     pub fn transaction(&mut self) -> Result<Transaction> {
         Transaction::new(self)
     }
     /// Returns the number of (undeleted) documents in the database
+    #[inline]
     pub fn document_count(&self) -> u64 {
         unsafe { c4db_getDocumentCount(self.inner.0.as_ptr()) }
     }
     /// Return existing document from database
+    #[inline]
     pub fn get_existing(&self, doc_id: &str) -> Result<Document> {
         self.internal_get(doc_id, true)
             .map(|x| Document::new_internal(x, doc_id))
@@ -155,14 +158,17 @@ impl Database {
     /// Compiles a query from an expression given as JSON.
     /// The expression is a predicate that describes which documents should be returned.
     /// A separate, optional sort expression describes the ordering of the results.
+    #[inline]
     pub fn query(&self, query_json: &str) -> Result<Query> {
         Query::new(self, QueryLanguage::kC4JSONQuery, query_json)
     }
     /// Compiles a query from an expression given as N1QL.
+    #[inline]
     pub fn n1ql_query(&self, query: &str) -> Result<Query> {
         Query::new(self, QueryLanguage::kC4N1QLQuery, query)
     }
     /// Creates an enumerator ordered by docID.
+    #[inline]
     pub fn enumerate_all_docs(&self, flags: DocEnumeratorFlags) -> Result<DocEnumerator> {
         DocEnumerator::enumerate_all_docs(self, flags)
     }
@@ -196,11 +202,13 @@ impl Database {
     }
 
     /// Remove all database observers
+    #[inline]
     pub fn clear_observers(&mut self) {
         self.db_observers.clear();
     }
 
     /// Get observed changes for this database
+    #[inline]
     pub fn observed_changes(&mut self) -> ObserverdChangesIter {
         ObserverdChangesIter {
             db: self,
@@ -211,6 +219,7 @@ impl Database {
     /// Intialize socket implementation for replication
     /// (builtin couchbase-lite websocket library)
     #[cfg(feature = "use-couchbase-lite-websocket")]
+    #[inline]
     pub fn init_socket_impl() {
         crate::replicator::init_builtin_socket_impl();
     }
@@ -218,6 +227,7 @@ impl Database {
     /// Intialize socket implementation for replication
     /// (builtin couchbase-lite websocket library)
     #[cfg(feature = "use-tokio-websocket")]
+    #[inline]
     pub fn init_socket_impl(handle: tokio::runtime::Handle) {
         crate::replicator::init_tokio_socket_impl(handle);
     }
@@ -366,7 +376,6 @@ impl Database {
         }
     }
 
-    #[inline]
     pub(crate) fn internal_get(&self, doc_id: &str, must_exists: bool) -> Result<C4DocumentOwner> {
         self.do_internal_get(doc_id, must_exists, C4DocContentLevel::kDocGetCurrentRev)
     }

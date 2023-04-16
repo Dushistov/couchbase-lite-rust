@@ -115,7 +115,6 @@ impl From<std::ffi::NulError> for Error {
     }
 }
 
-#[inline]
 pub(crate) fn c4error_init() -> C4Error {
     C4Error {
         domain: C4ErrorDomain::kC4MaxErrorDomainPlus1,

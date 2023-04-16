@@ -65,15 +65,18 @@ impl ValueRef<'_> {
 pub struct ValueRefArray(FLArray);
 
 impl ValueRefArray {
+    #[inline]
     pub fn len(&self) -> u32 {
         unsafe { FLArray_Count(self.0) }
     }
+    #[inline]
     pub fn is_empty(&self) -> bool {
         unsafe { FLArray_IsEmpty(self.0) }
     }
     pub(crate) unsafe fn get_raw(&self, idx: u32) -> FLValue {
         FLArray_Get(self.0, idx)
     }
+    #[inline]
     pub fn get(&self, idx: u32) -> ValueRef {
         unsafe { ValueRef::new(self.get_raw(idx)) }
     }
@@ -84,15 +87,18 @@ impl ValueRefArray {
 pub struct ValueRefDict(FLDict);
 
 impl ValueRefDict {
+    #[inline]
     pub fn len(&self) -> u32 {
         unsafe { FLDict_Count(self.0) }
     }
+    #[inline]
     pub fn is_empty(&self) -> bool {
         unsafe { FLDict_IsEmpty(self.0) }
     }
     pub(crate) unsafe fn get_raw(&self, key: FLSlice) -> FLValue {
         FLDict_Get(self.0, key)
     }
+    #[inline]
     pub fn get(&self, key: FLSlice) -> ValueRef {
         unsafe { ValueRef::new(self.get_raw(key)) }
     }
@@ -103,6 +109,7 @@ pub trait FromValueRef<'a>: Sized {
 }
 
 impl<'a> FromValueRef<'a> for &'a str {
+    #[inline]
     fn column_result(val: ValueRef<'a>) -> Result<Self> {
         if let ValueRef::String(x) = val {
             Ok(x)

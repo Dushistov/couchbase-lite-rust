@@ -25,10 +25,10 @@ impl Drop for Query<'_> {
 }
 
 impl Query<'_> {
-    pub(crate) fn new<'a, 'b>(
+    pub(crate) fn new<'a>(
         db: &'a Database,
         query_lang: QueryLanguage,
-        query: &'b str,
+        query: &str,
     ) -> Result<Query<'a>> {
         let mut c4err = c4error_init();
         let mut out_error_pos = -1;

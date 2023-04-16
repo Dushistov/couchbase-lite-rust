@@ -415,7 +415,7 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std:
             .to_command()
             .env("LANG", "C")
             .env("LC_MESSAGES", "C")
-            .args(&["-v", "-x", lang, "-E", "-"])
+            .args(["-v", "-x", lang, "-E", "-"])
             .stderr(Stdio::piped())
             .stdin(Stdio::piped())
             .stdout(Stdio::inherit())

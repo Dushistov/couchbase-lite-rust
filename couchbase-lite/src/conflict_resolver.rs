@@ -24,7 +24,7 @@ pub fn resolve_conflict(
         let doc = match db.do_internal_get_opt(doc_id, true, C4DocContentLevel::kDocGetAll)? {
             Some(x) => x,
             None => {
-                info!("doc {} no longer exists, no conflict to resolve", doc_id);
+                info!("doc {doc_id} no longer exists, no conflict to resolve");
                 return Ok(());
             }
         };
@@ -42,7 +42,7 @@ pub fn resolve_conflict(
             ok
         };
         if !ok {
-            info!("conflict in doc {} already resolved, nothing to do", doc_id);
+            info!("conflict in doc {doc_id} already resolved, nothing to do");
             return Ok(());
         }
         let ok = default_resolve_conflict(db, doc_id, &doc)?;

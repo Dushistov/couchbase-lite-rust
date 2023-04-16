@@ -2,22 +2,16 @@ use crate::{
     document::C4DocumentOwner,
     error::{c4error_init, Error, Result},
     ffi::{
-        c4doc_resolveConflict, c4doc_save, c4doc_selectNextLeafRevision, c4doc_selectRevision,
-        kRevDeleted, kRevIsConflict, kRevLeaf, C4DocContentLevel, C4RevisionFlags, FLSlice,
-        FLSlice_Compare,
+        c4doc_resolveConflict, c4doc_save, c4doc_selectNextLeafRevision, kRevDeleted,
+        kRevIsConflict, C4DocContentLevel, C4RevisionFlags, FLSlice, FLSlice_Compare,
     },
     Database,
 };
 use log::{info, warn};
-use std::{borrow::Cow, os::raw::c_uint, ptr};
+use std::{os::raw::c_uint, ptr};
 
 /// Resolves a replication conflict in a document
-pub fn resolve_conflict(
-    db: &mut Database,
-    doc_id: &str,
-    mut rev_id: Option<Cow<[u8]>>,
-) -> Result<()> {
-    let mut in_conflict = false;
+pub fn resolve_conflict(db: &mut Database, doc_id: &str) -> Result<()> {
     let mut retry_count = 0_u8;
     const MAX_RETRY_COUNT: u8 = 10;
     loop {
@@ -28,24 +22,14 @@ pub fn resolve_conflict(
                 return Ok(());
             }
         };
-        let ok = if let Some(rev_id) = rev_id.as_ref() {
-            select_revision(&doc, rev_id)?;
-            let mask = kRevLeaf | kRevIsConflict;
-            (doc.selected_revision().flags & mask) == mask
-        } else {
-            let ok = select_next_conflicting_revision(&doc)?;
-            rev_id = Some(
-                <&[u8]>::from(doc.selected_revision().revID.as_fl_slice())
-                    .to_vec()
-                    .into(),
-            );
-            ok
-        };
+
+        let ok = select_next_conflicting_revision(&doc)?;
         if !ok {
             info!("conflict in doc {doc_id} already resolved, nothing to do");
             return Ok(());
         }
         let ok = default_resolve_conflict(db, doc_id, &doc)?;
+        let mut in_conflict = false;
         if !ok {
             retry_count += 1;
             in_conflict = retry_count < MAX_RETRY_COUNT;
@@ -187,13 +171,4 @@ fn do_resolve_conflict(
     }
     tx.commit()?;
     Ok(true)
-}
-
-fn select_revision(doc: &C4DocumentOwner, rev_id: &[u8]) -> Result<()> {
-    let mut c4err = c4error_init();
-    if unsafe { c4doc_selectRevision(doc.0.as_ptr(), rev_id.into(), true, &mut c4err) } {
-        Ok(())
-    } else {
-        Err(c4err.into())
-    }
 }

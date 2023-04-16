@@ -106,7 +106,7 @@ impl Document {
     pub fn sequence(&self) -> Option<u64> {
         self.inner
             .as_ref()
-            .map(|p| unsafe { p.0.as_ref() }.sequence)
+            .map(|p| unsafe { p.0.as_ref() }.selectedRev.sequence)
     }
 
     /// Returns a document's revision ID, which is a short opaque string that's guaranteed to be

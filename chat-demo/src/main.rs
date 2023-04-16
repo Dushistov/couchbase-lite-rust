@@ -150,7 +150,7 @@ fn fix_conflicts(db: &mut Database) -> Result<(), Box<dyn std::error::Error>> {
     println!("There are {} conflicts in database", conflicts.len());
 
     for doc_id in &conflicts {
-        resolve_conflict(db, &doc_id, None)?;
+        resolve_conflict(db, &doc_id)?;
     }
     if !conflicts.is_empty() {
         println!("All conflicts was resolved");
@@ -236,7 +236,7 @@ fn run_db_thread(
                                 println!("there is conflict for ({}, {:?}) during replication, trying resolve",
                                          doc_id, str::from_utf8(&rev_id));
                                 if let Some(mdb) = mdb {
-                                    resolve_conflict(&mut mdb.db, &doc_id, Some(rev_id.into())).expect("resolve conflict failed");
+                                    resolve_conflict(&mut mdb.db, &doc_id).expect("resolve conflict failed");
                                 }
                             });
                         }
@@ -363,13 +363,11 @@ fn input_doc_filter(
     if (flags & (kRevDeleted | kRevPurged)) != 0 {
         return true;
     }
-    let (coll_name, doc_id, rev_id) = unsafe {
-        (
-            str::from_utf8_unchecked(coll_name.into()),
-            str::from_utf8_unchecked(doc_id.into()),
-            str::from_utf8_unchecked(rev_id.into()),
-        )
-    };
+    let (coll_name, doc_id, rev_id) = (
+        str::from_utf8(coll_name.into()).unwrap(),
+        str::from_utf8(doc_id.into()).unwrap(),
+        str::from_utf8(rev_id.into()).unwrap(),
+    );
 
     println!("Input filter: {coll_name} {doc_id} {rev_id} {flags:?}");
     let body = match Dict::new(&body) {

@@ -39,23 +39,27 @@ pub struct FlEncoderSession {
 }
 
 impl FlEncoderSession {
+    #[inline]
     pub fn new(inner: NonNull<_FLEncoder>) -> Self {
         Self { inner }
     }
 }
 
 impl Drop for FlEncoderSession {
+    #[inline]
     fn drop(&mut self) {
         unsafe { FLEncoder_Reset(self.inner.as_ptr()) }
     }
 }
 
 impl Borrow<NonNull<_FLEncoder>> for FlEncoderSession {
+    #[inline]
     fn borrow(&self) -> &NonNull<_FLEncoder> {
         &self.inner
     }
 }
 
+#[inline]
 pub fn to_fl_slice_result<T>(value: &T) -> Result<FLSliceResult, Error>
 where
     T: Serialize,
@@ -310,6 +314,7 @@ impl<'a> ser::SerializeSeq for &'a mut Serializer {
     type Error = Error;
 
     /// Serialize a single element of the sequence.
+    #[inline]
     fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
@@ -318,6 +323,7 @@ impl<'a> ser::SerializeSeq for &'a mut Serializer {
     }
 
     /// Close the sequence.
+    #[inline]
     fn end(self) -> Result<(), Self::Error> {
         encoder_write!(self, FLEncoder_EndArray)
     }
@@ -327,6 +333,7 @@ impl<'a> ser::SerializeTuple for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
+    #[inline]
     fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
@@ -334,6 +341,7 @@ impl<'a> ser::SerializeTuple for &'a mut Serializer {
         value.serialize(&mut **self)
     }
 
+    #[inline]
     fn end(self) -> Result<(), Self::Error> {
         encoder_write!(self, FLEncoder_EndArray)
     }
@@ -343,13 +351,14 @@ impl<'a> ser::SerializeTupleStruct for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
+    #[inline]
     fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
     {
         value.serialize(&mut **self)
     }
-
+    #[inline]
     fn end(self) -> Result<(), Self::Error> {
         encoder_write!(self, FLEncoder_EndArray)
     }
@@ -368,6 +377,7 @@ impl<'a> ser::SerializeTupleVariant for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
+    #[inline]
     fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
@@ -375,6 +385,7 @@ impl<'a> ser::SerializeTupleVariant for &'a mut Serializer {
         value.serialize(&mut **self)
     }
 
+    #[inline]
     fn end(self) -> Result<(), Self::Error> {
         encoder_write!(self, FLEncoder_EndArray)?;
         encoder_write!(self, FLEncoder_EndDict)
@@ -387,6 +398,7 @@ impl<'a> ser::SerializeStruct for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
+    #[inline]
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
@@ -395,6 +407,7 @@ impl<'a> ser::SerializeStruct for &'a mut Serializer {
         value.serialize(&mut **self)
     }
 
+    #[inline]
     fn end(self) -> Result<(), Self::Error> {
         encoder_write!(self, FLEncoder_EndDict)
     }
@@ -406,6 +419,7 @@ impl<'a> ser::SerializeStructVariant for &'a mut Serializer {
     type Ok = ();
     type Error = Error;
 
+    #[inline]
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
@@ -414,6 +428,7 @@ impl<'a> ser::SerializeStructVariant for &'a mut Serializer {
         value.serialize(&mut **self)
     }
 
+    #[inline]
     fn end(self) -> Result<(), Self::Error> {
         encoder_write!(self, FLEncoder_EndDict)?;
         encoder_write!(self, FLEncoder_EndDict)

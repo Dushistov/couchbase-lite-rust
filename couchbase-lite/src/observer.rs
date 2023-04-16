@@ -122,6 +122,7 @@ impl DbChange {
 }
 
 impl Drop for DbChange {
+    #[inline]
     fn drop(&mut self) {
         unsafe { c4dbobs_releaseChanges(&mut self.inner, 1) };
     }
@@ -130,6 +131,7 @@ impl Drop for DbChange {
 impl<'obs> Iterator for DbChangesIter<'obs> {
     type Item = DbChange;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let mut item = MaybeUninit::<C4DatabaseChange>::uninit();
         let mut out_external = false;

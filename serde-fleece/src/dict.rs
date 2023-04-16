@@ -41,6 +41,7 @@ impl MutableDict {
 }
 
 impl Drop for MutableDict {
+    #[inline]
     fn drop(&mut self) {
         unsafe { FLMutableDict_Release(self.0.as_ptr()) };
     }
@@ -52,6 +53,7 @@ pub struct Dict<'a> {
 }
 
 impl<'a> Dict<'a> {
+    #[inline]
     pub fn new(dict: &FLDict) -> Option<Self> {
         let inner = NonNullConst::new(*dict)?;
         Some(Self {
@@ -72,6 +74,7 @@ impl<'a> Dict<'a> {
 }
 
 impl<'a> Borrow<NonNullConst<_FLDict>> for Dict<'a> {
+    #[inline]
     fn borrow(&self) -> &NonNullConst<_FLDict> {
         &self.inner
     }

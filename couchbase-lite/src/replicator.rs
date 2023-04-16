@@ -57,6 +57,7 @@ pub enum ReplicatorAuthentication {
 unsafe impl Send for Replicator {}
 
 impl Drop for Replicator {
+    #[inline]
     fn drop(&mut self) {
         trace!("repl drop {:?}", self.inner.as_ptr());
         unsafe {
@@ -363,7 +364,6 @@ impl Replicator {
     pub fn state(&self) -> ReplicatorState {
         self.status().into()
     }
-    #[inline]
     pub(crate) fn status(&self) -> C4ReplicatorStatus {
         unsafe { c4repl_getStatus(self.inner.as_ptr()) }
     }

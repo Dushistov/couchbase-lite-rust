@@ -99,6 +99,7 @@ pub struct Enumerator<'query> {
 }
 
 impl Drop for Enumerator<'_> {
+    #[inline]
     fn drop(&mut self) {
         unsafe { c4queryenum_release(self.inner.as_ptr()) };
     }
@@ -123,6 +124,7 @@ impl<'en> FallibleStreamingIterator for Enumerator<'en> {
         }
     }
 
+    #[inline]
     fn get(&self) -> Option<&Enumerator<'en>> {
         if !self.reach_end {
             Some(self)
@@ -145,6 +147,7 @@ impl<'a> Enumerator<'a> {
         Ok(unsafe { FLArrayIterator_GetValueAt(&self.inner.as_ref().columns, i) })
     }
 
+    #[inline]
     pub fn get_raw_checked(&self, i: u32) -> Result<ValueRef<'a>> {
         let value = self.do_get_raw_checked(i)?;
 
@@ -152,6 +155,7 @@ impl<'a> Enumerator<'a> {
         Ok(val)
     }
 
+    #[inline]
     pub fn get_checked<T>(&self, i: u32) -> Result<T>
     where
         T: FromValueRef<'a>,
@@ -160,13 +164,11 @@ impl<'a> Enumerator<'a> {
         FromValueRef::column_result(value_ref)
     }
 
+    #[inline]
     pub fn get_checked_serde<'de, T: serde::de::Deserialize<'de>>(&'de self, i: u32) -> Result<T> {
         let value = self.do_get_raw_checked(i)?;
         let value = NonNullConst::new(value).ok_or_else(|| {
-            Error::LogicError(format!(
-                "Query parameter {} is null, can not deserialize",
-                i
-            ))
+            Error::LogicError(format!("Query parameter {i} is null, can not deserialize"))
         })?;
         serde_fleece::from_fl_value(value).map_err(Error::from)
     }

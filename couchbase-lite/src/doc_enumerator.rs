@@ -18,6 +18,7 @@ pub struct DocEnumerator<'a> {
 }
 
 impl Drop for DocEnumerator<'_> {
+    #[inline]
     fn drop(&mut self) {
         unsafe { c4enum_free(self.inner.as_ptr()) };
     }
@@ -72,6 +73,7 @@ impl<'en> FallibleStreamingIterator for DocEnumerator<'en> {
         }
     }
 
+    #[inline]
     fn get(&self) -> Option<&DocEnumerator<'en>> {
         if !self.reach_end {
             Some(self)
@@ -99,6 +101,7 @@ bitflags! {
     }
 }
 impl Default for DocEnumeratorFlags {
+    #[inline]
     fn default() -> Self {
         DocEnumeratorFlags::INCLUDE_BODIES | DocEnumeratorFlags::INCLUDE_NON_CONFLICTED
     }

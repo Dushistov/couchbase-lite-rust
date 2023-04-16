@@ -51,6 +51,7 @@ impl<T> NonNullConst<T> {
 }
 
 impl<T> From<NonNull<T>> for NonNullConst<T> {
+    #[inline]
     fn from(x: NonNull<T>) -> Self {
         NonNullConst(x.as_ptr())
     }

@@ -89,14 +89,17 @@ pub struct IndexInfo {
 }
 
 impl IndexInfo {
+    #[inline]
     pub fn name_as_str(&self) -> Result<&str> {
         self.name
             .try_into()
             .map_err(|_: std::str::Utf8Error| Error::InvalidUtf8)
     }
+    #[inline]
     pub fn type_(&self) -> C4IndexType {
         self.type_
     }
+    #[inline]
     pub fn expr_as_str(&self) -> Result<&str> {
         self.expr
             .try_into()
@@ -171,6 +174,7 @@ impl FallibleStreamingIterator for DbIndexesListIterator {
         Ok(())
     }
 
+    #[inline]
     fn get(&self) -> Option<&IndexInfo> {
         self.cur_val.as_ref()
     }

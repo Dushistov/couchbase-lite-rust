@@ -33,6 +33,7 @@ bitflags! {
 }
 
 impl Document {
+    #[inline]
     pub fn new<T>(data: &T, enc: FlEncoderSession) -> Result<Self>
     where
         T: Serialize,
@@ -44,6 +45,7 @@ impl Document {
             id: Uuid::new_v4().hyphenated().to_string(),
         })
     }
+    #[inline]
     pub fn new_with_id<S, T>(doc_id: S, data: &T, enc: FlEncoderSession) -> Result<Self>
     where
         S: Into<String>,
@@ -56,6 +58,7 @@ impl Document {
             unsaved_body,
         })
     }
+    #[inline]
     pub fn new_with_id_fleece<S: Into<String>>(doc_id: S, fleece_data: FLSliceResult) -> Self {
         Self {
             inner: None,
@@ -64,6 +67,7 @@ impl Document {
         }
     }
     /// return the document's ID
+    #[inline]
     pub fn id(&self) -> &str {
         &self.id
     }
@@ -162,19 +166,15 @@ impl Drop for C4DocumentOwner {
 }
 
 impl C4DocumentOwner {
-    #[inline]
     pub(crate) fn exists(&self) -> bool {
         (self.flags() & kDocExists) == kDocExists
     }
-    #[inline]
     fn flags(&self) -> C4DocumentFlags {
         unsafe { self.0.as_ref().flags }
     }
-    #[inline]
     pub(crate) fn selected_revision(&self) -> &C4Revision {
         &unsafe { self.0.as_ref() }.selectedRev
     }
-    #[inline]
     pub(crate) fn id(&self) -> Result<&str> {
         unsafe {
             self.0
@@ -185,11 +185,9 @@ impl C4DocumentOwner {
                 .map_err(|_| Error::InvalidUtf8)
         }
     }
-    #[inline]
     pub(crate) fn revision_id(&self) -> &[u8] {
         unsafe { self.0.as_ref() }.revID.as_fl_slice().into()
     }
-    #[inline]
     pub(crate) fn generation(rev_id: &[u8]) -> c_uint {
         unsafe { c4rev_getGeneration(rev_id.into()) }
     }

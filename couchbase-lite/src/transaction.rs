@@ -33,6 +33,7 @@ impl Transaction<'_> {
         }
     }
 
+    #[inline]
     pub fn commit(mut self) -> Result<()> {
         self.end_transaction(true)
     }
@@ -47,14 +48,18 @@ impl Transaction<'_> {
         }
     }
 
+    #[inline]
     pub fn save(&mut self, doc: &mut Document) -> Result<()> {
         self.main_save(doc, false)
     }
 
+    #[inline]
     pub fn delete(&mut self, doc: &mut Document) -> Result<()> {
         self.main_save(doc, true)
     }
+
     /// Removes all trace of a document and its revisions from the database.
+    #[inline]
     pub fn purge_by_id(&mut self, doc_id: &str) -> Result<()> {
         let mut c4err = c4error_init();
         if unsafe { c4db_purgeDoc(self.db.inner.0.as_ptr(), doc_id.into(), &mut c4err) } {
@@ -66,6 +71,7 @@ impl Transaction<'_> {
 
     /// Get shared "fleece" encoder, `&mut self` to make possible
     /// exists only one session
+    #[inline]
     pub fn shared_encoder_session(&mut self) -> Result<FlEncoderSession> {
         let enc = unsafe { c4db_getSharedFleeceEncoder(self.db.inner.0.as_ptr()) };
         NonNull::new(enc)
@@ -155,17 +161,18 @@ impl Transaction<'_> {
 
 impl Deref for Transaction<'_> {
     type Target = Database;
-
+    #[inline]
     fn deref(&self) -> &Database {
         self.db
     }
 }
 
 impl Drop for Transaction<'_> {
+    #[inline]
     fn drop(&mut self) {
         if !self.finished {
             if let Err(err) = self.end_transaction(false) {
-                error!("end_transaction failed: {}", err);
+                error!("end_transaction failed: {err}");
             }
         }
     }

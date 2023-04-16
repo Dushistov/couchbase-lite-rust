@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-20.04, macos-latest]
         rust: [stable, beta]
     env:
       RUSTUP_MAX_RETRIES: 10
@@ -84,7 +84,7 @@ jobs:
           python ci/build_and_run_tests.py --rust-only
         shell: bash
       - name: Run tests with valgrind
-        if: matrix.os == 'ubuntu-latest' && matrix.rust == 'stable'
+        if: matrix.os == 'ubuntu-20.04' && matrix.rust == 'stable'
         run: |
           set -e
           cat /etc/issue
@@ -154,7 +154,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-20.04, macos-latest]
     steps:
       - uses: actions/checkout@v3
       - name: Checkout couchbase-lite-core
@@ -175,7 +175,7 @@ jobs:
           cmake-version: '3.14.7'
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Add fr_FR locale
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-20.04'
         run: |
           set -e
           sudo locale-gen fr_FR
@@ -190,7 +190,7 @@ jobs:
   # Detect cases where documentation links don't resolve and such.
   nightly-only-tools:
     name: Checks with rustc/nightly
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - name: Checkout couchbase-lite-core

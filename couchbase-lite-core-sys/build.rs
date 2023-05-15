@@ -20,7 +20,7 @@ fn main() {
     let sdir = download_source_code_via_git_if_needed().expect("download of source code failed");
 
     let bdirs = cmake_build_src_dir(&sdir, is_msvc);
-    println!("build directory: {:?}\nsource directory {:?}", bdirs, sdir);
+    println!("build directory: {bdirs:?}\nsource directory {sdir:?}");
 
     if bdirs.is_empty() {
         panic!("You didn't specify build directory for couchbase-lite-core");

@@ -374,8 +374,13 @@ fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> Vec<PathBuf> {
 
 #[cfg(not(feature = "build"))]
 fn cmake_build_src_dir(_src_dir: &Path, _is_msvc: bool) -> Vec<PathBuf> {
-    if let Ok(dirs) = env::var("COUCHBASE_LITE_CORE_BUILD_DIRS") {
-        println!("cargo:rerun-if-env-changed=COUCHBASE_LITE_CORE_BUILD_DIRS");
+    const DIRS_VAR: &str = "COUCHBASE_LITE_CORE_BUILD_DIRS";
+    const DIR_VAR: &str = "COUCHBASE_LITE_CORE_BUILD_DIR";
+    if let Ok(dirs) = env::var(DIRS_VAR) {
+        if env::var(DIR_VAR).is_ok() {
+            panic!("Error: {DIR_VAR} and {DIRS_VAR} are setted at the same time, should be only one of them");
+        }
+        println!("cargo:rerun-if-env-changed={DIRS_VAR}");
         let mut ret = vec![];
         for d in dirs.split('^') {
             let d: PathBuf = d.into();
@@ -385,8 +390,8 @@ fn cmake_build_src_dir(_src_dir: &Path, _is_msvc: bool) -> Vec<PathBuf> {
         }
         return ret;
     }
-    println!("cargo:rerun-if-env-changed=COUCHBASE_LITE_CORE_BUILD_DIR");
-    vec![getenv_unwrap("COUCHBASE_LITE_CORE_BUILD_DIR").into()]
+    println!("cargo:rerun-if-env-changed={DIR_VAR}");
+    vec![getenv_unwrap(DIR_VAR).into()]
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "linux"))]

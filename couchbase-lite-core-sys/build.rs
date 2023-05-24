@@ -11,6 +11,7 @@ fn main() {}
 fn main() {
     env_logger::init();
     let target = getenv_unwrap("TARGET");
+    let target_os = getenv_unwrap("CARGO_CFG_TARGET_OS");
     let is_msvc = target.contains("msvc");
 
     if cfg!(feature = "with-asan") && !cfg!(feature = "build") {
@@ -46,19 +47,24 @@ fn main() {
     println!("cargo:rustc-link-lib=static=mbedtls");
     println!("cargo:rustc-link-lib=static=mbedx509");
 
-    if cfg!(target_os = "linux") {
+    if target_os == "linux" {
         println!("cargo:rustc-link-lib=icuuc");
         println!("cargo:rustc-link-lib=icui18n");
         println!("cargo:rustc-link-lib=icudata");
         println!("cargo:rustc-link-lib=z");
         println!("cargo:rustc-link-lib=stdc++");
-    } else if cfg!(target_os = "macos") {
+    } else if target_os == "macos" || target_os == "ios" {
         println!("cargo:rustc-link-lib=z");
         //TODO: remove this dependicies: CoreFoundation + Foundation
         println!("cargo:rustc-link-lib=framework=CoreFoundation");
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rustc-link-lib=framework=SystemConfiguration");
         println!("cargo:rustc-link-lib=framework=Security");
+        println!("cargo:rustc-link-lib=c++");
+    } else if target_os == "android" {
+        println!("cargo:rustc-link-lib=icuuc");
+        println!("cargo:rustc-link-lib=icui18n");
+        println!("cargo:rustc-link-lib=z");
         println!("cargo:rustc-link-lib=c++");
     } else if is_msvc {
         println!("cargo:rustc-link-lib=ws2_32");

@@ -47,6 +47,11 @@ fn main() {
     println!("cargo:rustc-link-lib=static=mbedtls");
     println!("cargo:rustc-link-lib=static=mbedx509");
 
+    if let Ok(icu_lib_path) = env::var("ICU_LIB_DIR") {
+        println!("cargo:rustc-link-search=native={icu_lib_path}");
+        println!("cargo:rerun-if-env-changed=ICU_LIB_DIR");
+    }
+
     if target_os == "linux" {
         println!("cargo:rustc-link-lib=icuuc");
         println!("cargo:rustc-link-lib=icui18n");

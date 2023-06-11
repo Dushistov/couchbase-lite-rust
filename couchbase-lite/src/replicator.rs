@@ -35,6 +35,88 @@ pub struct Replicator {
     boxed_callback_f: NonNull<c_void>,
 }
 
+/// Parameters describing a replication, used when creating `Replicator`
+pub struct ReplicatorParameters<StateCallback, DocumentsEndedCallback, ValidationF> {
+    validation_cb: ValidationF,
+    state_changed_callback: StateCallback,
+    documents_ended_callback: DocumentsEndedCallback,
+    auth: ReplicatorAuthentication,
+}
+
+impl<SC, DEC, V> ReplicatorParameters<SC, DEC, V> {
+    #[inline]
+    pub fn with_auth(self, auth: ReplicatorAuthentication) -> Self {
+        Self { auth, ..self }
+    }
+    /// Set callback that can reject incoming revisions.
+    /// Arguments: collection_name, doc_id, rev_id, rev_flags, doc_body.
+    /// It should return false to reject document.
+    #[inline]
+    pub fn with_validation_func<ValidationF>(
+        self,
+        validation_cb: ValidationF,
+    ) -> ReplicatorParameters<SC, DEC, ValidationF>
+    where
+        ValidationF: ReplicatorValidationFunction,
+    {
+        ReplicatorParameters {
+            validation_cb,
+            state_changed_callback: self.state_changed_callback,
+            documents_ended_callback: self.documents_ended_callback,
+            auth: self.auth,
+        }
+    }
+    /// reports back change of replicator state
+    #[inline]
+    pub fn with_state_changed_callback<StateCallback>(
+        self,
+        state_changed_callback: StateCallback,
+    ) -> ReplicatorParameters<StateCallback, DEC, V>
+    where
+        StateCallback: ReplicatorStatusChangedCallback,
+    {
+        ReplicatorParameters {
+            validation_cb: self.validation_cb,
+            state_changed_callback,
+            documents_ended_callback: self.documents_ended_callback,
+            auth: self.auth,
+        }
+    }
+    /// reports about the replication status of documents
+    #[inline]
+    pub fn with_documents_ended_callback<DocumentsEndedCallback>(
+        self,
+        documents_ended_callback: DocumentsEndedCallback,
+    ) -> ReplicatorParameters<SC, DocumentsEndedCallback, V>
+    where
+        DocumentsEndedCallback: ReplicatorDocumentsEndedCallback,
+    {
+        ReplicatorParameters {
+            validation_cb: self.validation_cb,
+            state_changed_callback: self.state_changed_callback,
+            documents_ended_callback,
+            auth: self.auth,
+        }
+    }
+}
+
+impl Default
+    for ReplicatorParameters<
+        fn(ReplicatorState),
+        fn(bool, &mut dyn Iterator<Item = &C4DocumentEnded>),
+        fn(C4String, C4String, C4String, C4RevisionFlags, FLDict) -> bool,
+    >
+{
+    fn default() -> Self {
+        Self {
+            validation_cb: |_coll_name, _doc_id, _rev_id, _rev_flags, _body| true,
+            state_changed_callback: |_repl_state| {},
+            documents_ended_callback: |_pushing, _doc_iter| {},
+            auth: ReplicatorAuthentication::None,
+        }
+    }
+}
+
 struct CallbackContext<
     ValidationCb: ReplicatorValidationFunction,
     StateCb: ReplicatorStatusChangedCallback,
@@ -87,18 +169,11 @@ define_trait_alias!(
 impl Replicator {
     /// # Arguments
     /// * `url` - should be something like "ws://192.168.1.132:4984/demo/"
-    /// * `validation_cb` - Callback that can reject incoming revisions.
-    ///    Arguments: collection_name, doc_id, rev_id, rev_flags, doc_body.
-    ///    It should return false to reject document.
-    /// * `state_changed_callback` - reports back change of replicator state
-    /// * `documents_ended_callback` - reports about the replication status of documents
+    /// * `params` - parameters of replicator
     pub fn new<StateCallback, DocumentsEndedCallback, ValidationF>(
         db: &Database,
         url: &str,
-        auth: &ReplicatorAuthentication,
-        validation_cb: ValidationF,
-        state_changed_callback: StateCallback,
-        documents_ended_callback: DocumentsEndedCallback,
+        params: ReplicatorParameters<StateCallback, DocumentsEndedCallback, ValidationF>,
     ) -> Result<Self>
     where
         ValidationF: ReplicatorValidationFunction,
@@ -195,15 +270,15 @@ impl Replicator {
         }
 
         let ctx = Box::new(CallbackContext {
-            validation_cb,
-            state_cb: state_changed_callback,
-            docs_ended_cb: documents_ended_callback,
+            validation_cb: params.validation_cb,
+            state_cb: params.state_changed_callback,
+            docs_ended_cb: params.documents_ended_callback,
         });
         let ctx_p = Box::into_raw(ctx);
         Replicator::do_new(
             db,
             url,
-            auth,
+            &params.auth,
             free_boxed_value::<CallbackContext<ValidationF, StateCallback, DocumentsEndedCallback>>,
             unsafe { NonNull::new_unchecked(ctx_p as *mut c_void) },
             Some(call_validation::<ValidationF, StateCallback, DocumentsEndedCallback>),

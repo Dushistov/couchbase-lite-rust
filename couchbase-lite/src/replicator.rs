@@ -141,7 +141,7 @@ impl Replicator {
             F: ReplicatorStatusChangedCallback,
             F3: ReplicatorDocumentsEndedCallback,
         {
-            info!("on_status_changed: repl {:?}, status {:?}", c4_repl, status);
+            info!("on_status_changed: repl {c4_repl:?}, status {status:?}");
             let r = catch_unwind(|| {
                 let ctx = ctx as *mut CallbackContext<F1, F, F3>;
                 assert!(
@@ -151,7 +151,7 @@ impl Replicator {
                 match ReplicatorState::try_from(status) {
                     Ok(state) => ((*ctx).state_cb)(state),
                     Err(err) => {
-                        error!("replicator status change: invalid status {}", err);
+                        error!("replicator status change: invalid status {err}");
                     }
                 }
             });
@@ -293,7 +293,7 @@ impl Replicator {
         let mut remote_addr = MaybeUninit::<C4Address>::uninit();
         let mut db_name = C4String::default();
         if !unsafe { c4address_fromURL(url.into(), remote_addr.as_mut_ptr(), &mut db_name) } {
-            return Err(Error::LogicError(format!("Can not parse URL {}", url)));
+            return Err(Error::LogicError(format!("Can not parse URL {url}")));
         }
         let remote_addr = unsafe { remote_addr.assume_init() };
 
@@ -340,7 +340,7 @@ impl Replicator {
                 &mut c4err,
             )
         };
-        trace!("repl new result {:?}", repl);
+        trace!("repl new result {repl:?}");
         NonNull::new(repl)
             .map(|inner| Replicator {
                 inner,

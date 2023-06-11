@@ -33,6 +33,7 @@ pub struct Replicator {
     c_callback_on_documents_ended: C4ReplicatorDocumentsEndedCallback,
     free_callback_f: unsafe fn(_: *mut c_void),
     boxed_callback_f: NonNull<c_void>,
+    mode: ReplicatorMode,
 }
 
 /// Parameters describing a replication, used when creating `Replicator`
@@ -41,6 +42,13 @@ pub struct ReplicatorParameters<StateCallback, DocumentsEndedCallback, Validatio
     state_changed_callback: StateCallback,
     documents_ended_callback: DocumentsEndedCallback,
     auth: ReplicatorAuthentication,
+    mode: ReplicatorMode,
+}
+
+#[derive(Clone, Copy)]
+struct ReplicatorMode {
+    push: C4ReplicatorMode,
+    pull: C4ReplicatorMode,
 }
 
 impl<SC, DEC, V> ReplicatorParameters<SC, DEC, V> {
@@ -64,9 +72,10 @@ impl<SC, DEC, V> ReplicatorParameters<SC, DEC, V> {
             state_changed_callback: self.state_changed_callback,
             documents_ended_callback: self.documents_ended_callback,
             auth: self.auth,
+            mode: self.mode,
         }
     }
-    /// reports back change of replicator state
+    /// Set callback to reports back change of replicator state
     #[inline]
     pub fn with_state_changed_callback<StateCallback>(
         self,
@@ -80,9 +89,10 @@ impl<SC, DEC, V> ReplicatorParameters<SC, DEC, V> {
             state_changed_callback,
             documents_ended_callback: self.documents_ended_callback,
             auth: self.auth,
+            mode: self.mode,
         }
     }
-    /// reports about the replication status of documents
+    /// Set callback to reports about the replication status of documents
     #[inline]
     pub fn with_documents_ended_callback<DocumentsEndedCallback>(
         self,
@@ -96,6 +106,29 @@ impl<SC, DEC, V> ReplicatorParameters<SC, DEC, V> {
             state_changed_callback: self.state_changed_callback,
             documents_ended_callback,
             auth: self.auth,
+            mode: self.mode,
+        }
+    }
+    /// Set push mode (from db to remote/other db)
+    #[inline]
+    pub fn with_push_mode(self, push: C4ReplicatorMode) -> Self {
+        Self {
+            mode: ReplicatorMode {
+                push,
+                pull: self.mode.pull,
+            },
+            ..self
+        }
+    }
+    /// Set pull mode (from db to remote/other db)
+    #[inline]
+    pub fn with_pull_mode(self, pull: C4ReplicatorMode) -> Self {
+        Self {
+            mode: ReplicatorMode {
+                pull,
+                push: self.mode.push,
+            },
+            ..self
         }
     }
 }
@@ -113,6 +146,10 @@ impl Default
             state_changed_callback: |_repl_state| {},
             documents_ended_callback: |_pushing, _doc_iter| {},
             auth: ReplicatorAuthentication::None,
+            mode: ReplicatorMode {
+                push: C4ReplicatorMode::kC4Continuous,
+                pull: C4ReplicatorMode::kC4Continuous,
+            },
         }
     }
 }
@@ -284,6 +321,7 @@ impl Replicator {
             Some(call_validation::<ValidationF, StateCallback, DocumentsEndedCallback>),
             Some(call_on_status_changed::<ValidationF, StateCallback, DocumentsEndedCallback>),
             Some(call_on_documents_ended::<ValidationF, StateCallback, DocumentsEndedCallback>),
+            params.mode,
         )
     }
 
@@ -320,6 +358,7 @@ impl Replicator {
             validation,
             c_callback_on_status_changed,
             c_callback_on_documents_ended,
+            mode,
         } = self;
         mem::forget(self);
         unsafe {
@@ -335,6 +374,7 @@ impl Replicator {
             validation,
             c_callback_on_status_changed,
             c_callback_on_documents_ended,
+            mode,
         )?;
         repl.start(reset)?;
         Ok(repl)
@@ -362,6 +402,7 @@ impl Replicator {
         validation: C4ReplicatorValidationFunction,
         call_on_status_changed: C4ReplicatorStatusChangedCallback,
         call_on_documents_ended: C4ReplicatorDocumentsEndedCallback,
+        mode: ReplicatorMode,
     ) -> Result<Self> {
         use consts::*;
 
@@ -392,8 +433,8 @@ impl Replicator {
         }?;
 
         let repl_params = C4ReplicatorParameters {
-            push: C4ReplicatorMode::kC4Continuous,
-            pull: C4ReplicatorMode::kC4Continuous,
+            push: mode.push,
+            pull: mode.pull,
             optionsDictFleece: options_dict.as_fl_slice(),
             pushFilter: None,
             validationFunc: validation,
@@ -424,6 +465,7 @@ impl Replicator {
                 validation,
                 c_callback_on_status_changed: call_on_status_changed,
                 c_callback_on_documents_ended: call_on_documents_ended,
+                mode,
             })
             .ok_or_else(|| {
                 unsafe { free_callback_f(boxed_callback_f.as_ptr()) };

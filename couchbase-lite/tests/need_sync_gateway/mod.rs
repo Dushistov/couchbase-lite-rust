@@ -29,18 +29,18 @@ fn test_double_replicator_restart() {
     let mut repl = {
         let sync_tx = sync_tx.clone();
         let handle = runtime.handle().clone();
-        let mut repl = Replicator::new(
-            &db,
-            url,
-            &auth,
-            |coll_name: C4String, doc_id: C4String, rev_id: C4String, rev_flags, _body| {
-                let coll_name: &str = unsafe { str::from_utf8_unchecked(coll_name.into()) };
-                let doc_id: &str = unsafe { str::from_utf8_unchecked(doc_id.into()) };
-                let rev_id: &str = unsafe { str::from_utf8_unchecked(rev_id.into()) };
-                println!("Pull filter: {coll_name}, {doc_id}, {rev_id}, {rev_flags:?}");
-                true
-            },
-            move |repl_state| {
+        let params = ReplicatorParameters::default()
+            .with_auth(auth.clone())
+            .with_validation_func(
+                |coll_name: C4String, doc_id: C4String, rev_id: C4String, rev_flags, _body| {
+                    let coll_name: &str = unsafe { str::from_utf8_unchecked(coll_name.into()) };
+                    let doc_id: &str = unsafe { str::from_utf8_unchecked(doc_id.into()) };
+                    let rev_id: &str = unsafe { str::from_utf8_unchecked(rev_id.into()) };
+                    println!("Pull filter: {coll_name}, {doc_id}, {rev_id}, {rev_flags:?}");
+                    true
+                },
+            )
+            .with_state_changed_callback(move |repl_state| {
                 println!("repl_state changed: {repl_state:?}");
                 if let ReplicatorState::Idle = repl_state {
                     sync_tx.send(()).unwrap();
@@ -49,18 +49,19 @@ fn test_double_replicator_restart() {
                         tx.send(()).await.unwrap();
                     });
                 }
-            },
-            move |pushing: bool, doc_iter: &mut dyn Iterator<Item = &C4DocumentEnded>| {
-                let docs: Vec<String> = doc_iter
-                    .map(|x| {
-                        let doc_id: &str = x.docID.as_fl_slice().try_into().unwrap();
-                        doc_id.to_string()
-                    })
-                    .collect();
-                println!("pushing {pushing}, docs {docs:?}");
-            },
-        )
-        .unwrap();
+            })
+            .with_documents_ended_callback(
+                move |pushing: bool, doc_iter: &mut dyn Iterator<Item = &C4DocumentEnded>| {
+                    let docs: Vec<String> = doc_iter
+                        .map(|x| {
+                            let doc_id: &str = x.docID.as_fl_slice().try_into().unwrap();
+                            doc_id.to_string()
+                        })
+                        .collect();
+                    println!("pushing {pushing}, docs {docs:?}");
+                },
+            );
+        let mut repl = Replicator::new(&db, url, params).unwrap();
         repl.start(false).unwrap();
         repl
     };
@@ -122,33 +123,35 @@ fn start_repl_and_save_documents(
     let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE)?;
     let (state_tx, mut state_rx) = tokio::sync::mpsc::unbounded_channel();
     let mut repl = {
-        let mut repl = Replicator::new(
-            &db,
-            url,
-            &auth,
-            |coll_name: C4String, doc_id: C4String, rev_id: C4String, rev_flags, _body| {
-                let coll_name: &str = unsafe { str::from_utf8_unchecked(coll_name.into()) };
-                let doc_id: &str = unsafe { str::from_utf8_unchecked(doc_id.into()) };
-                let rev_id: &str = unsafe { str::from_utf8_unchecked(rev_id.into()) };
-                println!("Pull filter: {coll_name}, {doc_id}, {rev_id}, {rev_flags:?}");
-                true
-            },
-            move |repl_state| {
+        let params = ReplicatorParameters::default()
+            .with_auth(auth)
+            .with_validation_func(
+                |coll_name: C4String, doc_id: C4String, rev_id: C4String, rev_flags, _body| {
+                    let coll_name: &str = unsafe { str::from_utf8_unchecked(coll_name.into()) };
+                    let doc_id: &str = unsafe { str::from_utf8_unchecked(doc_id.into()) };
+                    let rev_id: &str = unsafe { str::from_utf8_unchecked(rev_id.into()) };
+                    println!("Pull filter: {coll_name}, {doc_id}, {rev_id}, {rev_flags:?}");
+                    true
+                },
+            )
+            .with_state_changed_callback(move |repl_state| {
                 println!("repl_state changed: {repl_state:?}");
                 if let Err(err) = state_tx.send(repl_state) {
                     eprintln!("state_tx send failed: {err}");
                 }
-            },
-            move |pushing: bool, doc_iter: &mut dyn Iterator<Item = &C4DocumentEnded>| {
-                let docs: Vec<String> = doc_iter
-                    .map(|x| {
-                        let doc_id: &str = x.docID.as_fl_slice().try_into().unwrap();
-                        doc_id.to_string()
-                    })
-                    .collect();
-                println!("pushing {pushing}, docs {docs:?}");
-            },
-        )?;
+            })
+            .with_documents_ended_callback(
+                move |pushing: bool, doc_iter: &mut dyn Iterator<Item = &C4DocumentEnded>| {
+                    let docs: Vec<String> = doc_iter
+                        .map(|x| {
+                            let doc_id: &str = x.docID.as_fl_slice().try_into().unwrap();
+                            doc_id.to_string()
+                        })
+                        .collect();
+                    println!("pushing {pushing}, docs {docs:?}");
+                },
+            );
+        let mut repl = Replicator::new(&db, url, params)?;
         repl.start(true)?;
         repl
     };

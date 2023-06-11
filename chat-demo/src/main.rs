@@ -4,7 +4,7 @@ use couchbase_lite::{
     resolve_conflict,
     serde_fleece::{from_fl_dict, Dict},
     C4DocumentEnded, C4String, Database, DatabaseFlags, DocEnumeratorFlags, Document, Replicator,
-    ReplicatorAuthentication, ReplicatorState,
+    ReplicatorAuthentication, ReplicatorParameters, ReplicatorState,
 };
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
@@ -189,7 +189,6 @@ fn run_db_thread(
     };
     let db_path: std::path::PathBuf = db_path.into();
     let sync_url: Arc<str> = sync_url.into();
-    let auth = Arc::new(auth);
     let join_handle = std::thread::spawn(move || {
         let db = match Database::open_with_flags(&db_path, DatabaseFlags::CREATE) {
             Ok(mut db) => {
@@ -207,12 +206,9 @@ fn run_db_thread(
 
         let repl_spawn2 = repl_spawn.clone();
         let mut my_db = if let Some(db) = db {
-            let repl = Replicator::new(
-                &db,
-                &sync_url,
-                &*auth,
-                input_doc_filter,
-                move |repl_state| {
+            let params = ReplicatorParameters::default()
+                .with_auth(auth)
+                .with_state_changed_callback(move |repl_state| {
                     println!("replicator state changed: {repl_state:?}");
                     if let ReplicatorState::Offline = repl_state {
                         repl_spawn.spawn(|mdb| {
@@ -225,8 +221,8 @@ fn run_db_thread(
                             }
                         });
                     }
-                },
-                move |pushing: bool, doc_it: &mut dyn Iterator<Item = &C4DocumentEnded>| {
+                })
+                .with_documents_ended_callback(move |pushing: bool, doc_it: &mut dyn Iterator<Item = &C4DocumentEnded>| {
                     for doc in doc_it {
                         if !pushing && (doc.flags & kRevIsConflict) != 0 {
                             let doc_id: &str = doc.docID.as_fl_slice().try_into().unwrap();
@@ -241,8 +237,9 @@ fn run_db_thread(
                             });
                         }
                     }
-                },
-            );
+                })
+                .with_validation_func(input_doc_filter);
+            let repl = Replicator::new(&db, &sync_url, params);
             match repl {
                 Ok(mut repl) => {
                     repl.start(false).expect("repl start failed");

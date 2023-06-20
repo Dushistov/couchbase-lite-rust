@@ -153,7 +153,7 @@ fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::erro
     let cur_dir = env::current_dir()?;
     let parent_dir = cur_dir
         .parent()
-        .ok_or_else(|| format!("Can not find parent directory for current({:?})", cur_dir))?;
+        .ok_or_else(|| format!("Can not find parent directory for current({cur_dir:?})"))?;
     let src_dir = Path::new(&parent_dir).join("couchbase-lite-core");
 
     if !src_dir.exists() {
@@ -243,7 +243,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     let mut dependicies = Vec::with_capacity(c_headers.len());
     for header in c_headers.iter() {
         let c_file_path = search_file_in_directory(include_dirs, header)
-            .map_err(|_| format!("Can not find {}", header))?;
+            .map_err(|_| format!("Can not find {header}"))?;
         dependicies.push(c_file_path);
     }
     /*
@@ -333,10 +333,10 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
             .iter()
             .fold(Ok(bindings), |acc: Result<Builder, String>, header| {
                 let c_file_path = search_file_in_directory(include_dirs, header)
-                    .map_err(|_| format!("Can not find {}", header))?;
+                    .map_err(|_| format!("Can not find {header}"))?;
                 let c_file_str = c_file_path
                     .to_str()
-                    .ok_or_else(|| format!("Invalid unicode in path to {}", header))?;
+                    .ok_or_else(|| format!("Invalid unicode in path to {header}"))?;
                 Ok(acc.unwrap().clang_arg("-include").clang_arg(c_file_str))
             })?;
     let generated_bindings = bindings
@@ -526,10 +526,10 @@ where
 fn getenv_unwrap(v: &str) -> String {
     match env::var(v) {
         Ok(s) => s,
-        Err(..) => fail(&format!("environment variable `{}` not defined", v)),
+        Err(..) => fail(&format!("environment variable `{v}` not defined")),
     }
 }
 
 fn fail(s: &str) -> ! {
-    panic!("\n{}\n\nbuild script failed, must exit now", s)
+    panic!("\n{s}\n\nbuild script failed, must exit now")
 }

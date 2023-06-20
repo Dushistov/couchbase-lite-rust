@@ -3,8 +3,8 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4db_beginTransaction, c4db_endTransaction, c4db_getSharedFleeceEncoder, c4db_purgeDoc,
-        c4doc_put, c4doc_update, kRevDeleted, C4DocPutRequest, C4ErrorCode, C4ErrorDomain, FLSlice,
-        FLSliceResult,
+        c4doc_put, c4doc_update, C4DocPutRequest, C4ErrorCode, C4ErrorDomain, C4RevisionFlags,
+        FLSlice, FLSliceResult,
     },
     Database,
 };
@@ -96,14 +96,14 @@ impl Transaction<'_> {
             }
             let (rev_flags, body) = if !deletion {
                 (
-                    0,
+                    C4RevisionFlags(0),
                     doc.unsaved_body
                         .as_ref()
                         .map(FLSliceResult::as_fl_slice)
                         .unwrap_or_default(),
                 )
             } else {
-                (kRevDeleted, FLSlice::default())
+                (C4RevisionFlags::kRevDeleted, FLSlice::default())
             };
             retrying = false;
             let mut c4err = c4error_init();

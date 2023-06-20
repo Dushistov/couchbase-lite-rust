@@ -1,7 +1,11 @@
-use bindgen::{Builder, CargoCallbacks, RustTarget};
+use bindgen::{callbacks::ParseCallbacks, Builder, RustTarget};
+use quote::ToTokens;
 use std::{
-    env,
+    env, fs,
+    io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
+    str,
+    sync::{Arc, Mutex},
 };
 
 #[cfg(feature = "docs-rs")]
@@ -143,7 +147,7 @@ fn specify_library_search_dirs_for_std_layout(bdir: &Path) {
 
 #[cfg(feature = "git-download")]
 fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    use std::{fs, process::Command, str};
+    use std::process::Command;
     use which::which;
 
     const URL: &str = "https://github.com/Dushistov/couchbase-lite-core";
@@ -247,19 +251,21 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         dependicies.push(c_file_path);
     }
     /*
-    if let Ok(out_meta) = output_rust.metadata() {
-        let mut res_recent_enough = true;
-        for c_file_path in &dependicies {
-            let c_meta = c_file_path.metadata().map_err(|err| err.to_string())?;
-            if c_meta.modified().unwrap() >= out_meta.modified().unwrap() {
-                res_recent_enough = false;
-                break;
+        if let Ok(out_meta) = output_rust.metadata() {
+            let mut res_recent_enough = true;
+            for c_file_path in &dependicies {
+                let c_meta = c_file_path.metadata().map_err(|err| err.to_string())?;
+                if c_meta.modified().unwrap() >= out_meta.modified().unwrap() {
+                    res_recent_enough = false;
+                    break;
+                }
             }
-        }
-        if res_recent_enough {
-            return Ok(());
-        }
+            if res_recent_enough {
+                return Ok(());
+            }
     }*/
+    let collect_includes = CollectIncludes::default();
+    let couchbase_includes = collect_includes.0.clone();
     let mut bindings: Builder = bindgen::builder()
         .header(c_file_path.to_str().unwrap())
         .generate_comments(false)
@@ -272,41 +278,13 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         .allowlist_type("FL.*")
         .allowlist_function("_?FL.*")
         .newtype_enum("FLError")
-        // Can not use regex, because of
-        // https://github.com/rust-lang/rust-bindgen/issues/2195
-        .newtype_enum("C4ErrorDomain")
-        .newtype_enum("C4IndexType")
-        .newtype_enum("C4DocContentLevel")
-        .newtype_enum("C4EncryptionAlgorithm")
-        .newtype_enum("C4NetworkErrorCode")
-        .newtype_enum("C4LogLevel")
-        .newtype_enum("C4ErrorCode")
-        .newtype_enum("C4SocketFraming")
-        .newtype_enum("C4WebSocketCloseCode")
-        .newtype_enum("C4ReplicatorMode")
-        .newtype_enum("C4EncryptionKeySize")
-        .newtype_enum("C4MaintenanceType")
-        .newtype_enum("C4DocumentVersioning")
-        .newtype_enum("C4PrivateKeyRepresentation")
-        .newtype_enum("C4ReplicatorProgressLevel")
         .rustified_enum("FLValueType")
         .rustified_enum("FLTrust")
-        .rustified_enum("C4QueryLanguage")
-        .rustified_enum("C4ReplicatorActivityLevel")
         .no_copy("FLSliceResult")
         // we not use string_view, and there is bindgen's bug:
         // https://github.com/rust-lang/rust-bindgen/issues/2152
         .layout_tests(false)
-        .opaque_type("std::string_view")
-        .opaque_type("std::string")
-        .rustfmt_bindings(true)
-        // clang args to deal with C4_ENUM/C4_OPTIONS
-        .clang_arg("-x")
-        .clang_arg("c++")
-        .clang_arg("-std=c++17")
-        // Tell cargo to invalidate the built crate whenever any of the
-        // included header files changed
-        .parse_callbacks(Box::new(CargoCallbacks));
+        .parse_callbacks(Box::new(collect_includes));
 
     bindings = include_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap())
@@ -342,10 +320,260 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     let generated_bindings = bindings
         .generate()
         .map_err(|_| "Failed to generate bindings".to_string())?;
+    let mut rust_code = Vec::new();
     generated_bindings
-        .write_to_file(output_rust)
+        .write(Box::new(&mut rust_code))
         .map_err(|err| err.to_string())?;
+    let couchbase_includes = couchbase_includes.lock().unwrap();
+    let rust_code = str::from_utf8(&rust_code)
+        .map_err(|err| format!("Bindgen gerated code is not valid utf-8: {err}"))?;
+    let mod_rust_code = handle_c4_enum_option(rust_code, &couchbase_includes)?;
+    fs::write(output_rust, &mod_rust_code).map_err(|err| err.to_string())?;
     Ok(())
+}
+
+fn handle_c4_enum_option(code: &str, couchbase_includes: &[String]) -> Result<Vec<u8>, String> {
+    let (c4_enum_names, c4_opt_names) = find_all_c4_enum_option(couchbase_includes)?;
+
+    let mut ret = Vec::with_capacity(code.as_bytes().len());
+    let ast = syn::parse_file(code)
+        .map_err(|err| format!("syn failed to parse generated by bindgen code: {err}"))?;
+    let mut it = ast.items.iter();
+    while let Some(item) = it.next() {
+        if let syn::Item::Type(syn::ItemType {
+            vis: syn::Visibility::Public(..),
+            ident,
+            ty: enum_repr_ty,
+            ..
+        }) = item
+        {
+            if let Some((is_enum, pos)) =
+                find_indent_in_enum_or_opt(&ident, &c4_enum_names, &c4_opt_names)
+            {
+                let enum_name = if is_enum {
+                    &c4_enum_names[pos]
+                } else {
+                    &c4_opt_names[pos]
+                };
+                let enum_repr_ty = enum_repr_ty.into_token_stream().to_string();
+
+                let enum_handling =
+                    if enum_name == "C4QueryLanguage" || enum_name == "C4ReplicatorActivityLevel" {
+                        EnumHandling::Rust
+                    } else {
+                        EnumHandling::NewType
+                    };
+                match enum_handling {
+                    EnumHandling::NewType => {
+                        writeln!(
+                            ret,
+                            r#"
+    #[repr(transparent)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub struct {enum_name}(pub {enum_repr_ty});"#
+                        )
+                        .unwrap();
+                        writeln!(ret, "impl {enum_name} {{").unwrap();
+                    }
+                    EnumHandling::Rust => {
+                        writeln!(
+                            ret,
+                            r#"
+    #[repr({enum_repr_ty})]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub enum {enum_name} {{"#
+                        )
+                        .unwrap();
+                    }
+                }
+
+                let mut ty_name: Option<String> = None;
+                while let Some(item) = it.next() {
+                    match item {
+                        syn::Item::Const(syn::ItemConst {
+                            vis: syn::Visibility::Public(..),
+                            ident: var_name,
+                            ty: var_ty,
+                            expr: var_val,
+                            ..
+                        }) => {
+                            let cur_ty_name = var_ty.into_token_stream().to_string();
+                            if let Some(ty_name) = ty_name {
+                                if ty_name != cur_ty_name {
+                                    return Err(format!(
+                                        "Invalid variant value type, expect type {ty_name} in {}",
+                                        item.into_token_stream()
+                                    ));
+                                }
+                            }
+                            ty_name = Some(cur_ty_name);
+                            let var_val = var_val.into_token_stream().to_string();
+                            match enum_handling {
+                                EnumHandling::NewType => writeln!(
+                                ret,
+                                "    pub const {var_name}: {enum_name} = {enum_name}({var_val});"
+                            )
+                                .unwrap(),
+                                EnumHandling::Rust => {
+                                    writeln!(ret, "    {var_name} = {var_val},").unwrap()
+                                }
+                            }
+                        }
+                        syn::Item::Type(syn::ItemType {
+                            vis: syn::Visibility::Public(..),
+                            ident,
+                            ..
+                        }) => {
+                            if ty_name.as_ref().map(|s| *ident != s).unwrap_or(false) {
+                                return Err(format!(
+                                    "Invalid variant value type, expect type {ty_name:?} != {ident} in {}",
+                                    item.into_token_stream()
+                                ));
+                            }
+                            break;
+                        }
+                        _ => {
+                            return Err(format!(
+                                "Unexpected line, no pub const or pub type: {}",
+                                item.into_token_stream()
+                            ))
+                        }
+                    }
+                }
+                ret.extend_from_slice(b"}\n");
+
+                if !is_enum {
+                    writeln!(
+                        ret,
+                        r#"impl std::ops::BitAnd for {enum_name} {{
+        type Output = Self;
+        #[doc = " Returns the intersection between the two sets of flags."]
+        #[inline]
+        fn bitand(self, other: Self) -> Self {{
+            Self(self.0 & other.0)
+        }}
+    }}
+
+    impl std::ops::BitOr for {enum_name} {{
+        type Output = Self;
+        #[doc = " Returns the union of the two sets of flags."]
+        #[inline]
+        fn bitor(self, other: Self) -> Self {{
+            Self(self.0 | other.0)
+        }}
+    }}"#
+                    )
+                    .unwrap();
+                }
+
+                continue;
+            }
+        }
+        ret.extend_from_slice(item.into_token_stream().to_string().as_bytes());
+        ret.push(b'\n');
+    }
+
+    Ok(ret)
+}
+
+fn find_indent_in_enum_or_opt(
+    ident: &&syn::Ident,
+    c4_enum: &[String],
+    c4_opt: &[String],
+) -> Option<(bool, usize)> {
+    if let Some(pos) = c4_enum.iter().position(|n| *ident == n.as_str()) {
+        return Some((true, pos));
+    }
+    if let Some(pos) = c4_opt.iter().position(|n| *ident == n.as_str()) {
+        return Some((false, pos));
+    }
+    None
+}
+
+enum EnumHandling {
+    NewType,
+    Rust,
+}
+
+fn find_all_c4_enum_option(
+    couchbase_includes: &[String],
+) -> Result<(Vec<String>, Vec<String>), String> {
+    let mut c4_enum_names = Vec::new();
+    let mut c4_opt_names = Vec::new();
+    for c_include in couchbase_includes {
+        let file =
+            fs::File::open(c_include).map_err(|err| format!("Can not open {c_include}: {err}"))?;
+        let file = BufReader::new(file);
+        for line in file.lines() {
+            let line = line.map_err(|err| format!("Error during read from {c_include}: {err}"))?;
+            if line.starts_with("//")
+                || line.contains("C4_ENUM_ATTRIBUTES")
+                || line.contains("#define C4_ENUM")
+                || line.contains("#define C4_OPTIONS")
+                || line.contains("C4_OPTIONS_ATTRIBUTES")
+            {
+                continue;
+            }
+            if let Some(pos) = line.find("C4_ENUM") {
+                let name = extract_name_from_c4_macro("C4_ENUM", pos, &line)?;
+                println!("Found C4_ENUM {name}");
+                c4_enum_names.push(name);
+            }
+            if let Some(pos) = line.find("C4_OPTIONS") {
+                let name = extract_name_from_c4_macro("C4_OPTIONS", pos, &line)?;
+                println!("Found C4_OPTIONS {name}");
+                c4_opt_names.push(name);
+            }
+        }
+    }
+    Ok((c4_enum_names, c4_opt_names))
+}
+
+fn extract_name_from_c4_macro(
+    keyword: &str,
+    start_pos: usize,
+    line: &str,
+) -> Result<String, String> {
+    let rest = &line[start_pos + keyword.len()..];
+    let mut it = rest.chars();
+    if !matches!(it.next(), Some('(')) {
+        return Err(format!("Expect '(' after {keyword} {line}"));
+    }
+    let mut found_comma = false;
+    while let Some(ch) = it.next() {
+        if ch == ',' {
+            found_comma = true;
+            break;
+        }
+    }
+    if !found_comma {
+        return Err(format!("No ',' after '(' in {line}"));
+    }
+    let mut ret = String::new();
+    while let Some(ch) = it.next() {
+        if !ch.is_whitespace() {
+            ret.push(ch);
+            break;
+        }
+    }
+    if ret.is_empty() {
+        return Err(format!("No not whitespaces after ',' in {line}"));
+    }
+    let mut found_close_bracket = false;
+    while let Some(ch) = it.next() {
+        if ch != ')' {
+            ret.push(ch);
+        } else {
+            found_close_bracket = true;
+            break;
+        }
+    }
+
+    if !found_close_bracket {
+        return Err(format!("No ')' in {line}"));
+    }
+
+    Ok(ret)
 }
 
 #[cfg(feature = "build")]
@@ -407,10 +635,7 @@ fn cmake_build_src_dir(_src_dir: &Path, _is_msvc: bool) -> Vec<PathBuf> {
 
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "linux"))]
 fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std::error::Error>> {
-    use std::{
-        io::{Read, Write},
-        process::Stdio,
-    };
+    use std::{io::Read, process::Stdio};
 
     let mut include_dirs = Vec::new();
     let mut framework_dirs = Vec::new();
@@ -532,4 +757,16 @@ fn getenv_unwrap(v: &str) -> String {
 
 fn fail(s: &str) -> ! {
     panic!("\n{s}\n\nbuild script failed, must exit now")
+}
+
+#[derive(Debug, Default)]
+struct CollectIncludes(Arc<Mutex<Vec<String>>>);
+
+impl ParseCallbacks for CollectIncludes {
+    fn include_file(&self, filename: &str) {
+        // Tell cargo to invalidate the built crate whenever any of the
+        // included header files changed
+        println!("cargo:rerun-if-changed={}", filename);
+        self.0.lock().unwrap().push(filename.into());
+    }
 }

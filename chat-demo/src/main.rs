@@ -1,6 +1,6 @@
 use couchbase_lite::{
     fallible_streaming_iterator::FallibleStreamingIterator,
-    ffi::{kRevDeleted, kRevIsConflict, kRevPurged, C4RevisionFlags, FLDict},
+    ffi::{C4RevisionFlags, FLDict},
     resolve_conflict,
     serde_fleece::{from_fl_dict, Dict},
     C4DocumentEnded, C4String, Database, DatabaseFlags, DocEnumeratorFlags, Document, Replicator,
@@ -224,7 +224,7 @@ fn run_db_thread(
                 })
                 .with_documents_ended_callback(move |pushing: bool, doc_it: &mut dyn Iterator<Item = &C4DocumentEnded>| {
                     for doc in doc_it {
-                        if !pushing && (doc.flags & kRevIsConflict) != 0 {
+                        if !pushing && (doc.flags & C4RevisionFlags::kRevIsConflict) != C4RevisionFlags(0) {
                             let doc_id: &str = doc.docID.as_fl_slice().try_into().unwrap();
                             let doc_id = doc_id.to_string();
                             let rev_id = <&[u8]>::from(doc.revID.as_fl_slice()).to_vec();
@@ -324,7 +324,7 @@ fn print_external_changes(mdb: &mut Option<MyDb>) -> Result<(), Box<dyn std::err
             "observed change: doc id {} was changed, external {}, flags {}",
             change.doc_id()?,
             change.external(),
-            change.revision_flags(),
+            change.revision_flags().0,
         );
         if change.external() {
             doc_ids.insert(change.doc_id()?.into());
@@ -357,7 +357,8 @@ fn input_doc_filter(
     flags: C4RevisionFlags,
     body: FLDict,
 ) -> bool {
-    if (flags & (kRevDeleted | kRevPurged)) != 0 {
+    if (flags & (C4RevisionFlags::kRevDeleted | C4RevisionFlags::kRevPurged)) != C4RevisionFlags(0)
+    {
         return true;
     }
     let (coll_name, doc_id, rev_id) = (

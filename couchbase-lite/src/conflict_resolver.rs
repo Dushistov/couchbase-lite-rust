@@ -2,8 +2,8 @@ use crate::{
     document::C4DocumentOwner,
     error::{c4error_init, Error, Result},
     ffi::{
-        c4doc_resolveConflict, c4doc_save, c4doc_selectNextLeafRevision, kRevDeleted,
-        kRevIsConflict, C4DocContentLevel, C4RevisionFlags, FLSlice, FLSlice_Compare,
+        c4doc_resolveConflict, c4doc_save, c4doc_selectNextLeafRevision, C4DocContentLevel,
+        C4RevisionFlags, FLSlice, FLSlice_Compare,
     },
     Database,
 };
@@ -53,7 +53,9 @@ fn default_resolve_conflict(
     doc_id: &str,
     conflict: &C4DocumentOwner,
 ) -> Result<bool> {
-    let remote_doc = if (conflict.selected_revision().flags & kRevDeleted) != 0 {
+    let remote_doc = if (conflict.selected_revision().flags & C4RevisionFlags::kRevDeleted)
+        != C4RevisionFlags(0)
+    {
         None
     } else {
         Some(conflict)
@@ -61,7 +63,8 @@ fn default_resolve_conflict(
     let local_doc = db
         .do_internal_get_opt(doc_id, true, C4DocContentLevel::kDocGetAll)?
         .map(|doc| {
-            if (doc.selected_revision().flags & kRevDeleted) != 0 {
+            if (doc.selected_revision().flags & C4RevisionFlags::kRevDeleted) != C4RevisionFlags(0)
+            {
                 None
             } else {
                 Some(doc)
@@ -109,7 +112,7 @@ fn default_conflict_resolver<'b>(
 fn select_next_conflicting_revision(doc: &C4DocumentOwner) -> Result<bool> {
     let mut c4err = c4error_init();
     while unsafe { c4doc_selectNextLeafRevision(doc.0.as_ptr(), true, true, &mut c4err) } {
-        if (doc.selected_revision().flags & kRevIsConflict) != 0 {
+        if (doc.selected_revision().flags & C4RevisionFlags::kRevIsConflict) != C4RevisionFlags(0) {
             return Ok(true);
         }
     }
@@ -139,7 +142,7 @@ fn do_resolve_conflict(
         .revID
         .as_fl_slice();
     let loser = conflict_doc.revision_id();
-    let mut merge_flags: C4RevisionFlags = 0;
+    let mut merge_flags = C4RevisionFlags(0);
     let mut merge_body = FLSlice::default();
     // When useLocal (local wins) or useMerge is true, the new revision will be created
     // under the remote branch which is the winning branch. When useRemote (remote wins)
@@ -149,7 +152,7 @@ fn do_resolve_conflict(
             let body = resolved_doc.load_body()?;
             merge_body = body.into();
         } else {
-            merge_flags = kRevDeleted;
+            merge_flags = C4RevisionFlags::kRevDeleted;
         }
     }
     let mut c4err = c4error_init();

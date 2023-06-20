@@ -104,6 +104,6 @@ impl<'a> TryFrom<FLString> for &'a str {
 impl FLHeapSlice {
     #[inline]
     pub fn as_fl_slice(&self) -> FLSlice {
-        self._base
+        *self
     }
 }

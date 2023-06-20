@@ -4,10 +4,9 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4db_createIndex, c4db_getDoc, c4db_getDocumentCount, c4db_getIndexesInfo, c4db_getName,
-        c4db_getSharedFleeceEncoder, c4db_openNamed, c4db_release, kC4DB_Create, kC4DB_NoUpgrade,
-        kC4DB_NonObservable, kC4DB_ReadOnly, C4Database, C4DatabaseConfig2, C4DocContentLevel,
-        C4EncryptionAlgorithm, C4EncryptionKey, C4ErrorCode, C4ErrorDomain, C4IndexOptions,
-        C4IndexType,
+        c4db_getSharedFleeceEncoder, c4db_openNamed, c4db_release, C4Database, C4DatabaseConfig2,
+        C4DatabaseFlags, C4DocContentLevel, C4EncryptionAlgorithm, C4EncryptionKey, C4ErrorCode,
+        C4ErrorDomain, C4IndexOptions, C4IndexType,
     },
     index::{DbIndexesListIterator, IndexInfo, IndexOptions, IndexType},
     log_reroute::c4log_to_log_init,
@@ -39,13 +38,13 @@ bitflags! {
     #[repr(transparent)]
     pub struct DatabaseFlags: u32 {
         /// Create the file if it doesn't exist
-        const CREATE = kC4DB_Create;
+        const CREATE = C4DatabaseFlags::kC4DB_Create.0;
         /// Open file read-only
-        const READ_ONLY = kC4DB_ReadOnly;
+        const READ_ONLY = C4DatabaseFlags::kC4DB_ReadOnly.0;
         /// Disable upgrading an older-version database
-        const NO_UPGRADE = kC4DB_NoUpgrade;
+        const NO_UPGRADE = C4DatabaseFlags::kC4DB_NoUpgrade.0;
         /// Disable database/collection observers, for slightly faster writes
-        const NON_OBSERVABLE = kC4DB_NonObservable;
+        const NON_OBSERVABLE = C4DatabaseFlags::kC4DB_NonObservable.0;
     }
 }
 
@@ -63,7 +62,7 @@ impl<'a> DatabaseConfig<'a> {
         Self {
             inner: Ok(C4DatabaseConfig2 {
                 parentDirectory: os_path_utf8.into(),
-                flags: flags.bits(),
+                flags: C4DatabaseFlags(flags.bits()),
                 encryptionKey: C4EncryptionKey {
                     algorithm: C4EncryptionAlgorithm::kC4EncryptionNone,
                     bytes: [0; 32],

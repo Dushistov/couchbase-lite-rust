@@ -2,8 +2,7 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4doc_getRevisionBody, c4doc_loadRevisionBody, c4doc_release, c4rev_getGeneration,
-        kDocConflicted, kDocDeleted, kDocExists, kDocHasAttachments, C4Document, C4DocumentFlags,
-        C4Revision, FLSliceResult,
+        C4Document, C4DocumentFlags, C4Revision, FLSliceResult,
     },
 };
 use bitflags::bitflags;
@@ -22,13 +21,13 @@ pub struct Document {
 bitflags! {
     pub struct DocumentFlags: u32 {
         /// The document's current revision is deleted.
-        const DELETED         = kDocDeleted;
+        const DELETED         = C4DocumentFlags::kDocDeleted.0;
         /// The document is in conflict.
-        const CONFLICTED      = kDocConflicted;
+        const CONFLICTED      = C4DocumentFlags::kDocConflicted.0;
         /// The document's current revision has attachments.
-        const HAS_ATTACHMENTS = kDocHasAttachments;
+        const HAS_ATTACHMENTS = C4DocumentFlags::kDocHasAttachments.0;
         /// The document exists (i.e. has revisions.)
-        const EXISTS = kDocExists;
+        const EXISTS = C4DocumentFlags::kDocExists.0;
     }
 }
 
@@ -123,7 +122,7 @@ impl Document {
     pub fn flags(&self) -> Option<DocumentFlags> {
         self.inner
             .as_ref()
-            .map(|p| DocumentFlags::from_bits_truncate(p.flags()))
+            .map(|p| DocumentFlags::from_bits_truncate(p.flags().0))
     }
 
     #[inline]
@@ -167,7 +166,7 @@ impl Drop for C4DocumentOwner {
 
 impl C4DocumentOwner {
     pub(crate) fn exists(&self) -> bool {
-        (self.flags() & kDocExists) == kDocExists
+        (self.flags() & C4DocumentFlags::kDocExists) == C4DocumentFlags::kDocExists
     }
     fn flags(&self) -> C4DocumentFlags {
         unsafe { self.0.as_ref().flags }

@@ -3,7 +3,7 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4db_enumerateAllDocs, c4enum_free, c4enum_getDocument, c4enum_next, C4DocEnumerator,
-        C4EnumeratorOptions,
+        C4EnumeratorFlags, C4EnumeratorOptions,
     },
     Database,
 };
@@ -30,7 +30,9 @@ impl<'a> DocEnumerator<'a> {
         flags: DocEnumeratorFlags,
     ) -> Result<DocEnumerator<'a>> {
         let mut c4err = c4error_init();
-        let opts = C4EnumeratorOptions { flags: flags.bits };
+        let opts = C4EnumeratorOptions {
+            flags: C4EnumeratorFlags(flags.bits),
+        };
         let enum_ptr = unsafe { c4db_enumerateAllDocs(db.inner.0.as_ptr(), &opts, &mut c4err) };
         NonNull::new(enum_ptr)
             .map(|inner| DocEnumerator {

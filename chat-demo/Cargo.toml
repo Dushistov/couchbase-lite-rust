@@ -1,6 +1,6 @@
 [package]
 name = "chat-demo"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 edition = "2021"
 
@@ -13,7 +13,7 @@ use-couchbase-lite-websocket = ["couchbase-lite/use-couchbase-lite-websocket"]
 use-tokio-websocket = ["couchbase-lite/use-tokio-websocket", "couchbase-lite/use-native-tls"]
 
 [dependencies]
-couchbase-lite = { version = "0.15.0", default-features = false }
+couchbase-lite = { version = "0.16.0", default-features = false }
 env_logger = "0.9"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }

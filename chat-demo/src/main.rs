@@ -3,8 +3,8 @@ use couchbase_lite::{
     ffi::{C4RevisionFlags, FLDict},
     resolve_conflict,
     serde_fleece::{from_fl_dict, Dict},
-    C4DocumentEnded, C4String, Database, DatabaseFlags, DocEnumeratorFlags, Document, Replicator,
-    ReplicatorAuthentication, ReplicatorParameters, ReplicatorState,
+    C4CollectionSpec, C4DocumentEnded, C4String, Database, DatabaseFlags, DocEnumeratorFlags,
+    Document, Replicator, ReplicatorAuthentication, ReplicatorParameters, ReplicatorState,
 };
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
@@ -351,7 +351,7 @@ fn print_external_changes(mdb: &mut Option<MyDb>) -> Result<(), Box<dyn std::err
 }
 
 fn input_doc_filter(
-    coll_name: C4String,
+    coll_spec: C4CollectionSpec,
     doc_id: C4String,
     rev_id: C4String,
     flags: C4RevisionFlags,
@@ -362,7 +362,7 @@ fn input_doc_filter(
         return true;
     }
     let (coll_name, doc_id, rev_id) = (
-        str::from_utf8(coll_name.into()).unwrap(),
+        str::from_utf8(coll_spec.name.into()).unwrap(),
         str::from_utf8(doc_id.into()).unwrap(),
         str::from_utf8(rev_id.into()).unwrap(),
     );

@@ -1,6 +1,9 @@
 //! Code to help deal with C API
 
-use crate::{FLHeapSlice, FLSlice, FLSliceResult, FLSliceResult_Release, FLString};
+use crate::{
+    C4CollectionSpec, C4String, FLHeapSlice, FLSlice, FLSliceResult, FLSliceResult_Release,
+    FLString,
+};
 use std::{borrow::Cow, os::raw::c_void, ptr, slice, str};
 
 impl Default for FLSlice {
@@ -107,3 +110,28 @@ impl FLHeapSlice {
         *self
     }
 }
+
+// bindgen can not handle these constants properly, so redefine them
+// see https://github.com/rust-lang/rust-bindgen/issues/316
+macro_rules! flstr {
+    ($str:expr) => {
+        C4String {
+            buf: $str.as_bytes().as_ptr() as *const c_void,
+            size: $str.as_bytes().len() - 1,
+        }
+    };
+}
+
+/// #define kC4DefaultScopeID FLSTR("_default")
+#[allow(non_upper_case_globals)]
+pub const kC4DefaultScopeID: C4String = flstr!("_default\0");
+
+/// #define kC4DefaultCollectionName FLSTR("_default")
+#[allow(non_upper_case_globals)]
+pub const kC4DefaultCollectionName: C4String = flstr!("_default\0");
+
+#[allow(non_upper_case_globals)]
+pub const kC4DefaultCollectionSpec: C4CollectionSpec = C4CollectionSpec {
+    name: kC4DefaultCollectionName,
+    scope: kC4DefaultScopeID,
+};

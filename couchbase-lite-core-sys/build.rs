@@ -95,7 +95,6 @@ fn main() {
     let mut headers = vec![
         "c4.h",
         "fleece/FLSlice.h",
-        "c4Document+Fleece.h",
         "fleece/Fleece.h",
         "fleece/FLExpert.h",
     ];
@@ -151,7 +150,7 @@ fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::erro
     use which::which;
 
     const URL: &str = "https://github.com/Dushistov/couchbase-lite-core";
-    const COMMIT_SHA1: &str = "0d8d68be025a95a1cc061ec59d16f00c621be300";
+    const COMMIT_SHA1: &str = "a4a0e4f44b98928679b66ba072174f85b951bb6f";
 
     let git_path = which("git")?;
     let cur_dir = env::current_dir()?;
@@ -508,9 +507,11 @@ fn find_all_c4_enum_option(
             let line = line.map_err(|err| format!("Error during read from {c_include}: {err}"))?;
             if line.starts_with("//")
                 || line.contains("C4_ENUM_ATTRIBUTES")
-                || line.contains("#define C4_ENUM")
-                || line.contains("#define C4_OPTIONS")
+                || contains_define_of_enum_with_name(&line, "C4_ENUM")
+                || contains_define_of_enum_with_name(&line, "C4_OPTIONS")
                 || line.contains("C4_OPTIONS_ATTRIBUTES")
+                || line.contains("__C4_ENUM_##_name")
+                || line.contains("__C4_OPTIONS_##_name")
             {
                 continue;
             }
@@ -529,6 +530,34 @@ fn find_all_c4_enum_option(
     Ok((c4_enum_names, c4_opt_names))
 }
 
+fn contains_define_of_enum_with_name(line: &str, enum_name: &str) -> bool {
+    let Some(pos) = line.find(|ch: char| !ch.is_whitespace()) else {
+        return false;
+    };
+
+    if !line[pos..].starts_with('#') {
+        return false;
+    }
+    let line = &line[pos + 1..];
+
+    let Some(pos) = line.find(|ch: char| !ch.is_whitespace()) else {
+        return false;
+    };
+    const DEFINE: &str = "define";
+    if !line[pos..].starts_with(DEFINE) {
+        return false;
+    }
+    let line = &line[pos + DEFINE.len()..];
+    let Some(pos) = line.find(|ch: char| !ch.is_whitespace()) else {
+        return false;
+    };
+    if !line[pos..].starts_with(enum_name) {
+        return false;
+    }
+    let line = &line[pos + enum_name.len()..];
+    line.starts_with(' ')
+}
+
 fn extract_name_from_c4_macro(
     keyword: &str,
     start_pos: usize,
@@ -537,7 +566,7 @@ fn extract_name_from_c4_macro(
     let rest = &line[start_pos + keyword.len()..];
     let mut it = rest.chars();
     if !matches!(it.next(), Some('(')) {
-        return Err(format!("Expect '(' after {keyword} {line}"));
+        return Err(format!("Expect '(' after {keyword}: '{line}'"));
     }
     let mut found_comma = false;
     while let Some(ch) = it.next() {
@@ -597,7 +626,9 @@ fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> Vec<PathBuf> {
             .define("CMAKE_SHARED_LINKER_FLAGS", ld_flags);
     }
 
-    cmake_config.build_target(if !is_msvc { "all" } else { "ALL_BUILD" });
+    cmake_config.build_arg("LiteCoreStatic");
+    cmake_config.build_arg("FleeceStatic");
+    cmake_config.build_arg("BLIPStatic");
     let cmake_profile = cmake_config.get_profile().to_string();
     let dst = cmake_config.build().join("build");
 

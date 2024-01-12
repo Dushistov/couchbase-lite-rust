@@ -5,10 +5,11 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4address_fromURL, c4repl_free, c4repl_getStatus, c4repl_new, c4repl_retry, c4repl_start,
-        c4repl_stop, C4Address, C4DocumentEnded, C4Progress, C4Replicator,
-        C4ReplicatorActivityLevel, C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode,
-        C4ReplicatorParameters, C4ReplicatorStatus, C4ReplicatorStatusChangedCallback,
-        C4ReplicatorValidationFunction, C4RevisionFlags, C4String, FLDict, FLSliceResult,
+        c4repl_stop, kC4DefaultCollectionSpec, C4Address, C4CollectionSpec, C4DocumentEnded,
+        C4Progress, C4ReplicationCollection, C4Replicator, C4ReplicatorActivityLevel,
+        C4ReplicatorDocumentsEndedCallback, C4ReplicatorMode, C4ReplicatorParameters,
+        C4ReplicatorStatus, C4ReplicatorStatusChangedCallback, C4ReplicatorValidationFunction,
+        C4RevisionFlags, C4String, FLDict, FLSliceResult,
     },
     Database,
 };
@@ -193,7 +194,7 @@ macro_rules! define_trait_alias {
     };
 }
 
-define_trait_alias!(ReplicatorValidationFunction, FnMut(C4String, C4String, C4String, C4RevisionFlags, FLDict) -> bool + Send + 'static);
+define_trait_alias!(ReplicatorValidationFunction, FnMut(C4CollectionSpec, C4String, C4String, C4RevisionFlags, FLDict) -> bool + Send + 'static);
 define_trait_alias!(
     ReplicatorStatusChangedCallback,
     FnMut(ReplicatorState) + Send + 'static
@@ -218,7 +219,7 @@ impl Replicator {
         DocumentsEndedCallback: ReplicatorDocumentsEndedCallback,
     {
         unsafe extern "C" fn call_validation<F, F2, F3>(
-            coll_name: C4String,
+            coll_spec: C4CollectionSpec,
             doc_id: C4String,
             rev_id: C4String,
             flags: C4RevisionFlags,
@@ -236,7 +237,7 @@ impl Replicator {
                     !ctx.is_null(),
                     "Replicator::call_validation: Internal error - null function pointer"
                 );
-                ((*ctx).validation_cb)(coll_name, doc_id, rev_id, flags, body)
+                ((*ctx).validation_cb)(coll_spec, doc_id, rev_id, flags, body)
             });
             r.unwrap_or_else(|_| {
                 error!("Replicator::call_validation: catch panic aborting");
@@ -432,12 +433,17 @@ impl Replicator {
             ReplicatorAuthentication::None => serde_fleece::fleece!({}),
         }?;
 
-        let repl_params = C4ReplicatorParameters {
+        let mut collect_opt = C4ReplicationCollection {
+            collection: kC4DefaultCollectionSpec,
             push: mode.push,
             pull: mode.pull,
-            optionsDictFleece: options_dict.as_fl_slice(),
+            optionsDictFleece: Default::default(),
             pushFilter: None,
-            validationFunc: validation,
+            pullFilter: validation,
+            callbackContext: boxed_callback_f.as_ptr() as *mut c_void,
+        };
+
+        let repl_params = C4ReplicatorParameters {
             onStatusChanged: call_on_status_changed,
             onDocumentsEnded: call_on_documents_ended,
             onBlobProgress: None,
@@ -445,6 +451,9 @@ impl Replicator {
             propertyDecryptor: ptr::null_mut(),
             callbackContext: boxed_callback_f.as_ptr() as *mut c_void,
             socketFactory: ptr::null_mut(),
+            optionsDictFleece: options_dict.as_fl_slice(),
+            collections: &mut collect_opt,
+            collectionCount: 1,
         };
         let mut c4err = c4error_init();
         let repl = unsafe {

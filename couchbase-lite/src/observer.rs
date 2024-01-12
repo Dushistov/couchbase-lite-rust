@@ -1,8 +1,9 @@
 use crate::{
-    error::{Error, Result},
+    error::{c4error_init, Error, Result},
     ffi::{
-        c4dbobs_create, c4dbobs_free, c4dbobs_getChanges, c4dbobs_releaseChanges, C4DatabaseChange,
-        C4DatabaseObserver, C4RevisionFlags,
+        c4db_getCollection, c4dbobs_createOnCollection, c4dbobs_free, c4dbobs_getChanges,
+        c4dbobs_releaseChanges, kC4DefaultCollectionSpec, C4CollectionChange, C4CollectionObserver,
+        C4RevisionFlags,
     },
     Database,
 };
@@ -10,7 +11,7 @@ use log::error;
 use std::{mem::MaybeUninit, os::raw::c_void, panic::catch_unwind, process::abort, ptr::NonNull};
 
 pub(crate) struct DatabaseObserver {
-    inner: NonNull<C4DatabaseObserver>,
+    inner: NonNull<C4CollectionObserver>,
     free_callback_f: unsafe extern "C" fn(_: *mut c_void),
     boxed_callback_f: NonNull<c_void>,
 }
@@ -27,13 +28,13 @@ impl Drop for DatabaseObserver {
 impl DatabaseObserver {
     pub(crate) fn new<F>(db: &Database, callback_f: F) -> Result<DatabaseObserver>
     where
-        F: FnMut(*const C4DatabaseObserver) + Send + 'static,
+        F: FnMut(*const C4CollectionObserver) + Send + 'static,
     {
         unsafe extern "C" fn call_boxed_closure<F>(
-            obs: *mut C4DatabaseObserver,
+            obs: *mut C4CollectionObserver,
             context: *mut c_void,
         ) where
-            F: FnMut(*const C4DatabaseObserver) + Send,
+            F: FnMut(*const C4CollectionObserver) + Send,
         {
             let r = catch_unwind(|| {
                 let boxed_f = context as *mut F;
@@ -49,11 +50,20 @@ impl DatabaseObserver {
             }
         }
         let boxed_f: *mut F = Box::into_raw(Box::new(callback_f));
+        let mut error = c4error_init();
+        let collection = unsafe {
+            c4db_getCollection(db.inner.0.as_ptr(), kC4DefaultCollectionSpec, &mut error)
+        };
+        if collection.is_null() {
+            return Err(error.into());
+        }
+        let mut error = c4error_init();
         let obs = unsafe {
-            c4dbobs_create(
-                db.inner.0.as_ptr(),
+            c4dbobs_createOnCollection(
+                collection,
                 Some(call_boxed_closure::<F>),
                 boxed_f as *mut c_void,
+                &mut error,
             )
         };
         NonNull::new(obs)
@@ -64,7 +74,7 @@ impl DatabaseObserver {
             })
             .ok_or_else(|| {
                 unsafe { free_boxed_value::<F>(boxed_f as *mut c_void) };
-                Error::LogicError("c4dbobs_create return null".to_string())
+                error.into()
             })
     }
 
@@ -86,7 +96,7 @@ pub(crate) struct DbChangesIter<'obs> {
 
 #[derive(Debug)]
 pub struct DbChange {
-    inner: C4DatabaseChange,
+    inner: C4CollectionChange,
     external: bool,
 }
 
@@ -133,21 +143,14 @@ impl<'obs> Iterator for DbChangesIter<'obs> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let mut item = MaybeUninit::<C4DatabaseChange>::uninit();
-        let mut out_external = false;
-        let n = unsafe {
-            c4dbobs_getChanges(
-                self.obs.inner.as_ptr(),
-                item.as_mut_ptr(),
-                1,
-                &mut out_external,
-            )
-        };
-        if n > 0 {
+        let mut item = MaybeUninit::<C4CollectionChange>::uninit();
+        let observation =
+            unsafe { c4dbobs_getChanges(self.obs.inner.as_ptr(), item.as_mut_ptr(), 1) };
+        if observation.numChanges > 0 {
             let item = unsafe { item.assume_init() };
             Some(DbChange {
                 inner: item,
-                external: out_external,
+                external: observation.external,
             })
         } else {
             None

@@ -32,8 +32,13 @@ fn test_double_replicator_restart() {
         let params = ReplicatorParameters::default()
             .with_auth(auth.clone())
             .with_validation_func(
-                |coll_name: C4String, doc_id: C4String, rev_id: C4String, rev_flags, _body| {
-                    let coll_name: &str = unsafe { str::from_utf8_unchecked(coll_name.into()) };
+                |coll_spec: C4CollectionSpec,
+                 doc_id: C4String,
+                 rev_id: C4String,
+                 rev_flags,
+                 _body| {
+                    let coll_name: &str =
+                        unsafe { str::from_utf8_unchecked(coll_spec.name.into()) };
                     let doc_id: &str = unsafe { str::from_utf8_unchecked(doc_id.into()) };
                     let rev_id: &str = unsafe { str::from_utf8_unchecked(rev_id.into()) };
                     println!("Pull filter: {coll_name}, {doc_id}, {rev_id}, {rev_flags:?}");
@@ -126,8 +131,13 @@ fn start_repl_and_save_documents(
         let params = ReplicatorParameters::default()
             .with_auth(auth)
             .with_validation_func(
-                |coll_name: C4String, doc_id: C4String, rev_id: C4String, rev_flags, _body| {
-                    let coll_name: &str = unsafe { str::from_utf8_unchecked(coll_name.into()) };
+                |coll_spec: C4CollectionSpec,
+                 doc_id: C4String,
+                 rev_id: C4String,
+                 rev_flags,
+                 _body| {
+                    let coll_name: &str =
+                        unsafe { str::from_utf8_unchecked(coll_spec.name.into()) };
                     let doc_id: &str = unsafe { str::from_utf8_unchecked(doc_id.into()) };
                     let rev_id: &str = unsafe { str::from_utf8_unchecked(rev_id.into()) };
                     println!("Pull filter: {coll_name}, {doc_id}, {rev_id}, {rev_flags:?}");

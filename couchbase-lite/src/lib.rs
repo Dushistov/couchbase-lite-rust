@@ -69,6 +69,6 @@ pub use crate::{
 };
 pub use couchbase_lite_core_sys as ffi;
 pub use fallible_streaming_iterator;
-pub use ffi::{C4DocumentEnded, C4QueryLanguage as QueryLanguage, C4String};
+pub use ffi::{C4CollectionSpec, C4DocumentEnded, C4QueryLanguage as QueryLanguage, C4String};
 
 pub use serde_fleece;

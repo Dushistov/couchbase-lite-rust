@@ -2,8 +2,8 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4query_new2, c4query_release, c4query_run, c4query_setParameters, c4queryenum_next,
-        c4queryenum_release, kC4DefaultQueryOptions, C4Query, C4QueryEnumerator, C4String,
-        FLArrayIterator_GetCount, FLArrayIterator_GetValueAt, FLStringResult, FLValue,
+        c4queryenum_release, C4Query, C4QueryEnumerator, C4String, FLArrayIterator_GetCount,
+        FLArrayIterator_GetValueAt, FLStringResult, FLValue,
     },
     value::{FromValueRef, ValueRef},
     Database, QueryLanguage,
@@ -73,14 +73,7 @@ impl Query<'_> {
 
     pub fn run(&self) -> Result<Enumerator> {
         let mut c4err = c4error_init();
-        let it = unsafe {
-            c4query_run(
-                self.inner.as_ptr(),
-                &kC4DefaultQueryOptions,
-                C4String::default(),
-                &mut c4err,
-            )
-        };
+        let it = unsafe { c4query_run(self.inner.as_ptr(), C4String::default(), &mut c4err) };
 
         NonNull::new(it)
             .map(|inner| Enumerator {

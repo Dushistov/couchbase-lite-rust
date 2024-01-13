@@ -55,9 +55,9 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.8.2'
-      - uses: jwlawson/actions-setup-cmake@v1.4
+      - uses: jwlawson/actions-setup-cmake@v1.14
         with:
-          cmake-version: '3.14.7'
+          cmake-version: '3.21.x'
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install llvm tools on Windows
         if: matrix.os == 'windows-latest'
@@ -128,9 +128,9 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.8.2'
-      - uses: jwlawson/actions-setup-cmake@v1.4
+      - uses: jwlawson/actions-setup-cmake@v1.14
         with:
-          cmake-version: '3.15.4'
+          cmake-version: '3.21.x'
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check versions
         run: |
@@ -170,9 +170,9 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.8.2'
-      - uses: jwlawson/actions-setup-cmake@v1.4
+      - uses: jwlawson/actions-setup-cmake@v1.14
         with:
-          cmake-version: '3.14.7'
+          cmake-version: '3.21.x'
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Add fr_FR locale
         if: matrix.os == 'ubuntu-20.04'

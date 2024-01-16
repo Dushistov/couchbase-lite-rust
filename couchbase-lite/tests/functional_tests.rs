@@ -108,9 +108,11 @@ fn test_write_read() {
             ids_and_data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
             let mut ids_and_data_iter = ids_and_data.iter();
             while let Some(item) = iter.next().unwrap() {
+                let doc_info = item.get_doc_info().unwrap().unwrap();
                 let doc = item.get_doc().unwrap();
                 let (doc_id, foo) = ids_and_data_iter.next().unwrap();
                 assert_eq!(doc_id, doc.id());
+                assert_eq!(doc_id, doc_info.doc_id());
                 let loaded_foo: Foo = doc.decode_body().unwrap();
                 assert_eq!(
                     Foo {

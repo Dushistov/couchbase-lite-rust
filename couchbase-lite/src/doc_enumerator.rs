@@ -2,14 +2,14 @@ use crate::{
     document::{C4DocumentOwner, Document},
     error::{c4error_init, Error, Result},
     ffi::{
-        c4db_enumerateAllDocs, c4enum_free, c4enum_getDocument, c4enum_next, C4DocEnumerator,
-        C4EnumeratorFlags, C4EnumeratorOptions,
+        c4db_enumerateAllDocs, c4enum_free, c4enum_getDocument, c4enum_getDocumentInfo,
+        c4enum_next, C4DocEnumerator, C4DocumentInfo, C4EnumeratorFlags, C4EnumeratorOptions,
     },
     Database,
 };
 use bitflags::bitflags;
 use fallible_streaming_iterator::FallibleStreamingIterator;
-use std::ptr::NonNull;
+use std::{marker::PhantomData, mem::MaybeUninit, ptr::NonNull, str};
 
 pub struct DocEnumerator<'a> {
     _db: &'a Database,
@@ -21,6 +21,24 @@ impl Drop for DocEnumerator<'_> {
     #[inline]
     fn drop(&mut self) {
         unsafe { c4enum_free(self.inner.as_ptr()) };
+    }
+}
+
+pub struct DocumentInfo<'a, 'b> {
+    inner: C4DocumentInfo,
+    phantom: PhantomData<&'a DocEnumerator<'b>>,
+}
+
+impl<'a, 'b> DocumentInfo<'_, '_> {
+    pub(crate) fn new(inner: C4DocumentInfo) -> Self {
+        Self {
+            inner,
+            phantom: PhantomData,
+        }
+    }
+    #[inline]
+    pub fn doc_id(&self) -> &str {
+        unsafe { str::from_utf8_unchecked(self.inner.docID.into()) }
     }
 }
 
@@ -41,6 +59,17 @@ impl<'a> DocEnumerator<'a> {
                 reach_end: false,
             })
             .ok_or_else(|| c4err.into())
+    }
+
+    #[inline]
+    pub fn get_doc_info(&self) -> Result<Option<DocumentInfo>> {
+        let mut di = MaybeUninit::<C4DocumentInfo>::uninit();
+        if !unsafe { c4enum_getDocumentInfo(self.inner.as_ptr(), di.as_mut_ptr()) } {
+            return Ok(None);
+        }
+        let di = unsafe { di.assume_init() };
+
+        Ok(Some(DocumentInfo::new(di)))
     }
 
     pub fn get_doc(&self) -> Result<Document> {

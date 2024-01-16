@@ -59,7 +59,7 @@ mod value;
 pub use crate::{
     conflict_resolver::resolve_conflict,
     database::{Database, DatabaseConfig, DatabaseFlags},
-    doc_enumerator::DocEnumeratorFlags,
+    doc_enumerator::{DocEnumeratorFlags, DocumentInfo},
     document::{Document, DocumentFlags},
     error::Error,
     fallible_streaming_iterator::FallibleStreamingIterator,

@@ -15,7 +15,6 @@ use crate::{
 };
 use log::{error, info, trace};
 use std::{
-    convert::TryFrom,
     mem::{self, MaybeUninit},
     os::raw::c_void,
     panic::catch_unwind,

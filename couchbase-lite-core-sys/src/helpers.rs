@@ -47,7 +47,13 @@ impl<'a> From<&'a [u8]> for FLSlice {
 impl<'a> From<FLSlice> for &'a [u8] {
     #[inline]
     fn from(s: FLSlice) -> Self {
-        unsafe { slice::from_raw_parts(s.buf as *const u8, s.size) }
+        if s.size != 0 {
+            unsafe { slice::from_raw_parts(s.buf as *const u8, s.size) }
+        } else {
+            // pointer should not be null, even in zero case
+            // but pointer from FLSlice can be null in zero case, so:
+            &[]
+        }
     }
 }
 
@@ -135,3 +141,17 @@ pub const kC4DefaultCollectionSpec: C4CollectionSpec = C4CollectionSpec {
     name: kC4DefaultCollectionName,
     scope: kC4DefaultScopeID,
 };
+
+#[test]
+fn test_null_slice_handling() {
+    let ffi_null_slice = FLSlice {
+        buf: ptr::null(),
+        size: 0,
+    };
+    let slice: &[u8] = ffi_null_slice.into();
+    assert!(slice.is_empty());
+
+    let ffi_null_slice: FLSliceResult = unsafe { crate::FLSliceResult_New(0) };
+    let slice: &[u8] = ffi_null_slice.as_bytes();
+    assert!(slice.is_empty());
+}

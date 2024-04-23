@@ -1,3 +1,6 @@
+pub const kFLNoWrittenValue : i64 = - 9223372036854775808 ;
+pub const kC4EnvironmentTimezoneKey : & [u8 ; 3usize] = b"tz\0" ;
+pub const kC4EnvironmentSupportedLocales : & [u8 ; 18usize] = b"supported_locales\0" ;
 pub const kC4GeneratedIDLength : u32 = 23 ;
 pub const kC4ObjectTypeProperty : & [u8 ; 6usize] = b"@type\0" ;
 pub const kC4ObjectType_Blob : & [u8 ; 5usize] = b"blob\0" ;
@@ -19,6 +22,7 @@ pub const kC4ReplicatorOptionDisablePropertyDecryption : & [u8 ; 13usize] = b"no
 pub const kC4ReplicatorOptionMaxRetries : & [u8 ; 11usize] = b"maxRetries\0" ;
 pub const kC4ReplicatorOptionMaxRetryInterval : & [u8 ; 17usize] = b"maxRetryInterval\0" ;
 pub const kC4ReplicatorOptionAutoPurge : & [u8 ; 10usize] = b"autoPurge\0" ;
+pub const kC4ReplicatorOptionAcceptParentDomainCookies : & [u8 ; 26usize] = b"acceptParentDomainCookies\0" ;
 pub const kC4ReplicatorOptionRootCerts : & [u8 ; 10usize] = b"rootCerts\0" ;
 pub const kC4ReplicatorOptionPinnedServerCert : & [u8 ; 11usize] = b"pinnedCert\0" ;
 pub const kC4ReplicatorOptionOnlySelfSignedServerCert : & [u8 ; 21usize] = b"onlySelfSignedServer\0" ;
@@ -28,10 +32,12 @@ pub const kC4ReplicatorOptionAuthentication : & [u8 ; 5usize] = b"auth\0" ;
 pub const kC4ReplicatorOptionProxyServer : & [u8 ; 6usize] = b"proxy\0" ;
 pub const kC4ReplicatorHeartbeatInterval : & [u8 ; 10usize] = b"heartbeat\0" ;
 pub const kC4SocketOptionWSProtocols : & [u8 ; 13usize] = b"WS-Protocols\0" ;
+pub const kC4SocketOptionNetworkInterface : & [u8 ; 17usize] = b"networkInterface\0" ;
 pub const kC4ReplicatorCompressionLevel : & [u8 ; 21usize] = b"BLIPCompressionLevel\0" ;
 pub const kC4ReplicatorAuthType : & [u8 ; 5usize] = b"type\0" ;
 pub const kC4ReplicatorAuthUserName : & [u8 ; 9usize] = b"username\0" ;
 pub const kC4ReplicatorAuthPassword : & [u8 ; 9usize] = b"password\0" ;
+pub const kC4ReplicatorAuthEnableChallengeAuth : & [u8 ; 14usize] = b"challengeAuth\0" ;
 pub const kC4ReplicatorAuthClientCert : & [u8 ; 11usize] = b"clientCert\0" ;
 pub const kC4ReplicatorAuthClientCertKey : & [u8 ; 14usize] = b"clientCertKey\0" ;
 pub const kC4ReplicatorAuthToken : & [u8 ; 6usize] = b"token\0" ;
@@ -64,300 +70,6 @@ extern "C" { pub fn FLSlice_Copy (arg1 : FLSlice) -> FLSliceResult ; }
 extern "C" { pub fn _FLBuf_Retain (arg1 : * const :: std :: os :: raw :: c_void) ; }
 extern "C" { pub fn _FLBuf_Release (arg1 : * const :: std :: os :: raw :: c_void) ; }
 extern "C" { pub fn FL_WipeMemory (dst : * mut :: std :: os :: raw :: c_void , size : usize) ; }
-pub type __gnuc_va_list = __builtin_va_list ;
-pub type va_list = __gnuc_va_list ;
-
-    #[repr(transparent)]
-    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-    pub struct C4ErrorDomain(pub u8);
-impl C4ErrorDomain {
-    pub const LiteCoreDomain: C4ErrorDomain = C4ErrorDomain(1);
-    pub const POSIXDomain: C4ErrorDomain = C4ErrorDomain(2);
-    pub const SQLiteDomain: C4ErrorDomain = C4ErrorDomain(3);
-    pub const FleeceDomain: C4ErrorDomain = C4ErrorDomain(4);
-    pub const NetworkDomain: C4ErrorDomain = C4ErrorDomain(5);
-    pub const WebSocketDomain: C4ErrorDomain = C4ErrorDomain(6);
-    pub const MbedTLSDomain: C4ErrorDomain = C4ErrorDomain(7);
-    pub const kC4MaxErrorDomainPlus1: C4ErrorDomain = C4ErrorDomain(8);
-}
-
-    #[repr(transparent)]
-    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-    pub struct C4ErrorCode(pub i32);
-impl C4ErrorCode {
-    pub const kC4ErrorAssertionFailed: C4ErrorCode = C4ErrorCode(1);
-    pub const kC4ErrorUnimplemented: C4ErrorCode = C4ErrorCode(2);
-    pub const kC4ErrorUnsupportedEncryption: C4ErrorCode = C4ErrorCode(3);
-    pub const kC4ErrorBadRevisionID: C4ErrorCode = C4ErrorCode(4);
-    pub const kC4ErrorCorruptRevisionData: C4ErrorCode = C4ErrorCode(5);
-    pub const kC4ErrorNotOpen: C4ErrorCode = C4ErrorCode(6);
-    pub const kC4ErrorNotFound: C4ErrorCode = C4ErrorCode(7);
-    pub const kC4ErrorConflict: C4ErrorCode = C4ErrorCode(8);
-    pub const kC4ErrorInvalidParameter: C4ErrorCode = C4ErrorCode(9);
-    pub const kC4ErrorUnexpectedError: C4ErrorCode = C4ErrorCode(10);
-    pub const kC4ErrorCantOpenFile: C4ErrorCode = C4ErrorCode(11);
-    pub const kC4ErrorIOError: C4ErrorCode = C4ErrorCode(12);
-    pub const kC4ErrorMemoryError: C4ErrorCode = C4ErrorCode(13);
-    pub const kC4ErrorNotWriteable: C4ErrorCode = C4ErrorCode(14);
-    pub const kC4ErrorCorruptData: C4ErrorCode = C4ErrorCode(15);
-    pub const kC4ErrorBusy: C4ErrorCode = C4ErrorCode(16);
-    pub const kC4ErrorNotInTransaction: C4ErrorCode = C4ErrorCode(17);
-    pub const kC4ErrorTransactionNotClosed: C4ErrorCode = C4ErrorCode(18);
-    pub const kC4ErrorUnsupported: C4ErrorCode = C4ErrorCode(19);
-    pub const kC4ErrorNotADatabaseFile: C4ErrorCode = C4ErrorCode(20);
-    pub const kC4ErrorWrongFormat: C4ErrorCode = C4ErrorCode(21);
-    pub const kC4ErrorCrypto: C4ErrorCode = C4ErrorCode(22);
-    pub const kC4ErrorInvalidQuery: C4ErrorCode = C4ErrorCode(23);
-    pub const kC4ErrorMissingIndex: C4ErrorCode = C4ErrorCode(24);
-    pub const kC4ErrorInvalidQueryParam: C4ErrorCode = C4ErrorCode(25);
-    pub const kC4ErrorRemoteError: C4ErrorCode = C4ErrorCode(26);
-    pub const kC4ErrorDatabaseTooOld: C4ErrorCode = C4ErrorCode(27);
-    pub const kC4ErrorDatabaseTooNew: C4ErrorCode = C4ErrorCode(28);
-    pub const kC4ErrorBadDocID: C4ErrorCode = C4ErrorCode(29);
-    pub const kC4ErrorCantUpgradeDatabase: C4ErrorCode = C4ErrorCode(30);
-    pub const kC4ErrorDeltaBaseUnknown: C4ErrorCode = C4ErrorCode(31);
-    pub const kC4ErrorCorruptDelta: C4ErrorCode = C4ErrorCode(32);
-    pub const kC4NumErrorCodesPlus1: C4ErrorCode = C4ErrorCode(33);
-}
-
-    #[repr(transparent)]
-    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-    pub struct C4NetworkErrorCode(pub i32);
-impl C4NetworkErrorCode {
-    pub const kC4NetErrDNSFailure: C4NetworkErrorCode = C4NetworkErrorCode(1);
-    pub const kC4NetErrUnknownHost: C4NetworkErrorCode = C4NetworkErrorCode(2);
-    pub const kC4NetErrTimeout: C4NetworkErrorCode = C4NetworkErrorCode(3);
-    pub const kC4NetErrInvalidURL: C4NetworkErrorCode = C4NetworkErrorCode(4);
-    pub const kC4NetErrTooManyRedirects: C4NetworkErrorCode = C4NetworkErrorCode(5);
-    pub const kC4NetErrTLSHandshakeFailed: C4NetworkErrorCode = C4NetworkErrorCode(6);
-    pub const kC4NetErrTLSCertExpired: C4NetworkErrorCode = C4NetworkErrorCode(7);
-    pub const kC4NetErrTLSCertUntrusted: C4NetworkErrorCode = C4NetworkErrorCode(8);
-    pub const kC4NetErrTLSCertRequiredByPeer: C4NetworkErrorCode = C4NetworkErrorCode(9);
-    pub const kC4NetErrTLSCertRejectedByPeer: C4NetworkErrorCode = C4NetworkErrorCode(10);
-    pub const kC4NetErrTLSCertUnknownRoot: C4NetworkErrorCode = C4NetworkErrorCode(11);
-    pub const kC4NetErrInvalidRedirect: C4NetworkErrorCode = C4NetworkErrorCode(12);
-    pub const kC4NetErrUnknown: C4NetworkErrorCode = C4NetworkErrorCode(13);
-    pub const kC4NetErrTLSCertRevoked: C4NetworkErrorCode = C4NetworkErrorCode(14);
-    pub const kC4NetErrTLSCertNameMismatch: C4NetworkErrorCode = C4NetworkErrorCode(15);
-    pub const kC4NetErrNetworkReset: C4NetworkErrorCode = C4NetworkErrorCode(16);
-    pub const kC4NetErrConnectionAborted: C4NetworkErrorCode = C4NetworkErrorCode(17);
-    pub const kC4NetErrConnectionReset: C4NetworkErrorCode = C4NetworkErrorCode(18);
-    pub const kC4NetErrConnectionRefused: C4NetworkErrorCode = C4NetworkErrorCode(19);
-    pub const kC4NetErrNetworkDown: C4NetworkErrorCode = C4NetworkErrorCode(20);
-    pub const kC4NetErrNetworkUnreachable: C4NetworkErrorCode = C4NetworkErrorCode(21);
-    pub const kC4NetErrNotConnected: C4NetworkErrorCode = C4NetworkErrorCode(22);
-    pub const kC4NetErrHostDown: C4NetworkErrorCode = C4NetworkErrorCode(23);
-    pub const kC4NetErrHostUnreachable: C4NetworkErrorCode = C4NetworkErrorCode(24);
-    pub const kC4NetErrAddressNotAvailable: C4NetworkErrorCode = C4NetworkErrorCode(25);
-    pub const kC4NetErrBrokenPipe: C4NetworkErrorCode = C4NetworkErrorCode(26);
-    pub const kC4NumNetErrorCodesPlus1: C4NetworkErrorCode = C4NetworkErrorCode(27);
-}
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Error { pub domain : C4ErrorDomain , pub code : :: std :: os :: raw :: c_int , pub internal_info : :: std :: os :: raw :: c_uint , }
-extern "C" { pub fn c4error_getMessage (error : C4Error) -> FLStringResult ; }
-extern "C" { pub fn c4error_getDescription (error : C4Error) -> FLSliceResult ; }
-extern "C" { pub fn c4error_getDescriptionC (error : C4Error , outBuffer : * mut :: std :: os :: raw :: c_char , bufferSize : usize ,) -> * mut :: std :: os :: raw :: c_char ; }
-extern "C" { pub fn c4error_setCaptureBacktraces (arg1 : bool) ; }
-extern "C" { pub fn c4error_getCaptureBacktraces () -> bool ; }
-extern "C" { pub fn c4error_getBacktrace (error : C4Error) -> FLStringResult ; }
-extern "C" { pub fn c4error_make (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString ,) -> C4Error ; }
-extern "C" { pub fn c4error_printf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , ...) -> C4Error ; }
-extern "C" { pub fn c4error_vprintf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , args : * mut __va_list_tag ,) -> C4Error ; }
-extern "C" { pub fn c4error_return (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString , outError : * mut C4Error ,) ; }
-extern "C" { pub fn c4error_mayBeTransient (err : C4Error) -> bool ; }
-extern "C" { pub fn c4error_mayBeNetworkDependent (err : C4Error) -> bool ; }
-
-    #[repr(transparent)]
-    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-    pub struct C4LogLevel(pub i8);
-impl C4LogLevel {
-    pub const kC4LogDebug: C4LogLevel = C4LogLevel(0);
-    pub const kC4LogVerbose: C4LogLevel = C4LogLevel(1);
-    pub const kC4LogInfo: C4LogLevel = C4LogLevel(2);
-    pub const kC4LogWarning: C4LogLevel = C4LogLevel(3);
-    pub const kC4LogError: C4LogLevel = C4LogLevel(4);
-    pub const kC4LogNone: C4LogLevel = C4LogLevel(5);
-}
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct c4LogDomain { _unused : [u8 ; 0] , }
-pub type C4LogDomain = * mut c4LogDomain ;
-extern "C" { pub static kC4DefaultLog : C4LogDomain ; }
-extern "C" { pub static mut kC4DatabaseLog : C4LogDomain ; }
-extern "C" { pub static mut kC4QueryLog : C4LogDomain ; }
-extern "C" { pub static mut kC4SyncLog : C4LogDomain ; }
-extern "C" { pub static mut kC4WebSocketLog : C4LogDomain ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4LogFileOptions { pub log_level : C4LogLevel , pub base_path : FLString , pub max_size_bytes : i64 , pub max_rotate_count : i32 , pub use_plaintext : bool , pub header : FLString , }
-extern "C" { pub fn c4log_writeToBinaryFile (options : C4LogFileOptions , error : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4log_binaryFilePath () -> FLStringResult ; }
-extern "C" { pub fn c4log_flushLogFiles () ; }
-extern "C" { pub fn c4log_binaryFileLevel () -> C4LogLevel ; }
-extern "C" { pub fn c4log_setBinaryFileLevel (level : C4LogLevel) ; }
-extern "C" { pub fn c4log_writeToCallback (level : C4LogLevel , callback : :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : * mut __va_list_tag ,) , > , preformatted : bool ,) ; }
-extern "C" { pub fn c4log_getCallback () -> :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : * mut __va_list_tag ,) , > ; }
-extern "C" { pub fn c4log_callbackLevel () -> C4LogLevel ; }
-extern "C" { pub fn c4log_setCallbackLevel (level : C4LogLevel) ; }
-extern "C" { pub fn c4log_getDomain (name : * const :: std :: os :: raw :: c_char , create : bool) -> C4LogDomain ; }
-extern "C" { pub fn c4log_getDomainName (arg1 : C4LogDomain) -> * const :: std :: os :: raw :: c_char ; }
-extern "C" { pub fn c4log_getLevel (arg1 : C4LogDomain) -> C4LogLevel ; }
-extern "C" { pub fn c4log_willLog (arg1 : C4LogDomain , arg2 : C4LogLevel) -> bool ; }
-extern "C" { pub fn c4log_setLevel (c4Domain : C4LogDomain , level : C4LogLevel) ; }
-extern "C" { pub fn c4log_warnOnErrors (arg1 : bool) ; }
-extern "C" { pub fn c4log_getWarnOnErrors () -> bool ; }
-extern "C" { pub fn c4log_enableFatalExceptionBacktrace () ; }
-extern "C" { pub fn c4log (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , ...) ; }
-extern "C" { pub fn c4vlog (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , args : * mut __va_list_tag ,) ; }
-extern "C" { pub fn c4slog (domain : C4LogDomain , level : C4LogLevel , msg : FLString) ; }
-pub type C4Slice = FLSlice ;
-pub type C4HeapSlice = FLHeapSlice ;
-pub type C4SliceResult = FLSliceResult ;
-pub type C4String = C4Slice ;
-pub type C4HeapString = C4HeapSlice ;
-pub type C4StringResult = C4SliceResult ;
-pub type C4SequenceNumber = u64 ;
-pub type C4Timestamp = i64 ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ExtraInfo { pub pointer : * mut :: std :: os :: raw :: c_void , pub destructor : :: std :: option :: Option < unsafe extern "C" fn (ptr : * mut :: std :: os :: raw :: c_void) > , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4BlobStore { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Cert { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Collection { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Database { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionObserver { _unused : [u8 ; 0] , }
-pub type C4DatabaseObserver = C4CollectionObserver ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentObserver { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocEnumerator { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4KeyPair { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Listener { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Query { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4QueryObserver { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReadStream { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Replicator { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Socket { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4WriteStream { _unused : [u8 ; 0] , }
-extern "C" { pub fn c4base_retain (obj : * mut :: std :: os :: raw :: c_void) -> * mut :: std :: os :: raw :: c_void ; }
-extern "C" { pub fn c4base_release (obj : * mut :: std :: os :: raw :: c_void) ; }
-extern "C" { pub fn c4doc_retain (arg1 : * mut C4Document) -> * mut C4Document ; }
-extern "C" { pub fn c4queryenum_retain (arg1 : * mut C4QueryEnumerator) -> * mut C4QueryEnumerator ; }
-extern "C" { pub fn c4socket_retain (arg1 : * mut C4Socket) -> * mut C4Socket ; }
-extern "C" { pub fn c4doc_release (arg1 : * mut C4Document) ; }
-extern "C" { pub fn c4queryenum_release (arg1 : * mut C4QueryEnumerator) ; }
-extern "C" { pub fn c4socket_release (arg1 : * mut C4Socket) ; }
-extern "C" { pub fn c4dbobs_free (arg1 : * mut C4CollectionObserver) ; }
-extern "C" { pub fn c4docobs_free (arg1 : * mut C4DocumentObserver) ; }
-extern "C" { pub fn c4enum_free (arg1 : * mut C4DocEnumerator) ; }
-extern "C" { pub fn c4listener_free (arg1 : * mut C4Listener) ; }
-extern "C" { pub fn c4queryobs_free (arg1 : * mut C4QueryObserver) ; }
-extern "C" { pub fn c4raw_free (arg1 : * mut C4RawDocument) ; }
-extern "C" { pub fn c4repl_free (arg1 : * mut C4Replicator) ; }
-extern "C" { pub fn c4stream_close (arg1 : * mut C4ReadStream) ; }
-extern "C" { pub fn c4stream_closeWriter (arg1 : * mut C4WriteStream) ; }
-extern "C" { pub fn c4_getObjectCount () -> :: std :: os :: raw :: c_int ; }
-extern "C" { pub fn c4_dumpInstances () ; }
-extern "C" { pub fn c4_getBuildInfo () -> C4StringResult ; }
-extern "C" { pub fn c4_getVersion () -> C4StringResult ; }
-extern "C" { pub fn c4_now () -> C4Timestamp ; }
-extern "C" { pub fn c4_setTempDir (path : C4String , err : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4_runAsyncTask (task : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void) > , context : * mut :: std :: os :: raw :: c_void ,) ; }
-
-    #[repr(transparent)]
-    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-    pub struct C4DocumentFlags(pub u32);
-impl C4DocumentFlags {
-    pub const kDocDeleted: C4DocumentFlags = C4DocumentFlags(1);
-    pub const kDocConflicted: C4DocumentFlags = C4DocumentFlags(2);
-    pub const kDocHasAttachments: C4DocumentFlags = C4DocumentFlags(4);
-    pub const kDocExists: C4DocumentFlags = C4DocumentFlags(4096);
-}
-impl std::ops::BitAnd for C4DocumentFlags {
-        type Output = Self;
-        #[doc = " Returns the intersection between the two sets of flags."]
-        #[inline]
-        fn bitand(self, other: Self) -> Self {
-            Self(self.0 & other.0)
-        }
-    }
-
-    impl std::ops::BitOr for C4DocumentFlags {
-        type Output = Self;
-        #[doc = " Returns the union of the two sets of flags."]
-        #[inline]
-        fn bitor(self, other: Self) -> Self {
-            Self(self.0 | other.0)
-        }
-    }
-
-    #[repr(transparent)]
-    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-    pub struct C4RevisionFlags(pub u8);
-impl C4RevisionFlags {
-    pub const kRevDeleted: C4RevisionFlags = C4RevisionFlags(1);
-    pub const kRevLeaf: C4RevisionFlags = C4RevisionFlags(2);
-    pub const kRevNew: C4RevisionFlags = C4RevisionFlags(4);
-    pub const kRevHasAttachments: C4RevisionFlags = C4RevisionFlags(8);
-    pub const kRevKeepBody: C4RevisionFlags = C4RevisionFlags(16);
-    pub const kRevIsConflict: C4RevisionFlags = C4RevisionFlags(32);
-    pub const kRevClosed: C4RevisionFlags = C4RevisionFlags(64);
-    pub const kRevPurged: C4RevisionFlags = C4RevisionFlags(128);
-}
-impl std::ops::BitAnd for C4RevisionFlags {
-        type Output = Self;
-        #[doc = " Returns the intersection between the two sets of flags."]
-        #[inline]
-        fn bitand(self, other: Self) -> Self {
-            Self(self.0 & other.0)
-        }
-    }
-
-    impl std::ops::BitOr for C4RevisionFlags {
-        type Output = Self;
-        #[doc = " Returns the union of the two sets of flags."]
-        #[inline]
-        fn bitor(self, other: Self) -> Self {
-            Self(self.0 | other.0)
-        }
-    }
-pub type C4RemoteID = u32 ;
-
-    #[repr(transparent)]
-    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-    pub struct C4DocContentLevel(pub u8);
-impl C4DocContentLevel {
-    pub const kDocGetMetadata: C4DocContentLevel = C4DocContentLevel(0);
-    pub const kDocGetCurrentRev: C4DocContentLevel = C4DocContentLevel(1);
-    pub const kDocGetAll: C4DocContentLevel = C4DocContentLevel(2);
-}
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Revision { pub revID : C4HeapString , pub flags : C4RevisionFlags , pub sequence : C4SequenceNumber , }
-pub type C4DocDeltaApplier = :: std :: option :: Option < unsafe extern "C" fn (context : * mut :: std :: os :: raw :: c_void , doc : * mut C4Document , delta : C4Slice , outError : * mut C4Error ,) -> C4SliceResult , > ;
-# [repr (C)] # [derive (Debug)] pub struct C4DocPutRequest { pub body : C4String , pub docID : C4String , pub revFlags : C4RevisionFlags , pub existingRevision : bool , pub allowConflict : bool , pub history : * const C4String , pub historyCount : usize , pub save : bool , pub maxRevTreeDepth : u32 , pub remoteDBID : C4RemoteID , pub allocedBody : C4SliceResult , pub deltaCB : C4DocDeltaApplier , pub deltaCBContext : * mut :: std :: os :: raw :: c_void , pub deltaSourceRevID : C4String , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionChange { pub docID : C4HeapString , pub revID : C4HeapString , pub sequence : C4SequenceNumber , pub bodySize : u32 , pub flags : C4RevisionFlags , }
-pub type C4DatabaseChange = C4CollectionChange ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Document { pub _internal1 : * mut :: std :: os :: raw :: c_void , pub _internal2 : * mut :: std :: os :: raw :: c_void , pub flags : C4DocumentFlags , pub docID : C4HeapString , pub revID : C4HeapString , pub sequence : C4SequenceNumber , pub selectedRev : C4Revision , pub extraInfo : C4ExtraInfo , }
-extern "C" { pub fn c4doc_generateID (buffer : * mut :: std :: os :: raw :: c_char , bufferSize : usize ,) -> * mut :: std :: os :: raw :: c_char ; }
-extern "C" { pub fn c4db_getDoc (database : * mut C4Database , docID : C4String , mustExist : bool , content : C4DocContentLevel , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_get (database : * mut C4Database , docID : C4String , mustExist : bool , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_getBySequence (database : * mut C4Database , arg1 : C4SequenceNumber , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_save (doc : * mut C4Document , maxRevTreeDepth : u32 , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4doc_selectRevision (doc : * mut C4Document , revID : C4String , withBody : bool , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_selectCurrentRevision (doc : * mut C4Document) -> bool ; }
-extern "C" { pub fn c4doc_loadRevisionBody (doc : * mut C4Document , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4doc_hasRevisionBody (doc : * mut C4Document) -> bool ; }
-extern "C" { pub fn c4doc_getRevisionBody (doc : * mut C4Document) -> C4Slice ; }
-extern "C" { pub fn c4doc_getRevisionHistory (doc : * mut C4Document , maxRevs : :: std :: os :: raw :: c_uint , backToRevs : * const C4String , backToRevsCount : :: std :: os :: raw :: c_uint ,) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_getSelectedRevIDGlobalForm (doc : * mut C4Document) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_selectParentRevision (doc : * mut C4Document) -> bool ; }
-extern "C" { pub fn c4doc_selectNextRevision (doc : * mut C4Document) -> bool ; }
-extern "C" { pub fn c4doc_selectNextLeafRevision (doc : * mut C4Document , includeDeleted : bool , withBody : bool , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_selectCommonAncestorRevision (doc : * mut C4Document , rev1ID : C4String , rev2ID : C4String ,) -> bool ; }
-extern "C" { pub fn c4db_getRemoteDBID (db : * mut C4Database , remoteAddress : C4String , canCreate : bool , outError : * mut C4Error ,) -> C4RemoteID ; }
-extern "C" { pub fn c4db_getRemoteDBAddress (db : * mut C4Database , remoteID : C4RemoteID) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_getRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID ,) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_setRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID , revID : C4String , error : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4rev_getGeneration (revID : C4String) -> :: std :: os :: raw :: c_uint ; }
-extern "C" { pub fn c4rev_equal (rev1 : C4Slice , rev2 : C4Slice) -> bool ; }
-extern "C" { pub fn c4doc_purgeRevision (doc : * mut C4Document , revID : C4String , outError : * mut C4Error ,) -> i32 ; }
-extern "C" { pub fn c4doc_resolveConflict (doc : * mut C4Document , winningRevID : C4String , losingRevID : C4String , mergedBody : C4Slice , mergedFlags : C4RevisionFlags , error : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_purgeDoc (database : * mut C4Database , docID : C4String , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_setExpiration (db : * mut C4Database , docID : C4String , timestamp : C4Timestamp , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_getExpiration (db : * mut C4Database , docID : C4String , outError : * mut C4Error ,) -> C4Timestamp ; }
-extern "C" { pub fn c4doc_put (database : * mut C4Database , request : * const C4DocPutRequest , outCommonAncestorIndex : * mut usize , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_create (db : * mut C4Database , docID : C4String , body : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_update (doc : * mut C4Document , revisionBody : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _FLValue { _unused : [u8 ; 0] , }
 pub type FLValue = * const _FLValue ;
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _FLArray { _unused : [u8 ; 0] , }
@@ -445,12 +157,14 @@ extern "C" { pub fn FLDoc_GetSharedKeys (arg1 : FLDoc) -> FLSharedKeys ; }
 extern "C" { pub fn FLValue_FindDoc (arg1 : FLValue) -> FLDoc ; }
 extern "C" { pub fn FLDoc_SetAssociated (doc : FLDoc , pointer : * mut :: std :: os :: raw :: c_void , type_ : * const :: std :: os :: raw :: c_char ,) -> bool ; }
 extern "C" { pub fn FLDoc_GetAssociated (doc : FLDoc , type_ : * const :: std :: os :: raw :: c_char ,) -> * mut :: std :: os :: raw :: c_void ; }
+pub type __gnuc_va_list = __builtin_va_list ;
 pub type FILE = _IO_FILE ;
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_marker { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_codecvt { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_wide_data { _unused : [u8 ; 0] , }
 pub type _IO_lock_t = :: std :: os :: raw :: c_void ;
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_FILE { pub _flags : :: std :: os :: raw :: c_int , pub _IO_read_ptr : * mut :: std :: os :: raw :: c_char , pub _IO_read_end : * mut :: std :: os :: raw :: c_char , pub _IO_read_base : * mut :: std :: os :: raw :: c_char , pub _IO_write_base : * mut :: std :: os :: raw :: c_char , pub _IO_write_ptr : * mut :: std :: os :: raw :: c_char , pub _IO_write_end : * mut :: std :: os :: raw :: c_char , pub _IO_buf_base : * mut :: std :: os :: raw :: c_char , pub _IO_buf_end : * mut :: std :: os :: raw :: c_char , pub _IO_save_base : * mut :: std :: os :: raw :: c_char , pub _IO_backup_base : * mut :: std :: os :: raw :: c_char , pub _IO_save_end : * mut :: std :: os :: raw :: c_char , pub _markers : * mut _IO_marker , pub _chain : * mut _IO_FILE , pub _fileno : :: std :: os :: raw :: c_int , pub _flags2 : :: std :: os :: raw :: c_int , pub _old_offset : __off_t , pub _cur_column : :: std :: os :: raw :: c_ushort , pub _vtable_offset : :: std :: os :: raw :: c_schar , pub _shortbuf : [:: std :: os :: raw :: c_char ; 1usize] , pub _lock : * mut _IO_lock_t , pub _offset : __off64_t , pub _codecvt : * mut _IO_codecvt , pub _wide_data : * mut _IO_wide_data , pub _freeres_list : * mut _IO_FILE , pub _freeres_buf : * mut :: std :: os :: raw :: c_void , pub __pad5 : usize , pub _mode : :: std :: os :: raw :: c_int , pub _unused2 : [:: std :: os :: raw :: c_char ; 20usize] , }
+pub type va_list = __gnuc_va_list ;
 pub const FLEncoderFormat_kFLEncodeFleece : FLEncoderFormat = 0 ;
 pub const FLEncoderFormat_kFLEncodeJSON : FLEncoderFormat = 1 ;
 pub const FLEncoderFormat_kFLEncodeJSON5 : FLEncoderFormat = 2 ;
@@ -562,23 +276,6 @@ extern "C" { pub fn FLSlot_SetDouble (arg1 : FLSlot , arg2 : f64) ; }
 extern "C" { pub fn FLSlot_SetString (arg1 : FLSlot , arg2 : FLString) ; }
 extern "C" { pub fn FLSlot_SetData (arg1 : FLSlot , arg2 : FLSlice) ; }
 extern "C" { pub fn FLSlot_SetValue (arg1 : FLSlot , arg2 : FLValue) ; }
-extern "C" { pub fn c4doc_getProperties (arg1 : * mut C4Document) -> FLDict ; }
-extern "C" { pub fn c4doc_createFleeceDoc (arg1 : * mut C4Document) -> FLDoc ; }
-extern "C" { pub fn c4doc_resolveConflict2 (doc : * mut C4Document , winningRevID : C4String , losingRevID : C4String , mergedProperties : FLDict , mergedFlags : C4RevisionFlags , error : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_containingValue (value : FLValue) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_isOldMetaProperty (prop : C4String) -> bool ; }
-extern "C" { pub fn c4doc_hasOldMetaProperties (doc : FLDict) -> bool ; }
-extern "C" { pub fn c4doc_encodeStrippingOldMetaProperties (doc : FLDict , sk : FLSharedKeys , outError : * mut C4Error ,) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_getDictBlobKey (dict : FLDict , outKey : * mut C4BlobKey) -> bool ; }
-extern "C" { pub fn c4doc_dictIsBlob (dict : FLDict , outKey : * mut C4BlobKey) -> bool ; }
-extern "C" { pub fn c4doc_dictContainsBlobs (dict : FLDict) -> bool ; }
-extern "C" { pub fn c4doc_getBlobData (dict : FLDict , blobStore : * mut C4BlobStore , outError : * mut C4Error ,) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_blobIsCompressible (blobDict : FLDict) -> bool ; }
-extern "C" { pub fn c4doc_bodyAsJSON (doc : * mut C4Document , canonical : bool , outError : * mut C4Error ,) -> C4StringResult ; }
-extern "C" { pub fn c4db_createFleeceEncoder (db : * mut C4Database) -> FLEncoder ; }
-extern "C" { pub fn c4db_getSharedFleeceEncoder (db : * mut C4Database) -> FLEncoder ; }
-extern "C" { pub fn c4db_encodeJSON (arg1 : * mut C4Database , jsonData : C4String , outError : * mut C4Error ,) -> C4SliceResult ; }
-extern "C" { pub fn c4db_getFLSharedKeys (db : * mut C4Database) -> FLSharedKeys ; }
 extern "C" { pub fn FLCreateJSONDelta (old : FLValue , nuu : FLValue) -> FLSliceResult ; }
 extern "C" { pub fn FLEncodeJSONDelta (old : FLValue , nuu : FLValue , jsonEncoder : FLEncoder) -> bool ; }
 extern "C" { pub fn FLApplyJSONDelta (old : FLValue , jsonDelta : FLSlice , outError : * mut FLError ,) -> FLSliceResult ; }
@@ -594,6 +291,7 @@ extern "C" { pub fn FLSharedKeys_Encode (arg1 : FLSharedKeys , arg2 : FLString ,
 extern "C" { pub fn FLSharedKeys_Decode (arg1 : FLSharedKeys , key : :: std :: os :: raw :: c_int) -> FLString ; }
 extern "C" { pub fn FLSharedKeys_Count (arg1 : FLSharedKeys) -> :: std :: os :: raw :: c_uint ; }
 extern "C" { pub fn FLSharedKeys_RevertToCount (arg1 : FLSharedKeys , oldCount : :: std :: os :: raw :: c_uint) ; }
+extern "C" { pub fn FLSharedKeys_DisableCaching (arg1 : FLSharedKeys) ; }
 extern "C" { pub fn FLSharedKeys_Retain (arg1 : FLSharedKeys) -> FLSharedKeys ; }
 extern "C" { pub fn FLSharedKeys_Release (arg1 : FLSharedKeys) ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _FLSharedKeyScope { _unused : [u8 ; 0] , }
@@ -608,13 +306,204 @@ extern "C" { pub fn FLEncoder_GetBase (arg1 : FLEncoder) -> FLSlice ; }
 extern "C" { pub fn FLEncoder_SuppressTrailer (arg1 : FLEncoder) ; }
 extern "C" { pub fn FLEncoder_GetNextWritePos (arg1 : FLEncoder) -> usize ; }
 extern "C" { pub fn FLEncoder_LastValueWritten (arg1 : FLEncoder) -> isize ; }
-extern "C" { pub fn FLEncoder_WriteValueAgain (arg1 : FLEncoder , preWrittenValue : isize) ; }
+extern "C" { pub fn FLEncoder_WriteValueAgain (arg1 : FLEncoder , preWrittenValue : isize) -> bool ; }
 extern "C" { pub fn FLEncoder_Snip (arg1 : FLEncoder) -> FLSliceResult ; }
 extern "C" { pub fn FLEncoder_FinishItem (arg1 : FLEncoder) -> usize ; }
+extern "C" { pub fn FLJSONEncoder_NextDocument (arg1 : FLEncoder) ; }
 extern "C" { pub fn FLDump (arg1 : FLValue) -> * const :: std :: os :: raw :: c_char ; }
 extern "C" { pub fn FLDumpData (data : FLSlice) -> * const :: std :: os :: raw :: c_char ; }
 extern "C" { pub fn FLData_Dump (data : FLSlice) -> FLStringResult ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4BlobKey { pub bytes : [u8 ; 20usize] , }
+
+    #[repr(transparent)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub struct C4ErrorDomain(pub u8);
+impl C4ErrorDomain {
+    pub const LiteCoreDomain: C4ErrorDomain = C4ErrorDomain(1);
+    pub const POSIXDomain: C4ErrorDomain = C4ErrorDomain(2);
+    pub const SQLiteDomain: C4ErrorDomain = C4ErrorDomain(3);
+    pub const FleeceDomain: C4ErrorDomain = C4ErrorDomain(4);
+    pub const NetworkDomain: C4ErrorDomain = C4ErrorDomain(5);
+    pub const WebSocketDomain: C4ErrorDomain = C4ErrorDomain(6);
+    pub const MbedTLSDomain: C4ErrorDomain = C4ErrorDomain(7);
+    pub const kC4MaxErrorDomainPlus1: C4ErrorDomain = C4ErrorDomain(8);
+}
+
+    #[repr(transparent)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub struct C4ErrorCode(pub i32);
+impl C4ErrorCode {
+    pub const kC4ErrorAssertionFailed: C4ErrorCode = C4ErrorCode(1);
+    pub const kC4ErrorUnimplemented: C4ErrorCode = C4ErrorCode(2);
+    pub const kC4ErrorUnsupportedEncryption: C4ErrorCode = C4ErrorCode(3);
+    pub const kC4ErrorBadRevisionID: C4ErrorCode = C4ErrorCode(4);
+    pub const kC4ErrorCorruptRevisionData: C4ErrorCode = C4ErrorCode(5);
+    pub const kC4ErrorNotOpen: C4ErrorCode = C4ErrorCode(6);
+    pub const kC4ErrorNotFound: C4ErrorCode = C4ErrorCode(7);
+    pub const kC4ErrorConflict: C4ErrorCode = C4ErrorCode(8);
+    pub const kC4ErrorInvalidParameter: C4ErrorCode = C4ErrorCode(9);
+    pub const kC4ErrorUnexpectedError: C4ErrorCode = C4ErrorCode(10);
+    pub const kC4ErrorCantOpenFile: C4ErrorCode = C4ErrorCode(11);
+    pub const kC4ErrorIOError: C4ErrorCode = C4ErrorCode(12);
+    pub const kC4ErrorMemoryError: C4ErrorCode = C4ErrorCode(13);
+    pub const kC4ErrorNotWriteable: C4ErrorCode = C4ErrorCode(14);
+    pub const kC4ErrorCorruptData: C4ErrorCode = C4ErrorCode(15);
+    pub const kC4ErrorBusy: C4ErrorCode = C4ErrorCode(16);
+    pub const kC4ErrorNotInTransaction: C4ErrorCode = C4ErrorCode(17);
+    pub const kC4ErrorTransactionNotClosed: C4ErrorCode = C4ErrorCode(18);
+    pub const kC4ErrorUnsupported: C4ErrorCode = C4ErrorCode(19);
+    pub const kC4ErrorNotADatabaseFile: C4ErrorCode = C4ErrorCode(20);
+    pub const kC4ErrorWrongFormat: C4ErrorCode = C4ErrorCode(21);
+    pub const kC4ErrorCrypto: C4ErrorCode = C4ErrorCode(22);
+    pub const kC4ErrorInvalidQuery: C4ErrorCode = C4ErrorCode(23);
+    pub const kC4ErrorMissingIndex: C4ErrorCode = C4ErrorCode(24);
+    pub const kC4ErrorInvalidQueryParam: C4ErrorCode = C4ErrorCode(25);
+    pub const kC4ErrorRemoteError: C4ErrorCode = C4ErrorCode(26);
+    pub const kC4ErrorDatabaseTooOld: C4ErrorCode = C4ErrorCode(27);
+    pub const kC4ErrorDatabaseTooNew: C4ErrorCode = C4ErrorCode(28);
+    pub const kC4ErrorBadDocID: C4ErrorCode = C4ErrorCode(29);
+    pub const kC4ErrorCantUpgradeDatabase: C4ErrorCode = C4ErrorCode(30);
+    pub const kC4ErrorDeltaBaseUnknown: C4ErrorCode = C4ErrorCode(31);
+    pub const kC4ErrorCorruptDelta: C4ErrorCode = C4ErrorCode(32);
+    pub const kC4NumErrorCodesPlus1: C4ErrorCode = C4ErrorCode(33);
+}
+
+    #[repr(transparent)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub struct C4NetworkErrorCode(pub i32);
+impl C4NetworkErrorCode {
+    pub const kC4NetErrDNSFailure: C4NetworkErrorCode = C4NetworkErrorCode(1);
+    pub const kC4NetErrUnknownHost: C4NetworkErrorCode = C4NetworkErrorCode(2);
+    pub const kC4NetErrTimeout: C4NetworkErrorCode = C4NetworkErrorCode(3);
+    pub const kC4NetErrInvalidURL: C4NetworkErrorCode = C4NetworkErrorCode(4);
+    pub const kC4NetErrTooManyRedirects: C4NetworkErrorCode = C4NetworkErrorCode(5);
+    pub const kC4NetErrTLSHandshakeFailed: C4NetworkErrorCode = C4NetworkErrorCode(6);
+    pub const kC4NetErrTLSCertExpired: C4NetworkErrorCode = C4NetworkErrorCode(7);
+    pub const kC4NetErrTLSCertUntrusted: C4NetworkErrorCode = C4NetworkErrorCode(8);
+    pub const kC4NetErrTLSCertRequiredByPeer: C4NetworkErrorCode = C4NetworkErrorCode(9);
+    pub const kC4NetErrTLSCertRejectedByPeer: C4NetworkErrorCode = C4NetworkErrorCode(10);
+    pub const kC4NetErrTLSCertUnknownRoot: C4NetworkErrorCode = C4NetworkErrorCode(11);
+    pub const kC4NetErrInvalidRedirect: C4NetworkErrorCode = C4NetworkErrorCode(12);
+    pub const kC4NetErrUnknown: C4NetworkErrorCode = C4NetworkErrorCode(13);
+    pub const kC4NetErrTLSCertRevoked: C4NetworkErrorCode = C4NetworkErrorCode(14);
+    pub const kC4NetErrTLSCertNameMismatch: C4NetworkErrorCode = C4NetworkErrorCode(15);
+    pub const kC4NetErrNetworkReset: C4NetworkErrorCode = C4NetworkErrorCode(16);
+    pub const kC4NetErrConnectionAborted: C4NetworkErrorCode = C4NetworkErrorCode(17);
+    pub const kC4NetErrConnectionReset: C4NetworkErrorCode = C4NetworkErrorCode(18);
+    pub const kC4NetErrConnectionRefused: C4NetworkErrorCode = C4NetworkErrorCode(19);
+    pub const kC4NetErrNetworkDown: C4NetworkErrorCode = C4NetworkErrorCode(20);
+    pub const kC4NetErrNetworkUnreachable: C4NetworkErrorCode = C4NetworkErrorCode(21);
+    pub const kC4NetErrNotConnected: C4NetworkErrorCode = C4NetworkErrorCode(22);
+    pub const kC4NetErrHostDown: C4NetworkErrorCode = C4NetworkErrorCode(23);
+    pub const kC4NetErrHostUnreachable: C4NetworkErrorCode = C4NetworkErrorCode(24);
+    pub const kC4NetErrAddressNotAvailable: C4NetworkErrorCode = C4NetworkErrorCode(25);
+    pub const kC4NetErrBrokenPipe: C4NetworkErrorCode = C4NetworkErrorCode(26);
+    pub const kC4NetErrUnknownInterface: C4NetworkErrorCode = C4NetworkErrorCode(27);
+    pub const kC4NumNetErrorCodesPlus1: C4NetworkErrorCode = C4NetworkErrorCode(28);
+}
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Error { pub domain : C4ErrorDomain , pub code : :: std :: os :: raw :: c_int , pub internal_info : :: std :: os :: raw :: c_uint , }
+extern "C" { pub fn c4error_getMessage (error : C4Error) -> FLStringResult ; }
+extern "C" { pub fn c4error_getDescription (error : C4Error) -> FLSliceResult ; }
+extern "C" { pub fn c4error_getDescriptionC (error : C4Error , outBuffer : * mut :: std :: os :: raw :: c_char , bufferSize : usize ,) -> * mut :: std :: os :: raw :: c_char ; }
+extern "C" { pub fn c4error_setCaptureBacktraces (arg1 : bool) ; }
+extern "C" { pub fn c4error_getCaptureBacktraces () -> bool ; }
+extern "C" { pub fn c4error_getBacktrace (error : C4Error) -> FLStringResult ; }
+extern "C" { pub fn c4error_make (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString ,) -> C4Error ; }
+extern "C" { pub fn c4error_printf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , ...) -> C4Error ; }
+extern "C" { pub fn c4error_vprintf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , args : * mut __va_list_tag ,) -> C4Error ; }
+extern "C" { pub fn c4error_return (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString , outError : * mut C4Error ,) ; }
+extern "C" { pub fn c4error_mayBeTransient (err : C4Error) -> bool ; }
+extern "C" { pub fn c4error_mayBeNetworkDependent (err : C4Error) -> bool ; }
+
+    #[repr(transparent)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub struct C4LogLevel(pub i8);
+impl C4LogLevel {
+    pub const kC4LogDebug: C4LogLevel = C4LogLevel(0);
+    pub const kC4LogVerbose: C4LogLevel = C4LogLevel(1);
+    pub const kC4LogInfo: C4LogLevel = C4LogLevel(2);
+    pub const kC4LogWarning: C4LogLevel = C4LogLevel(3);
+    pub const kC4LogError: C4LogLevel = C4LogLevel(4);
+    pub const kC4LogNone: C4LogLevel = C4LogLevel(5);
+}
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct c4LogDomain { _unused : [u8 ; 0] , }
+pub type C4LogDomain = * mut c4LogDomain ;
+extern "C" { pub static kC4DefaultLog : C4LogDomain ; }
+extern "C" { pub static mut kC4DatabaseLog : C4LogDomain ; }
+extern "C" { pub static mut kC4QueryLog : C4LogDomain ; }
+extern "C" { pub static mut kC4SyncLog : C4LogDomain ; }
+extern "C" { pub static mut kC4WebSocketLog : C4LogDomain ; }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4LogFileOptions { pub log_level : C4LogLevel , pub base_path : FLString , pub max_size_bytes : i64 , pub max_rotate_count : i32 , pub use_plaintext : bool , pub header : FLString , }
+extern "C" { pub fn c4log_writeToBinaryFile (options : C4LogFileOptions , error : * mut C4Error) -> bool ; }
+extern "C" { pub fn c4log_binaryFilePath () -> FLStringResult ; }
+extern "C" { pub fn c4log_flushLogFiles () ; }
+extern "C" { pub fn c4log_binaryFileLevel () -> C4LogLevel ; }
+extern "C" { pub fn c4log_setBinaryFileLevel (level : C4LogLevel) ; }
+extern "C" { pub fn c4log_writeToCallback (level : C4LogLevel , callback : :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : * mut __va_list_tag ,) , > , preformatted : bool ,) ; }
+extern "C" { pub fn c4log_getCallback () -> :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : * mut __va_list_tag ,) , > ; }
+extern "C" { pub fn c4log_callbackLevel () -> C4LogLevel ; }
+extern "C" { pub fn c4log_setCallbackLevel (level : C4LogLevel) ; }
+extern "C" { pub fn c4log_getDomain (name : * const :: std :: os :: raw :: c_char , create : bool) -> C4LogDomain ; }
+extern "C" { pub fn c4log_getDomainName (arg1 : C4LogDomain) -> * const :: std :: os :: raw :: c_char ; }
+extern "C" { pub fn c4log_getLevel (arg1 : C4LogDomain) -> C4LogLevel ; }
+extern "C" { pub fn c4log_willLog (arg1 : C4LogDomain , arg2 : C4LogLevel) -> bool ; }
+extern "C" { pub fn c4log_setLevel (c4Domain : C4LogDomain , level : C4LogLevel) ; }
+extern "C" { pub fn c4log_warnOnErrors (arg1 : bool) ; }
+extern "C" { pub fn c4log_getWarnOnErrors () -> bool ; }
+extern "C" { pub fn c4log_enableFatalExceptionBacktrace () ; }
+extern "C" { pub fn c4log (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , ...) ; }
+extern "C" { pub fn c4vlog (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , args : * mut __va_list_tag ,) ; }
+extern "C" { pub fn c4slog (domain : C4LogDomain , level : C4LogLevel , msg : FLString) ; }
+pub type C4Slice = FLSlice ;
+pub type C4HeapSlice = FLHeapSlice ;
+pub type C4SliceResult = FLSliceResult ;
+pub type C4String = C4Slice ;
+pub type C4HeapString = C4HeapSlice ;
+pub type C4StringResult = C4SliceResult ;
+pub type C4SequenceNumber = u64 ;
+pub type C4Timestamp = i64 ;
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ExtraInfo { pub pointer : * mut :: std :: os :: raw :: c_void , pub destructor : :: std :: option :: Option < unsafe extern "C" fn (ptr : * mut :: std :: os :: raw :: c_void) > , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4BlobStore { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Cert { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Collection { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionObserver { _unused : [u8 ; 0] , }
+pub type C4DatabaseObserver = C4CollectionObserver ;
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Database { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentObserver { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocEnumerator { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4KeyPair { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Listener { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Query { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4QueryObserver { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReadStream { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Replicator { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Socket { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4WriteStream { _unused : [u8 ; 0] , }
+extern "C" { pub fn c4base_retain (obj : * mut :: std :: os :: raw :: c_void) -> * mut :: std :: os :: raw :: c_void ; }
+extern "C" { pub fn c4base_release (obj : * mut :: std :: os :: raw :: c_void) ; }
+extern "C" { pub fn c4doc_retain (arg1 : * mut C4Document) -> * mut C4Document ; }
+extern "C" { pub fn c4queryenum_retain (arg1 : * mut C4QueryEnumerator) -> * mut C4QueryEnumerator ; }
+extern "C" { pub fn c4socket_retain (arg1 : * mut C4Socket) -> * mut C4Socket ; }
+extern "C" { pub fn c4doc_release (arg1 : * mut C4Document) ; }
+extern "C" { pub fn c4queryenum_release (arg1 : * mut C4QueryEnumerator) ; }
+extern "C" { pub fn c4socket_release (arg1 : * mut C4Socket) ; }
+extern "C" { pub fn c4dbobs_free (arg1 : * mut C4CollectionObserver) ; }
+extern "C" { pub fn c4docobs_free (arg1 : * mut C4DocumentObserver) ; }
+extern "C" { pub fn c4enum_free (arg1 : * mut C4DocEnumerator) ; }
+extern "C" { pub fn c4listener_free (arg1 : * mut C4Listener) ; }
+extern "C" { pub fn c4queryobs_free (arg1 : * mut C4QueryObserver) ; }
+extern "C" { pub fn c4raw_free (arg1 : * mut C4RawDocument) ; }
+extern "C" { pub fn c4repl_free (arg1 : * mut C4Replicator) ; }
+extern "C" { pub fn c4stream_close (arg1 : * mut C4ReadStream) ; }
+extern "C" { pub fn c4stream_closeWriter (arg1 : * mut C4WriteStream) ; }
+extern "C" { pub fn c4_getObjectCount () -> :: std :: os :: raw :: c_int ; }
+extern "C" { pub fn c4_dumpInstances () ; }
+extern "C" { pub fn c4_getBuildInfo () -> C4StringResult ; }
+extern "C" { pub fn c4_getVersion () -> C4StringResult ; }
+extern "C" { pub fn c4_getEnvironmentInfo () -> C4SliceResult ; }
+extern "C" { pub fn c4_now () -> C4Timestamp ; }
+extern "C" { pub fn c4_setTempDir (path : C4String , err : * mut C4Error) -> bool ; }
+extern "C" { pub fn c4_runAsyncTask (task : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void) > , context : * mut :: std :: os :: raw :: c_void ,) ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -626,6 +515,7 @@ impl C4DatabaseFlags {
     pub const kC4DB_VersionVectors: C4DatabaseFlags = C4DatabaseFlags(8);
     pub const kC4DB_NoUpgrade: C4DatabaseFlags = C4DatabaseFlags(32);
     pub const kC4DB_NonObservable: C4DatabaseFlags = C4DatabaseFlags(64);
+    pub const kC4DB_FakeVectorClock: C4DatabaseFlags = C4DatabaseFlags(128);
 }
 impl std::ops::BitAnd for C4DatabaseFlags {
         type Output = Self;
@@ -663,6 +553,7 @@ impl C4EncryptionKeySize {
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DatabaseConfig2 { pub parentDirectory : C4Slice , pub flags : C4DatabaseFlags , pub encryptionKey : C4EncryptionKey , }
 extern "C" { pub static kC4DatabaseFilenameExtension : * const :: std :: os :: raw :: c_char ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4UUID { pub bytes : [u8 ; 16usize] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionSpec { pub name : C4String , pub scope : C4String , }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -708,6 +599,82 @@ extern "C" { pub fn c4stream_write (arg1 : * mut C4WriteStream , bytes : * const
 extern "C" { pub fn c4stream_bytesWritten (arg1 : * mut C4WriteStream) -> u64 ; }
 extern "C" { pub fn c4stream_computeBlobKey (arg1 : * mut C4WriteStream) -> C4BlobKey ; }
 extern "C" { pub fn c4stream_install (arg1 : * mut C4WriteStream , expectedKey : * const C4BlobKey , arg2 : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4cert_getValidTimespan (cert : * mut C4Cert , outCreated : * mut C4Timestamp , outExpires : * mut C4Timestamp ,) ; }
+
+    #[repr(transparent)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub struct C4DocumentFlags(pub u32);
+impl C4DocumentFlags {
+    pub const kDocDeleted: C4DocumentFlags = C4DocumentFlags(1);
+    pub const kDocConflicted: C4DocumentFlags = C4DocumentFlags(2);
+    pub const kDocHasAttachments: C4DocumentFlags = C4DocumentFlags(4);
+    pub const kDocExists: C4DocumentFlags = C4DocumentFlags(4096);
+}
+impl std::ops::BitAnd for C4DocumentFlags {
+        type Output = Self;
+        #[doc = " Returns the intersection between the two sets of flags."]
+        #[inline]
+        fn bitand(self, other: Self) -> Self {
+            Self(self.0 & other.0)
+        }
+    }
+
+    impl std::ops::BitOr for C4DocumentFlags {
+        type Output = Self;
+        #[doc = " Returns the union of the two sets of flags."]
+        #[inline]
+        fn bitor(self, other: Self) -> Self {
+            Self(self.0 | other.0)
+        }
+    }
+
+    #[repr(transparent)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub struct C4RevisionFlags(pub u8);
+impl C4RevisionFlags {
+    pub const kRevDeleted: C4RevisionFlags = C4RevisionFlags(1);
+    pub const kRevLeaf: C4RevisionFlags = C4RevisionFlags(2);
+    pub const kRevNew: C4RevisionFlags = C4RevisionFlags(4);
+    pub const kRevHasAttachments: C4RevisionFlags = C4RevisionFlags(8);
+    pub const kRevKeepBody: C4RevisionFlags = C4RevisionFlags(16);
+    pub const kRevIsConflict: C4RevisionFlags = C4RevisionFlags(32);
+    pub const kRevClosed: C4RevisionFlags = C4RevisionFlags(64);
+    pub const kRevPurged: C4RevisionFlags = C4RevisionFlags(128);
+}
+impl std::ops::BitAnd for C4RevisionFlags {
+        type Output = Self;
+        #[doc = " Returns the intersection between the two sets of flags."]
+        #[inline]
+        fn bitand(self, other: Self) -> Self {
+            Self(self.0 & other.0)
+        }
+    }
+
+    impl std::ops::BitOr for C4RevisionFlags {
+        type Output = Self;
+        #[doc = " Returns the union of the two sets of flags."]
+        #[inline]
+        fn bitor(self, other: Self) -> Self {
+            Self(self.0 | other.0)
+        }
+    }
+pub type C4RemoteID = u32 ;
+
+    #[repr(transparent)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub struct C4DocContentLevel(pub u8);
+impl C4DocContentLevel {
+    pub const kDocGetMetadata: C4DocContentLevel = C4DocContentLevel(0);
+    pub const kDocGetCurrentRev: C4DocContentLevel = C4DocContentLevel(1);
+    pub const kDocGetAll: C4DocContentLevel = C4DocContentLevel(2);
+    pub const kDocGetUpgraded: C4DocContentLevel = C4DocContentLevel(3);
+}
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Revision { pub revID : C4HeapString , pub flags : C4RevisionFlags , pub sequence : C4SequenceNumber , }
+pub type C4DocDeltaApplier = :: std :: option :: Option < unsafe extern "C" fn (context : * mut :: std :: os :: raw :: c_void , doc : * mut C4Document , delta : C4Slice , revFlags : * mut C4RevisionFlags , outError : * mut C4Error ,) -> C4SliceResult , > ;
+# [repr (C)] # [derive (Debug)] pub struct C4DocPutRequest { pub body : C4String , pub docID : C4String , pub revFlags : C4RevisionFlags , pub existingRevision : bool , pub allowConflict : bool , pub history : * const C4String , pub historyCount : usize , pub save : bool , pub maxRevTreeDepth : u32 , pub remoteDBID : C4RemoteID , pub allocedBody : C4SliceResult , pub deltaCB : C4DocDeltaApplier , pub deltaCBContext : * mut :: std :: os :: raw :: c_void , pub deltaSourceRevID : C4String , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionChange { pub docID : C4HeapString , pub revID : C4HeapString , pub sequence : C4SequenceNumber , pub bodySize : u32 , pub flags : C4RevisionFlags , }
+pub type C4DatabaseChange = C4CollectionChange ;
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionObservation { pub numChanges : u32 , pub external : bool , pub collection : * mut C4Collection , }
 
     #[repr(u32)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -730,13 +697,16 @@ impl C4IndexType {
     pub const kC4PredictiveIndex: C4IndexType = C4IndexType(3);
 }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4IndexOptions { pub language : * const :: std :: os :: raw :: c_char , pub ignoreDiacritics : bool , pub disableStemming : bool , pub stopWords : * const :: std :: os :: raw :: c_char , }
-extern "C" { pub fn c4db_getDefaultCollection (db : * mut C4Database) -> * mut C4Collection ; }
-extern "C" { pub fn c4db_hasCollection (db : * mut C4Database , name : C4String) -> bool ; }
-extern "C" { pub fn c4db_getCollection (db : * mut C4Database , name : C4String) -> * mut C4Collection ; }
-extern "C" { pub fn c4db_createCollection (db : * mut C4Database , name : C4String , outError : * mut C4Error ,) -> * mut C4Collection ; }
-extern "C" { pub fn c4db_deleteCollection (db : * mut C4Database , name : C4String , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_collectionNames (db : * mut C4Database) -> C4StringResult ; }
-extern "C" { pub fn c4coll_getName (arg1 : * mut C4Collection) -> C4String ; }
+extern "C" { pub fn c4db_getDefaultCollection (db : * mut C4Database , outError : * mut C4Error ,) -> * mut C4Collection ; }
+extern "C" { pub fn c4db_hasCollection (db : * mut C4Database , spec : C4CollectionSpec) -> bool ; }
+extern "C" { pub fn c4db_hasScope (db : * mut C4Database , name : C4String) -> bool ; }
+extern "C" { pub fn c4db_getCollection (db : * mut C4Database , spec : C4CollectionSpec , outError : * mut C4Error ,) -> * mut C4Collection ; }
+extern "C" { pub fn c4db_createCollection (db : * mut C4Database , spec : C4CollectionSpec , outError : * mut C4Error ,) -> * mut C4Collection ; }
+extern "C" { pub fn c4db_deleteCollection (db : * mut C4Database , spec : C4CollectionSpec , outError : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4db_collectionNames (db : * mut C4Database , inScope : C4String , outError : * mut C4Error ,) -> FLMutableArray ; }
+extern "C" { pub fn c4db_scopeNames (db : * mut C4Database , outError : * mut C4Error) -> FLMutableArray ; }
+extern "C" { pub fn c4coll_isValid (arg1 : * mut C4Collection) -> bool ; }
+extern "C" { pub fn c4coll_getSpec (arg1 : * mut C4Collection) -> C4CollectionSpec ; }
 extern "C" { pub fn c4coll_getDatabase (arg1 : * mut C4Collection) -> * mut C4Database ; }
 extern "C" { pub fn c4coll_getDocumentCount (arg1 : * mut C4Collection) -> u64 ; }
 extern "C" { pub fn c4coll_getLastSequence (arg1 : * mut C4Collection) -> C4SequenceNumber ; }
@@ -780,6 +750,56 @@ extern "C" { pub fn c4db_endTransaction (database : * mut C4Database , commit : 
 extern "C" { pub fn c4db_isInTransaction (database : * mut C4Database) -> bool ; }
 extern "C" { pub fn c4raw_get (database : * mut C4Database , storeName : C4String , docID : C4String , outError : * mut C4Error ,) -> * mut C4RawDocument ; }
 extern "C" { pub fn c4raw_put (database : * mut C4Database , storeName : C4String , key : C4String , meta : C4String , body : C4String , outError : * mut C4Error ,) -> bool ; }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Document { pub _internal1 : * mut :: std :: os :: raw :: c_void , pub _internal2 : * mut :: std :: os :: raw :: c_void , pub flags : C4DocumentFlags , pub docID : C4HeapString , pub revID : C4HeapString , pub sequence : C4SequenceNumber , pub selectedRev : C4Revision , pub extraInfo : C4ExtraInfo , }
+extern "C" { pub fn c4doc_generateID (buffer : * mut :: std :: os :: raw :: c_char , bufferSize : usize ,) -> * mut :: std :: os :: raw :: c_char ; }
+extern "C" { pub fn c4db_getDoc (database : * mut C4Database , docID : C4String , mustExist : bool , content : C4DocContentLevel , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { pub fn c4doc_get (database : * mut C4Database , docID : C4String , mustExist : bool , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { pub fn c4doc_getBySequence (database : * mut C4Database , arg1 : C4SequenceNumber , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { pub fn c4doc_save (doc : * mut C4Document , maxRevTreeDepth : u32 , outError : * mut C4Error) -> bool ; }
+extern "C" { pub fn c4doc_isRevRejected (doc : * mut C4Document) -> bool ; }
+extern "C" { pub fn c4doc_selectRevision (doc : * mut C4Document , revID : C4String , withBody : bool , outError : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4doc_selectCurrentRevision (doc : * mut C4Document) -> bool ; }
+extern "C" { pub fn c4doc_loadRevisionBody (doc : * mut C4Document , outError : * mut C4Error) -> bool ; }
+extern "C" { pub fn c4doc_hasRevisionBody (doc : * mut C4Document) -> bool ; }
+extern "C" { pub fn c4doc_getRevisionBody (doc : * mut C4Document) -> C4Slice ; }
+extern "C" { pub fn c4doc_getRevisionHistory (doc : * mut C4Document , maxRevs : :: std :: os :: raw :: c_uint , backToRevs : * const C4String , backToRevsCount : :: std :: os :: raw :: c_uint ,) -> C4SliceResult ; }
+extern "C" { pub fn c4doc_getSelectedRevIDGlobalForm (doc : * mut C4Document) -> C4SliceResult ; }
+extern "C" { pub fn c4doc_selectParentRevision (doc : * mut C4Document) -> bool ; }
+extern "C" { pub fn c4doc_selectNextRevision (doc : * mut C4Document) -> bool ; }
+extern "C" { pub fn c4doc_selectNextLeafRevision (doc : * mut C4Document , includeDeleted : bool , withBody : bool , outError : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4doc_selectCommonAncestorRevision (doc : * mut C4Document , rev1ID : C4String , rev2ID : C4String ,) -> bool ; }
+extern "C" { pub fn c4db_getRemoteDBID (db : * mut C4Database , remoteAddress : C4String , canCreate : bool , outError : * mut C4Error ,) -> C4RemoteID ; }
+extern "C" { pub fn c4db_getRemoteDBAddress (db : * mut C4Database , remoteID : C4RemoteID) -> C4SliceResult ; }
+extern "C" { pub fn c4doc_getRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID ,) -> C4SliceResult ; }
+extern "C" { pub fn c4doc_setRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID , revID : C4String , error : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4rev_getGeneration (revID : C4String) -> :: std :: os :: raw :: c_uint ; }
+extern "C" { pub fn c4rev_getTimestamp (revID : C4String) -> u64 ; }
+extern "C" { pub fn c4rev_equal (rev1 : C4Slice , rev2 : C4Slice) -> bool ; }
+extern "C" { pub fn c4doc_purgeRevision (doc : * mut C4Document , revID : C4String , outError : * mut C4Error ,) -> i32 ; }
+extern "C" { pub fn c4doc_resolveConflict (doc : * mut C4Document , winningRevID : C4String , losingRevID : C4String , mergedBody : C4Slice , mergedFlags : C4RevisionFlags , error : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4db_purgeDoc (database : * mut C4Database , docID : C4String , outError : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4doc_setExpiration (db : * mut C4Database , docID : C4String , timestamp : C4Timestamp , outError : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4doc_getExpiration (db : * mut C4Database , docID : C4String , outError : * mut C4Error ,) -> C4Timestamp ; }
+extern "C" { pub fn c4doc_put (database : * mut C4Database , request : * const C4DocPutRequest , outCommonAncestorIndex : * mut usize , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { pub fn c4doc_create (db : * mut C4Database , docID : C4String , body : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { pub fn c4doc_update (doc : * mut C4Document , revisionBody : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { pub fn c4doc_getProperties (arg1 : * mut C4Document) -> FLDict ; }
+extern "C" { pub fn c4doc_createFleeceDoc (arg1 : * mut C4Document) -> FLDoc ; }
+extern "C" { pub fn c4doc_resolveConflict2 (doc : * mut C4Document , winningRevID : C4String , losingRevID : C4String , mergedProperties : FLDict , mergedFlags : C4RevisionFlags , error : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4doc_containingValue (value : FLValue) -> * mut C4Document ; }
+extern "C" { pub fn c4doc_isOldMetaProperty (prop : C4String) -> bool ; }
+extern "C" { pub fn c4doc_hasOldMetaProperties (doc : FLDict) -> bool ; }
+extern "C" { pub fn c4doc_encodeStrippingOldMetaProperties (doc : FLDict , sk : FLSharedKeys , outError : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { pub fn c4doc_getDictBlobKey (dict : FLDict , outKey : * mut C4BlobKey) -> bool ; }
+extern "C" { pub fn c4doc_dictIsBlob (dict : FLDict , outKey : * mut C4BlobKey) -> bool ; }
+extern "C" { pub fn c4doc_dictContainsBlobs (dict : FLDict) -> bool ; }
+extern "C" { pub fn c4doc_getBlobData (dict : FLDict , blobStore : * mut C4BlobStore , outError : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { pub fn c4doc_blobIsCompressible (blobDict : FLDict) -> bool ; }
+extern "C" { pub fn c4doc_bodyAsJSON (doc : * mut C4Document , canonical : bool , outError : * mut C4Error ,) -> C4StringResult ; }
+extern "C" { pub fn c4db_createFleeceEncoder (db : * mut C4Database) -> FLEncoder ; }
+extern "C" { pub fn c4db_getSharedFleeceEncoder (db : * mut C4Database) -> FLEncoder ; }
+extern "C" { pub fn c4db_encodeJSON (arg1 : * mut C4Database , jsonData : C4String , outError : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { pub fn c4db_getFLSharedKeys (db : * mut C4Database) -> FLSharedKeys ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -860,24 +880,23 @@ impl C4PrivateKeyRepresentation {
 pub type C4ListenerCertAuthCallback = :: std :: option :: Option < unsafe extern "C" fn (listener : * mut C4Listener , clientCertData : C4Slice , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
 pub type C4ListenerHTTPAuthCallback = :: std :: option :: Option < unsafe extern "C" fn (listener : * mut C4Listener , authHeader : C4Slice , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4TLSConfig { pub privateKeyRepresentation : C4PrivateKeyRepresentation , pub key : * mut C4KeyPair , pub certificate : * mut C4Cert , pub requireClientCerts : bool , pub rootClientCerts : * mut C4Cert , pub certAuthCallback : C4ListenerCertAuthCallback , pub tlsCallbackContext : * mut :: std :: os :: raw :: c_void , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ListenerConfig { pub port : u16 , pub networkInterface : C4String , pub apis : C4ListenerAPIs , pub tlsConfig : * mut C4TLSConfig , pub httpAuthCallback : C4ListenerHTTPAuthCallback , pub callbackContext : * mut :: std :: os :: raw :: c_void , pub directory : C4String , pub allowCreateDBs : bool , pub allowDeleteDBs : bool , pub allowPush : bool , pub allowPull : bool , pub enableDeltaSync : bool , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ListenerConfig { pub port : u16 , pub networkInterface : C4String , pub apis : C4ListenerAPIs , pub tlsConfig : * mut C4TLSConfig , pub httpAuthCallback : C4ListenerHTTPAuthCallback , pub callbackContext : * mut :: std :: os :: raw :: c_void , pub directory : C4String , pub allowCreateDBs : bool , pub allowDeleteDBs : bool , pub allowCreateCollections : bool , pub allowDeleteCollections : bool , pub allowPush : bool , pub allowPull : bool , pub enableDeltaSync : bool , }
 extern "C" { pub fn c4listener_availableAPIs () -> C4ListenerAPIs ; }
 extern "C" { pub fn c4listener_start (config : * const C4ListenerConfig , error : * mut C4Error ,) -> * mut C4Listener ; }
 extern "C" { pub fn c4listener_shareDB (listener : * mut C4Listener , name : C4String , db : * mut C4Database , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4listener_unshareDB (listener : * mut C4Listener , db : * mut C4Database , outError : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4listener_shareCollection (listener : * mut C4Listener , name : C4String , collection : * mut C4Collection , outError : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4listener_unshareCollection (listener : * mut C4Listener , name : C4String , collection : * mut C4Collection , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4listener_getURLs (listener : * const C4Listener , db : * mut C4Database , api : C4ListenerAPIs , err : * mut C4Error ,) -> FLMutableArray ; }
 extern "C" { pub fn c4listener_getPort (listener : * const C4Listener) -> u16 ; }
 extern "C" { pub fn c4listener_getConnectionStatus (listener : * const C4Listener , connectionCount : * mut :: std :: os :: raw :: c_uint , activeConnectionCount : * mut :: std :: os :: raw :: c_uint ,) ; }
 extern "C" { pub fn c4db_URINameFromPath (path : C4String) -> C4StringResult ; }
 pub type C4CollectionObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4CollectionObserver , context : * mut :: std :: os :: raw :: c_void) , > ;
-pub type C4DatabaseObserverCallback = C4CollectionObserverCallback ;
-extern "C" { pub fn c4dbobs_create (database : * mut C4Database , callback : C4DatabaseObserverCallback , context : * mut :: std :: os :: raw :: c_void ,) -> * mut C4DatabaseObserver ; }
-extern "C" { pub fn c4dbobs_createOnCollection (collection : * mut C4Collection , callback : C4CollectionObserverCallback , context : * mut :: std :: os :: raw :: c_void ,) -> * mut C4CollectionObserver ; }
-extern "C" { pub fn c4dbobs_getChanges (observer : * mut C4CollectionObserver , outChanges : * mut C4CollectionChange , maxChanges : u32 , outExternal : * mut bool ,) -> u32 ; }
+extern "C" { pub fn c4dbobs_createOnCollection (collection : * mut C4Collection , callback : C4CollectionObserverCallback , context : * mut :: std :: os :: raw :: c_void , error : * mut C4Error ,) -> * mut C4CollectionObserver ; }
+extern "C" { pub fn c4dbobs_getChanges (observer : * mut C4CollectionObserver , outChanges : * mut C4CollectionChange , maxChanges : u32 ,) -> C4CollectionObservation ; }
 extern "C" { pub fn c4dbobs_releaseChanges (changes : * mut C4CollectionChange , numChanges : u32) ; }
-pub type C4DocumentObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4DocumentObserver , docID : C4String , sequence : C4SequenceNumber , context : * mut :: std :: os :: raw :: c_void ,) , > ;
-extern "C" { pub fn c4docobs_create (database : * mut C4Database , docID : C4String , callback : C4DocumentObserverCallback , context : * mut :: std :: os :: raw :: c_void ,) -> * mut C4DocumentObserver ; }
-extern "C" { pub fn c4docobs_createWithCollection (collection : * mut C4Collection , docID : C4String , callback : C4DocumentObserverCallback , context : * mut :: std :: os :: raw :: c_void ,) -> * mut C4DocumentObserver ; }
+pub type C4DocumentObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4DocumentObserver , collection : * mut C4Collection , docID : C4String , sequence : C4SequenceNumber , context : * mut :: std :: os :: raw :: c_void ,) , > ;
+extern "C" { pub fn c4docobs_createWithCollection (collection : * mut C4Collection , docID : C4String , callback : C4DocumentObserverCallback , context : * mut :: std :: os :: raw :: c_void , error : * mut C4Error ,) -> * mut C4DocumentObserver ; }
 pub type C4QueryObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4QueryObserver , query : * mut C4Query , context : * mut :: std :: os :: raw :: c_void ,) , > ;
 extern "C" { pub fn c4queryobs_create (query : * mut C4Query , callback : C4QueryObserverCallback , context : * mut :: std :: os :: raw :: c_void ,) -> * mut C4QueryObserver ; }
 extern "C" { pub fn c4queryobs_setEnabled (obs : * mut C4QueryObserver , enabled : bool) ; }
@@ -887,7 +906,7 @@ extern "C" { pub fn c4query_explain (arg1 : * mut C4Query) -> C4StringResult ; }
 extern "C" { pub fn c4query_columnCount (arg1 : * mut C4Query) -> :: std :: os :: raw :: c_uint ; }
 extern "C" { pub fn c4query_columnTitle (arg1 : * mut C4Query , column : :: std :: os :: raw :: c_uint) -> FLString ; }
 extern "C" { pub fn c4query_setParameters (query : * mut C4Query , encodedParameters : C4String) ; }
-extern "C" { pub fn c4query_run (query : * mut C4Query , options : * const C4QueryOptions , encodedParameters : C4String , outError : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
+extern "C" { pub fn c4query_run (query : * mut C4Query , encodedParameters : C4String , outError : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
 extern "C" { pub fn c4query_fullTextMatched (query : * mut C4Query , term : * const C4FullTextMatch , outError : * mut C4Error ,) -> C4StringResult ; }
 extern "C" { pub fn c4queryenum_next (e : * mut C4QueryEnumerator , outError : * mut C4Error) -> bool ; }
 extern "C" { pub fn c4queryenum_getRowCount (e : * mut C4QueryEnumerator , outError : * mut C4Error) -> i64 ; }
@@ -954,14 +973,15 @@ impl C4ReplicatorProgressLevel {
     pub const kC4ReplProgressPerAttachment: C4ReplicatorProgressLevel = C4ReplicatorProgressLevel(2);
 }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicatorStatus { pub level : C4ReplicatorActivityLevel , pub progress : C4Progress , pub error : C4Error , pub flags : C4ReplicatorStatusFlags , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentEnded { pub collectionName : C4HeapString , pub docID : C4HeapString , pub revID : C4HeapString , pub flags : C4RevisionFlags , pub sequence : C4SequenceNumber , pub error : C4Error , pub errorIsTransient : bool , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentEnded { pub collectionSpec : C4CollectionSpec , pub docID : C4HeapString , pub revID : C4HeapString , pub flags : C4RevisionFlags , pub sequence : C4SequenceNumber , pub error : C4Error , pub errorIsTransient : bool , pub collectionContext : * mut :: std :: os :: raw :: c_void , }
 pub type C4ReplicatorStatusChangedCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , arg2 : C4ReplicatorStatus , context : * mut :: std :: os :: raw :: c_void ,) , > ;
 pub type C4ReplicatorDocumentsEndedCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , pushing : bool , numDocs : usize , docs : * mut * const C4DocumentEnded , context : * mut :: std :: os :: raw :: c_void ,) , > ;
-pub type C4ReplicatorBlobProgressCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , pushing : bool , collectionName : C4String , docID : C4String , docProperty : C4String , blobKey : C4BlobKey , bytesComplete : u64 , bytesTotal : u64 , error : C4Error , context : * mut :: std :: os :: raw :: c_void ,) , > ;
-pub type C4ReplicatorValidationFunction = :: std :: option :: Option < unsafe extern "C" fn (collectionName : C4String , docID : C4String , revID : C4String , arg1 : C4RevisionFlags , body : FLDict , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
+pub type C4ReplicatorBlobProgressCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , pushing : bool , collectionSpec : C4CollectionSpec , docID : C4String , docProperty : C4String , blobKey : C4BlobKey , bytesComplete : u64 , bytesTotal : u64 , error : C4Error , context : * mut :: std :: os :: raw :: c_void ,) , > ;
+pub type C4ReplicatorValidationFunction = :: std :: option :: Option < unsafe extern "C" fn (collectionSpec : C4CollectionSpec , docID : C4String , revID : C4String , arg1 : C4RevisionFlags , body : FLDict , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
 pub type C4ReplicatorPropertyEncryptionCallback = * mut :: std :: os :: raw :: c_void ;
 pub type C4ReplicatorPropertyDecryptionCallback = * mut :: std :: os :: raw :: c_void ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicatorParameters { pub push : C4ReplicatorMode , pub pull : C4ReplicatorMode , pub optionsDictFleece : C4Slice , pub pushFilter : C4ReplicatorValidationFunction , pub validationFunc : C4ReplicatorValidationFunction , pub onStatusChanged : C4ReplicatorStatusChangedCallback , pub onDocumentsEnded : C4ReplicatorDocumentsEndedCallback , pub onBlobProgress : C4ReplicatorBlobProgressCallback , pub propertyEncryptor : C4ReplicatorPropertyEncryptionCallback , pub propertyDecryptor : C4ReplicatorPropertyDecryptionCallback , pub callbackContext : * mut :: std :: os :: raw :: c_void , pub socketFactory : * const C4SocketFactory , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicationCollection { pub collection : C4CollectionSpec , pub push : C4ReplicatorMode , pub pull : C4ReplicatorMode , pub optionsDictFleece : C4Slice , pub pushFilter : C4ReplicatorValidationFunction , pub pullFilter : C4ReplicatorValidationFunction , pub callbackContext : * mut :: std :: os :: raw :: c_void , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicatorParameters { pub optionsDictFleece : C4Slice , pub onStatusChanged : C4ReplicatorStatusChangedCallback , pub onDocumentsEnded : C4ReplicatorDocumentsEndedCallback , pub onBlobProgress : C4ReplicatorBlobProgressCallback , pub propertyEncryptor : C4ReplicatorPropertyEncryptionCallback , pub propertyDecryptor : C4ReplicatorPropertyDecryptionCallback , pub callbackContext : * mut :: std :: os :: raw :: c_void , pub socketFactory : * const C4SocketFactory , pub collections : * mut C4ReplicationCollection , pub collectionCount : usize , }
 extern "C" { pub fn c4repl_isValidDatabaseName (dbName : C4String) -> bool ; }
 extern "C" { pub fn c4repl_isValidRemote (remoteAddress : C4Address , remoteDatabaseName : C4String , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4address_fromURL (url : C4String , address : * mut C4Address , dbName : * mut C4String) -> bool ; }
@@ -976,11 +996,11 @@ extern "C" { pub fn c4repl_setSuspended (repl : * mut C4Replicator , suspended :
 extern "C" { pub fn c4repl_setOptions (repl : * mut C4Replicator , optionsDictFleece : C4Slice) ; }
 extern "C" { pub fn c4repl_getStatus (repl : * mut C4Replicator) -> C4ReplicatorStatus ; }
 extern "C" { pub fn c4repl_getResponseHeaders (repl : * mut C4Replicator) -> C4Slice ; }
-extern "C" { pub fn c4repl_getPendingDocIDs (repl : * mut C4Replicator , outErr : * mut C4Error) -> C4SliceResult ; }
-extern "C" { pub fn c4repl_isDocumentPending (repl : * mut C4Replicator , docID : C4String , outErr : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4repl_getPendingDocIDs (repl : * mut C4Replicator , spec : C4CollectionSpec , outErr : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { pub fn c4repl_isDocumentPending (repl : * mut C4Replicator , docID : C4String , spec : C4CollectionSpec , outErr : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4repl_getPeerTLSCertificate (repl : * mut C4Replicator , outErr : * mut C4Error ,) -> * mut C4Cert ; }
 extern "C" { pub fn c4repl_setProgressLevel (repl : * mut C4Replicator , level : C4ReplicatorProgressLevel , outErr : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_setCookie (db : * mut C4Database , setCookieHeader : C4String , fromHost : C4String , fromPath : C4String , outError : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4db_setCookie (db : * mut C4Database , setCookieHeader : C4String , fromHost : C4String , fromPath : C4String , acceptParentDomain : bool , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4db_getCookies (db : * mut C4Database , request : C4Address , error : * mut C4Error ,) -> C4StringResult ; }
 extern "C" { pub fn c4db_clearCookies (db : * mut C4Database) ; }
 

@@ -11,7 +11,7 @@ on:
     - cron: '00 02 */4 * *'
 env:
   RUST_BACKTRACE: 1
-  CLC_STABLE_HASH: "a4a0e4f44b98928679b66ba072174f85b951bb6f"
+  CLC_STABLE_HASH: "ca11326a119e4b5544649903354bffaa9debd33c"
 jobs:
   rust-tests:
     name: Rust tests
@@ -27,11 +27,11 @@ jobs:
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Checkout couchbase-lite-core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: 'couchbase/couchbase-lite-core'
+          repository: 'dushistov/couchbase-lite-core'
           ref: ${{ env.CLC_STABLE_HASH }}
           submodules: 'recursive'
           path: 'couchbase-lite-core'
@@ -107,11 +107,11 @@ jobs:
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Checkout couchbase-lite-core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: 'couchbase/couchbase-lite-core'
+          repository: 'dushistov/couchbase-lite-core'
           ref: ${{ env.CLC_STABLE_HASH }}
           submodules: 'recursive'
           path: 'couchbase-lite-core'
@@ -156,11 +156,11 @@ jobs:
       matrix:
         os: [ubuntu-20.04, macos-13]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Checkout couchbase-lite-core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: 'couchbase/couchbase-lite-core'
+          repository: 'dushistov/couchbase-lite-core'
           ref: ${{ env.CLC_STABLE_HASH }}
           submodules: 'recursive'
           path: 'couchbase-lite-core'
@@ -192,11 +192,11 @@ jobs:
     name: Checks with rustc/nightly
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Checkout couchbase-lite-core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: 'couchbase/couchbase-lite-core'
+          repository: 'dushistov/couchbase-lite-core'
           ref: ${{ env.CLC_STABLE_HASH }}
           submodules: 'recursive'
           path: 'couchbase-lite-core'

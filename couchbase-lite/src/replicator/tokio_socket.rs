@@ -685,11 +685,6 @@ unsafe fn tungstenite_err_to_c4_err(err: tungstenite::Error) -> Error {
             C4ErrorDomain::NetworkDomain,
             C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
         ),
-        #[cfg(feature = "tls")]
-        Tls(_) => (
-            C4ErrorDomain::NetworkDomain,
-            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
-        ),
         Capacity(_) => (
             C4ErrorDomain::NetworkDomain,
             C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,

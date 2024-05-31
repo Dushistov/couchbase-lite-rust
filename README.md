@@ -1,4 +1,4 @@
-# couchbase-lite-rust [![Build Status](https://github.com/Dushistov/couchbase-lite-rust/workflows/CI/badge.svg)](https://github.com/Dushistov/couchbase-lite-rust/actions?query=workflow%3ACI+branch%3Amaster)
+# couchbase-lite-rust [![Build Status](https://github.com/Dushistov/couchbase-lite-rust/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/Dushistov/couchbase-lite-rust/actions?query=workflow%3ACI+branch%3Amaster)
 
 Rust wrapper for couchbase-lite-core lightweight, embedded, syncable NoSQL database engine.
 

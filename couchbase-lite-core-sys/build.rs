@@ -150,7 +150,7 @@ fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::erro
     use which::which;
 
     const URL: &str = "https://github.com/Dushistov/couchbase-lite-core";
-    const COMMIT_SHA1: &str = "ae71ce2ffc4f0e0096c0a93ead2995c8c3e92d75";
+    const COMMIT_SHA1: &str = "c00205c9138dc71da5890d936c92226dedfe6952";
 
     let git_path = which("git")?;
     let cur_dir = env::current_dir()?;

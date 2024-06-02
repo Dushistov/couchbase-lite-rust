@@ -181,7 +181,11 @@ fn test_de_primitive() {
     test_primive_ser_deser!(i8 i16 i32 i64 u8 u16 u32 u64);
     assert_eq!(-1_i32, ser_deser(&-1_i32).unwrap());
     assert_eq!(-1e10f32, ser_deser(&-1e10f32).unwrap());
+    assert_eq!(f32::MAX, ser_deser(&f32::MAX).unwrap());
+    assert_eq!(f32::MIN, ser_deser(&f32::MIN).unwrap());
     assert_eq!(-1e10f64, ser_deser(&-1e10f64).unwrap());
+    assert_eq!(f64::MAX, ser_deser(&f64::MAX).unwrap());
+    assert_eq!(f64::MIN, ser_deser(&f64::MIN).unwrap());
     assert_eq!("Ну что?", ser_deser(&"Ну что?".to_string()).unwrap());
     let expect = 'ю';
     assert_eq!(expect, ser_deser(&expect).unwrap());

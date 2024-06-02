@@ -30,7 +30,7 @@ def build_and_test_cpp_part(src_root: str) -> None:
     cmake_src_dir = os.environ["CORE_SRC"]
     mkdir_if_not_exists(cmake_build_dir)
     print("Current path: %s" % os.environ["PATH"])
-    check_call(["cmake", "-DCMAKE_BUILD_TYPE=RelWithDebInfo", cmake_src_dir],
+    check_call(["cmake", "-DCMAKE_BUILD_TYPE=RelWithDebInfo", "-DCMAKE_POSITION_INDEPENDENT_CODE=On", cmake_src_dir],
                cwd = cmake_build_dir)
     check_call(["ls"], cwd = cmake_build_dir)
     check_call(["cmake", "--build", ".", "--", "-j%d" % (cpu_count() + 1)],

@@ -1,4 +1,91 @@
 pub const kFLNoWrittenValue : i64 = - 9223372036854775808 ;
+pub const kInvalidID : u32 = 0 ;
+pub const kCFCoreFoundationVersionNumber10_0 : f64 = 196.4 ;
+pub const kCFCoreFoundationVersionNumber10_0_3 : f64 = 196.5 ;
+pub const kCFCoreFoundationVersionNumber10_1 : f64 = 226.0 ;
+pub const kCFCoreFoundationVersionNumber10_1_1 : f64 = 226.0 ;
+pub const kCFCoreFoundationVersionNumber10_1_2 : f64 = 227.2 ;
+pub const kCFCoreFoundationVersionNumber10_1_3 : f64 = 227.2 ;
+pub const kCFCoreFoundationVersionNumber10_1_4 : f64 = 227.3 ;
+pub const kCFCoreFoundationVersionNumber10_2 : f64 = 263.0 ;
+pub const kCFCoreFoundationVersionNumber10_2_1 : f64 = 263.1 ;
+pub const kCFCoreFoundationVersionNumber10_2_2 : f64 = 263.1 ;
+pub const kCFCoreFoundationVersionNumber10_2_3 : f64 = 263.3 ;
+pub const kCFCoreFoundationVersionNumber10_2_4 : f64 = 263.3 ;
+pub const kCFCoreFoundationVersionNumber10_2_5 : f64 = 263.5 ;
+pub const kCFCoreFoundationVersionNumber10_2_6 : f64 = 263.5 ;
+pub const kCFCoreFoundationVersionNumber10_2_7 : f64 = 263.5 ;
+pub const kCFCoreFoundationVersionNumber10_2_8 : f64 = 263.5 ;
+pub const kCFCoreFoundationVersionNumber10_3 : f64 = 299.0 ;
+pub const kCFCoreFoundationVersionNumber10_3_1 : f64 = 299.0 ;
+pub const kCFCoreFoundationVersionNumber10_3_2 : f64 = 299.0 ;
+pub const kCFCoreFoundationVersionNumber10_3_3 : f64 = 299.3 ;
+pub const kCFCoreFoundationVersionNumber10_3_4 : f64 = 299.31 ;
+pub const kCFCoreFoundationVersionNumber10_3_5 : f64 = 299.31 ;
+pub const kCFCoreFoundationVersionNumber10_3_6 : f64 = 299.32 ;
+pub const kCFCoreFoundationVersionNumber10_3_7 : f64 = 299.33 ;
+pub const kCFCoreFoundationVersionNumber10_3_8 : f64 = 299.33 ;
+pub const kCFCoreFoundationVersionNumber10_3_9 : f64 = 299.35 ;
+pub const kCFCoreFoundationVersionNumber10_4 : f64 = 368.0 ;
+pub const kCFCoreFoundationVersionNumber10_4_1 : f64 = 368.1 ;
+pub const kCFCoreFoundationVersionNumber10_4_2 : f64 = 368.11 ;
+pub const kCFCoreFoundationVersionNumber10_4_3 : f64 = 368.18 ;
+pub const kCFCoreFoundationVersionNumber10_4_4_Intel : f64 = 368.26 ;
+pub const kCFCoreFoundationVersionNumber10_4_4_PowerPC : f64 = 368.25 ;
+pub const kCFCoreFoundationVersionNumber10_4_5_Intel : f64 = 368.26 ;
+pub const kCFCoreFoundationVersionNumber10_4_5_PowerPC : f64 = 368.25 ;
+pub const kCFCoreFoundationVersionNumber10_4_6_Intel : f64 = 368.26 ;
+pub const kCFCoreFoundationVersionNumber10_4_6_PowerPC : f64 = 368.25 ;
+pub const kCFCoreFoundationVersionNumber10_4_7 : f64 = 368.27 ;
+pub const kCFCoreFoundationVersionNumber10_4_8 : f64 = 368.27 ;
+pub const kCFCoreFoundationVersionNumber10_4_9 : f64 = 368.28 ;
+pub const kCFCoreFoundationVersionNumber10_4_10 : f64 = 368.28 ;
+pub const kCFCoreFoundationVersionNumber10_4_11 : f64 = 368.31 ;
+pub const kCFCoreFoundationVersionNumber10_5 : f64 = 476.0 ;
+pub const kCFCoreFoundationVersionNumber10_5_1 : f64 = 476.0 ;
+pub const kCFCoreFoundationVersionNumber10_5_2 : f64 = 476.1 ;
+pub const kCFCoreFoundationVersionNumber10_5_3 : f64 = 476.13 ;
+pub const kCFCoreFoundationVersionNumber10_5_4 : f64 = 476.14 ;
+pub const kCFCoreFoundationVersionNumber10_5_5 : f64 = 476.15 ;
+pub const kCFCoreFoundationVersionNumber10_5_6 : f64 = 476.17 ;
+pub const kCFCoreFoundationVersionNumber10_5_7 : f64 = 476.18 ;
+pub const kCFCoreFoundationVersionNumber10_5_8 : f64 = 476.19 ;
+pub const kCFCoreFoundationVersionNumber10_6 : f64 = 550.0 ;
+pub const kCFCoreFoundationVersionNumber10_6_1 : f64 = 550.0 ;
+pub const kCFCoreFoundationVersionNumber10_6_2 : f64 = 550.13 ;
+pub const kCFCoreFoundationVersionNumber10_6_3 : f64 = 550.19 ;
+pub const kCFCoreFoundationVersionNumber10_6_4 : f64 = 550.29 ;
+pub const kCFCoreFoundationVersionNumber10_6_5 : f64 = 550.42 ;
+pub const kCFCoreFoundationVersionNumber10_6_6 : f64 = 550.42 ;
+pub const kCFCoreFoundationVersionNumber10_6_7 : f64 = 550.42 ;
+pub const kCFCoreFoundationVersionNumber10_6_8 : f64 = 550.43 ;
+pub const kCFCoreFoundationVersionNumber10_7 : f64 = 635.0 ;
+pub const kCFCoreFoundationVersionNumber10_7_1 : f64 = 635.0 ;
+pub const kCFCoreFoundationVersionNumber10_7_2 : f64 = 635.15 ;
+pub const kCFCoreFoundationVersionNumber10_7_3 : f64 = 635.19 ;
+pub const kCFCoreFoundationVersionNumber10_7_4 : f64 = 635.21 ;
+pub const kCFCoreFoundationVersionNumber10_7_5 : f64 = 635.21 ;
+pub const kCFCoreFoundationVersionNumber10_8 : f64 = 744.0 ;
+pub const kCFCoreFoundationVersionNumber10_8_1 : f64 = 744.0 ;
+pub const kCFCoreFoundationVersionNumber10_8_2 : f64 = 744.12 ;
+pub const kCFCoreFoundationVersionNumber10_8_3 : f64 = 744.18 ;
+pub const kCFCoreFoundationVersionNumber10_8_4 : f64 = 744.19 ;
+pub const kCFCoreFoundationVersionNumber10_9 : f64 = 855.11 ;
+pub const kCFCoreFoundationVersionNumber10_9_1 : f64 = 855.11 ;
+pub const kCFCoreFoundationVersionNumber10_9_2 : f64 = 855.14 ;
+pub const kCFCoreFoundationVersionNumber10_10 : f64 = 1151.16 ;
+pub const kCFCoreFoundationVersionNumber10_10_1 : f64 = 1151.16 ;
+pub const kCFCoreFoundationVersionNumber10_10_2 : u32 = 1152 ;
+pub const kCFCoreFoundationVersionNumber10_10_3 : f64 = 1153.18 ;
+pub const kCFCoreFoundationVersionNumber10_10_4 : f64 = 1153.18 ;
+pub const kCFCoreFoundationVersionNumber10_10_5 : f64 = 1153.18 ;
+pub const kCFCoreFoundationVersionNumber10_10_Max : u32 = 1199 ;
+pub const kCFCoreFoundationVersionNumber10_11 : u32 = 1253 ;
+pub const kCFCoreFoundationVersionNumber10_11_1 : f64 = 1255.1 ;
+pub const kCFCoreFoundationVersionNumber10_11_2 : f64 = 1256.14 ;
+pub const kCFCoreFoundationVersionNumber10_11_3 : f64 = 1256.14 ;
+pub const kCFCoreFoundationVersionNumber10_11_4 : f64 = 1258.1 ;
+pub const kCFCoreFoundationVersionNumber10_11_Max : u32 = 1299 ;
 pub const kC4EnvironmentTimezoneKey : & [u8 ; 3usize] = b"tz\0" ;
 pub const kC4EnvironmentSupportedLocales : & [u8 ; 18usize] = b"supported_locales\0" ;
 pub const kC4GeneratedIDLength : u32 = 23 ;
@@ -54,8 +141,9 @@ pub const kC4ProxyTypeNone : & [u8 ; 5usize] = b"none\0" ;
 pub const kC4ProxyTypeHTTP : & [u8 ; 5usize] = b"HTTP\0" ;
 pub const kC4ProxyTypeHTTPS : & [u8 ; 6usize] = b"HTTPS\0" ;
 pub const kC4ProxyTypeSOCKS : & [u8 ; 6usize] = b"SOCKS\0" ;
-pub type __off_t = :: std :: os :: raw :: c_long ;
-pub type __off64_t = :: std :: os :: raw :: c_long ;
+pub type __int64_t = :: std :: os :: raw :: c_longlong ;
+pub type __darwin_va_list = __builtin_va_list ;
+pub type __darwin_off_t = __int64_t ;
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLSlice { pub buf : * const :: std :: os :: raw :: c_void , pub size : usize , }
 # [repr (C)] # [derive (Debug)] pub struct FLSliceResult { pub buf : * const :: std :: os :: raw :: c_void , pub size : usize , }
 pub type FLHeapSlice = FLSlice ;
@@ -157,14 +245,12 @@ extern "C" { pub fn FLDoc_GetSharedKeys (arg1 : FLDoc) -> FLSharedKeys ; }
 extern "C" { pub fn FLValue_FindDoc (arg1 : FLValue) -> FLDoc ; }
 extern "C" { pub fn FLDoc_SetAssociated (doc : FLDoc , pointer : * mut :: std :: os :: raw :: c_void , type_ : * const :: std :: os :: raw :: c_char ,) -> bool ; }
 extern "C" { pub fn FLDoc_GetAssociated (doc : FLDoc , type_ : * const :: std :: os :: raw :: c_char ,) -> * mut :: std :: os :: raw :: c_void ; }
-pub type __gnuc_va_list = __builtin_va_list ;
-pub type FILE = _IO_FILE ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_marker { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_codecvt { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_wide_data { _unused : [u8 ; 0] , }
-pub type _IO_lock_t = :: std :: os :: raw :: c_void ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_FILE { pub _flags : :: std :: os :: raw :: c_int , pub _IO_read_ptr : * mut :: std :: os :: raw :: c_char , pub _IO_read_end : * mut :: std :: os :: raw :: c_char , pub _IO_read_base : * mut :: std :: os :: raw :: c_char , pub _IO_write_base : * mut :: std :: os :: raw :: c_char , pub _IO_write_ptr : * mut :: std :: os :: raw :: c_char , pub _IO_write_end : * mut :: std :: os :: raw :: c_char , pub _IO_buf_base : * mut :: std :: os :: raw :: c_char , pub _IO_buf_end : * mut :: std :: os :: raw :: c_char , pub _IO_save_base : * mut :: std :: os :: raw :: c_char , pub _IO_backup_base : * mut :: std :: os :: raw :: c_char , pub _IO_save_end : * mut :: std :: os :: raw :: c_char , pub _markers : * mut _IO_marker , pub _chain : * mut _IO_FILE , pub _fileno : :: std :: os :: raw :: c_int , pub _flags2 : :: std :: os :: raw :: c_int , pub _old_offset : __off_t , pub _cur_column : :: std :: os :: raw :: c_ushort , pub _vtable_offset : :: std :: os :: raw :: c_schar , pub _shortbuf : [:: std :: os :: raw :: c_char ; 1usize] , pub _lock : * mut _IO_lock_t , pub _offset : __off64_t , pub _codecvt : * mut _IO_codecvt , pub _wide_data : * mut _IO_wide_data , pub _freeres_list : * mut _IO_FILE , pub _freeres_buf : * mut :: std :: os :: raw :: c_void , pub __pad5 : usize , pub _mode : :: std :: os :: raw :: c_int , pub _unused2 : [:: std :: os :: raw :: c_char ; 20usize] , }
-pub type va_list = __gnuc_va_list ;
+pub type va_list = __darwin_va_list ;
+pub type fpos_t = __darwin_off_t ;
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __sbuf { pub _base : * mut :: std :: os :: raw :: c_uchar , pub _size : :: std :: os :: raw :: c_int , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __sFILEX { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __sFILE { pub _p : * mut :: std :: os :: raw :: c_uchar , pub _r : :: std :: os :: raw :: c_int , pub _w : :: std :: os :: raw :: c_int , pub _flags : :: std :: os :: raw :: c_short , pub _file : :: std :: os :: raw :: c_short , pub _bf : __sbuf , pub _lbfsize : :: std :: os :: raw :: c_int , pub _cookie : * mut :: std :: os :: raw :: c_void , pub _close : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void) -> :: std :: os :: raw :: c_int , > , pub _read : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void , arg2 : * mut :: std :: os :: raw :: c_char , arg3 : :: std :: os :: raw :: c_int ,) -> :: std :: os :: raw :: c_int , > , pub _seek : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void , arg2 : fpos_t , arg3 : :: std :: os :: raw :: c_int ,) -> fpos_t , > , pub _write : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void , arg2 : * const :: std :: os :: raw :: c_char , arg3 : :: std :: os :: raw :: c_int ,) -> :: std :: os :: raw :: c_int , > , pub _ub : __sbuf , pub _extra : * mut __sFILEX , pub _ur : :: std :: os :: raw :: c_int , pub _ubuf : [:: std :: os :: raw :: c_uchar ; 3usize] , pub _nbuf : [:: std :: os :: raw :: c_uchar ; 1usize] , pub _lb : __sbuf , pub _blksize : :: std :: os :: raw :: c_int , pub _offset : fpos_t , }
+pub type FILE = __sFILE ;
 pub const FLEncoderFormat_kFLEncodeFleece : FLEncoderFormat = 0 ;
 pub const FLEncoderFormat_kFLEncodeJSON : FLEncoderFormat = 1 ;
 pub const FLEncoderFormat_kFLEncodeJSON5 : FLEncoderFormat = 2 ;
@@ -313,6 +399,30 @@ extern "C" { pub fn FLJSONEncoder_NextDocument (arg1 : FLEncoder) ; }
 extern "C" { pub fn FLDump (arg1 : FLValue) -> * const :: std :: os :: raw :: c_char ; }
 extern "C" { pub fn FLDumpData (data : FLSlice) -> * const :: std :: os :: raw :: c_char ; }
 extern "C" { pub fn FLData_Dump (data : FLSlice) -> FLStringResult ; }
+pub const kNilOptions : _bindgen_ty_2 = 0 ;
+pub type _bindgen_ty_2 = :: std :: os :: raw :: c_uint ;
+pub const kVariableLengthArray : _bindgen_ty_3 = 1 ;
+pub type _bindgen_ty_3 = :: std :: os :: raw :: c_uint ;
+pub const kUnknownType : _bindgen_ty_4 = 1061109567 ;
+pub type _bindgen_ty_4 = :: std :: os :: raw :: c_uint ;
+extern "C" { pub static mut kCFCoreFoundationVersionNumber : f64 ; }
+pub type CFIndex = :: std :: os :: raw :: c_long ;
+pub const kCFCompareLessThan : _bindgen_ty_7 = - 1 ;
+pub const kCFCompareEqualTo : _bindgen_ty_7 = 0 ;
+pub const kCFCompareGreaterThan : _bindgen_ty_7 = 1 ;
+pub type _bindgen_ty_7 = :: std :: os :: raw :: c_int ;
+pub const kCFNotFound : CFIndex = - 1 ;
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __CFNull { _unused : [u8 ; 0] , }
+pub type CFNullRef = * const __CFNull ;
+extern "C" { pub static kCFNull : CFNullRef ; }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __CFAllocator { _unused : [u8 ; 0] , }
+pub type CFAllocatorRef = * const __CFAllocator ;
+extern "C" { pub static kCFAllocatorDefault : CFAllocatorRef ; }
+extern "C" { pub static kCFAllocatorSystemDefault : CFAllocatorRef ; }
+extern "C" { pub static kCFAllocatorMalloc : CFAllocatorRef ; }
+extern "C" { pub static kCFAllocatorMallocZone : CFAllocatorRef ; }
+extern "C" { pub static kCFAllocatorNull : CFAllocatorRef ; }
+extern "C" { pub static kCFAllocatorUseContext : CFAllocatorRef ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4BlobKey { pub bytes : [u8 ; 20usize] , }
 
     #[repr(transparent)]
@@ -410,7 +520,7 @@ extern "C" { pub fn c4error_getCaptureBacktraces () -> bool ; }
 extern "C" { pub fn c4error_getBacktrace (error : C4Error) -> FLStringResult ; }
 extern "C" { pub fn c4error_make (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString ,) -> C4Error ; }
 extern "C" { pub fn c4error_printf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , ...) -> C4Error ; }
-extern "C" { pub fn c4error_vprintf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , args : * mut __va_list_tag ,) -> C4Error ; }
+extern "C" { pub fn c4error_vprintf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , args : va_list ,) -> C4Error ; }
 extern "C" { pub fn c4error_return (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString , outError : * mut C4Error ,) ; }
 extern "C" { pub fn c4error_mayBeTransient (err : C4Error) -> bool ; }
 extern "C" { pub fn c4error_mayBeNetworkDependent (err : C4Error) -> bool ; }
@@ -439,8 +549,8 @@ extern "C" { pub fn c4log_binaryFilePath () -> FLStringResult ; }
 extern "C" { pub fn c4log_flushLogFiles () ; }
 extern "C" { pub fn c4log_binaryFileLevel () -> C4LogLevel ; }
 extern "C" { pub fn c4log_setBinaryFileLevel (level : C4LogLevel) ; }
-extern "C" { pub fn c4log_writeToCallback (level : C4LogLevel , callback : :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : * mut __va_list_tag ,) , > , preformatted : bool ,) ; }
-extern "C" { pub fn c4log_getCallback () -> :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : * mut __va_list_tag ,) , > ; }
+extern "C" { pub fn c4log_writeToCallback (level : C4LogLevel , callback : :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : va_list ,) , > , preformatted : bool ,) ; }
+extern "C" { pub fn c4log_getCallback () -> :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : va_list ,) , > ; }
 extern "C" { pub fn c4log_callbackLevel () -> C4LogLevel ; }
 extern "C" { pub fn c4log_setCallbackLevel (level : C4LogLevel) ; }
 extern "C" { pub fn c4log_getDomain (name : * const :: std :: os :: raw :: c_char , create : bool) -> C4LogDomain ; }
@@ -452,7 +562,7 @@ extern "C" { pub fn c4log_warnOnErrors (arg1 : bool) ; }
 extern "C" { pub fn c4log_getWarnOnErrors () -> bool ; }
 extern "C" { pub fn c4log_enableFatalExceptionBacktrace () ; }
 extern "C" { pub fn c4log (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , ...) ; }
-extern "C" { pub fn c4vlog (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , args : * mut __va_list_tag ,) ; }
+extern "C" { pub fn c4vlog (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , args : va_list ,) ; }
 extern "C" { pub fn c4slog (domain : C4LogDomain , level : C4LogLevel , msg : FLString) ; }
 pub type C4Slice = FLSlice ;
 pub type C4HeapSlice = FLHeapSlice ;
@@ -471,6 +581,8 @@ pub type C4DatabaseObserver = C4CollectionObserver ;
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Database { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentObserver { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocEnumerator { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Index { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4IndexUpdater { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4KeyPair { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Listener { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Query { _unused : [u8 ; 0] , }
@@ -695,6 +807,7 @@ impl C4IndexType {
     pub const kC4FullTextIndex: C4IndexType = C4IndexType(1);
     pub const kC4ArrayIndex: C4IndexType = C4IndexType(2);
     pub const kC4PredictiveIndex: C4IndexType = C4IndexType(3);
+    pub const kC4VectorIndex: C4IndexType = C4IndexType(4);
 }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4IndexOptions { pub language : * const :: std :: os :: raw :: c_char , pub ignoreDiacritics : bool , pub disableStemming : bool , pub stopWords : * const :: std :: os :: raw :: c_char , }
 extern "C" { pub fn c4db_getDefaultCollection (db : * mut C4Database , outError : * mut C4Error ,) -> * mut C4Collection ; }
@@ -721,10 +834,12 @@ extern "C" { pub fn c4coll_getDocExpiration (collection : * mut C4Collection , d
 extern "C" { pub fn c4coll_nextDocExpiration (arg1 : * mut C4Collection) -> C4Timestamp ; }
 extern "C" { pub fn c4coll_purgeExpiredDocs (arg1 : * mut C4Collection , arg2 : * mut C4Error) -> i64 ; }
 extern "C" { pub fn c4coll_createIndex (collection : * mut C4Collection , name : C4String , indexSpec : C4String , queryLanguage : C4QueryLanguage , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
+extern "C" { pub fn c4coll_getIndex (collection : * mut C4Collection , name : C4String , outError : * mut C4Error ,) -> * mut C4Index ; }
 extern "C" { pub fn c4coll_deleteIndex (collection : * mut C4Collection , name : C4String , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4coll_getIndexesInfo (collection : * mut C4Collection , outError : * mut C4Error ,) -> C4SliceResult ; }
 extern "C" { pub fn c4key_setPassword (encryptionKey : * mut C4EncryptionKey , password : C4String , alg : C4EncryptionAlgorithm ,) -> bool ; }
 extern "C" { pub fn c4key_setPasswordSHA1 (encryptionKey : * mut C4EncryptionKey , password : C4String , alg : C4EncryptionAlgorithm ,) -> bool ; }
+extern "C" { pub fn c4_setExtensionPath (path : C4String) ; }
 extern "C" { pub fn c4db_exists (name : C4String , inDirectory : C4String) -> bool ; }
 extern "C" { pub fn c4db_openNamed (name : C4String , config : * const C4DatabaseConfig2 , outError : * mut C4Error ,) -> * mut C4Database ; }
 extern "C" { pub fn c4db_openAgain (db : * mut C4Database , outError : * mut C4Error) -> * mut C4Database ; }
@@ -844,6 +959,7 @@ extern "C" { pub fn c4db_createIndex (database : * mut C4Database , name : C4Str
 extern "C" { pub fn c4db_createIndex2 (database : * mut C4Database , name : C4String , indexSpec : C4String , queryLanguage : C4QueryLanguage , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4db_deleteIndex (database : * mut C4Database , name : C4String , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4db_getIndexesInfo (database : * mut C4Database , outError : * mut C4Error) -> C4SliceResult ; }
+extern "C" { pub fn c4coll_isIndexTrained (collection : * mut C4Collection , name : C4String , outError : * mut C4Error ,) -> bool ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -986,8 +1102,8 @@ extern "C" { pub fn c4repl_isValidDatabaseName (dbName : C4String) -> bool ; }
 extern "C" { pub fn c4repl_isValidRemote (remoteAddress : C4Address , remoteDatabaseName : C4String , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4address_fromURL (url : C4String , address : * mut C4Address , dbName : * mut C4String) -> bool ; }
 extern "C" { pub fn c4address_toURL (address : C4Address) -> C4StringResult ; }
-extern "C" { pub fn c4repl_new (db : * mut C4Database , remoteAddress : C4Address , remoteDatabaseName : C4String , params : C4ReplicatorParameters , outError : * mut C4Error ,) -> * mut C4Replicator ; }
-extern "C" { pub fn c4repl_newWithSocket (db : * mut C4Database , openSocket : * mut C4Socket , params : C4ReplicatorParameters , outError : * mut C4Error ,) -> * mut C4Replicator ; }
+extern "C" { pub fn c4repl_new (db : * mut C4Database , remoteAddress : C4Address , remoteDatabaseName : C4String , params : C4ReplicatorParameters , logPrefix : C4String , outError : * mut C4Error ,) -> * mut C4Replicator ; }
+extern "C" { pub fn c4repl_newWithSocket (db : * mut C4Database , openSocket : * mut C4Socket , params : C4ReplicatorParameters , logPrefix : C4String , outError : * mut C4Error ,) -> * mut C4Replicator ; }
 extern "C" { pub fn c4repl_start (repl : * mut C4Replicator , reset : bool) ; }
 extern "C" { pub fn c4repl_stop (repl : * mut C4Replicator) ; }
 extern "C" { pub fn c4repl_retry (repl : * mut C4Replicator , outError : * mut C4Error) -> bool ; }
@@ -1044,5 +1160,4 @@ extern "C" { pub fn c4socket_closeRequested (socket : * mut C4Socket , status : 
 extern "C" { pub fn c4socket_completedWrite (socket : * mut C4Socket , byteCount : usize) ; }
 extern "C" { pub fn c4socket_received (socket : * mut C4Socket , data : C4Slice) ; }
 extern "C" { pub fn c4socket_fromNative (factory : C4SocketFactory , nativeHandle : * mut :: std :: os :: raw :: c_void , address : * const C4Address ,) -> * mut C4Socket ; }
-pub type __builtin_va_list = [__va_list_tag ; 1usize] ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __va_list_tag { pub gp_offset : :: std :: os :: raw :: c_uint , pub fp_offset : :: std :: os :: raw :: c_uint , pub overflow_arg_area : * mut :: std :: os :: raw :: c_void , pub reg_save_area : * mut :: std :: os :: raw :: c_void , }
+pub type __builtin_va_list = * mut :: std :: os :: raw :: c_char ;

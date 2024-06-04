@@ -49,7 +49,7 @@ impl<'a> DocEnumerator<'a> {
     ) -> Result<DocEnumerator<'a>> {
         let mut c4err = c4error_init();
         let opts = C4EnumeratorOptions {
-            flags: C4EnumeratorFlags(flags.bits),
+            flags: C4EnumeratorFlags(flags.bits()),
         };
         let enum_ptr = unsafe { c4db_enumerateAllDocs(db.inner.0.as_ptr(), &opts, &mut c4err) };
         NonNull::new(enum_ptr)
@@ -115,6 +115,7 @@ impl<'en> FallibleStreamingIterator for DocEnumerator<'en> {
 }
 
 bitflags! {
+    #[derive(Debug)]
     pub struct DocEnumeratorFlags: u16 {
         /// If true, iteration goes by descending document IDs
         const DESCENDING           = 0x01;

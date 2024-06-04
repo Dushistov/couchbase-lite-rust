@@ -19,6 +19,7 @@ pub struct Document {
 }
 
 bitflags! {
+    #[derive(Debug)]
     pub struct DocumentFlags: u32 {
         /// The document's current revision is deleted.
         const DELETED         = C4DocumentFlags::kDocDeleted.0;

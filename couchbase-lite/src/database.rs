@@ -36,6 +36,7 @@ pub struct DatabaseConfig<'a> {
 
 bitflags! {
     #[repr(transparent)]
+    #[derive(Debug)]
     pub struct DatabaseFlags: u32 {
         /// Create the file if it doesn't exist
         const CREATE = C4DatabaseFlags::kC4DB_Create.0;

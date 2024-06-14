@@ -1,4 +1,3 @@
-pub const kFLNoWrittenValue : i64 = - 9223372036854775808 ;
 pub const kInvalidID : u32 = 0 ;
 pub const kCFCoreFoundationVersionNumber10_0 : f64 = 196.4 ;
 pub const kCFCoreFoundationVersionNumber10_0_3 : f64 = 196.5 ;
@@ -86,61 +85,61 @@ pub const kCFCoreFoundationVersionNumber10_11_2 : f64 = 1256.14 ;
 pub const kCFCoreFoundationVersionNumber10_11_3 : f64 = 1256.14 ;
 pub const kCFCoreFoundationVersionNumber10_11_4 : f64 = 1258.1 ;
 pub const kCFCoreFoundationVersionNumber10_11_Max : u32 = 1299 ;
-pub const kC4EnvironmentTimezoneKey : & [u8 ; 3usize] = b"tz\0" ;
-pub const kC4EnvironmentSupportedLocales : & [u8 ; 18usize] = b"supported_locales\0" ;
+pub const kC4EnvironmentTimezoneKey : & [u8 ; 3] = b"tz\0" ;
+pub const kC4EnvironmentSupportedLocales : & [u8 ; 18] = b"supported_locales\0" ;
 pub const kC4GeneratedIDLength : u32 = 23 ;
-pub const kC4ObjectTypeProperty : & [u8 ; 6usize] = b"@type\0" ;
-pub const kC4ObjectType_Blob : & [u8 ; 5usize] = b"blob\0" ;
-pub const kC4BlobDigestProperty : & [u8 ; 7usize] = b"digest\0" ;
-pub const kC4BlobDataProperty : & [u8 ; 5usize] = b"data\0" ;
-pub const kC4LegacyAttachmentsProperty : & [u8 ; 13usize] = b"_attachments\0" ;
-pub const kC4ObjectType_Encryptable : & [u8 ; 12usize] = b"encryptable\0" ;
-pub const kC4EncryptableValueProperty : & [u8 ; 6usize] = b"value\0" ;
-pub const kC4ReplicatorOptionDocIDs : & [u8 ; 7usize] = b"docIDs\0" ;
-pub const kC4ReplicatorOptionChannels : & [u8 ; 9usize] = b"channels\0" ;
-pub const kC4ReplicatorOptionFilter : & [u8 ; 7usize] = b"filter\0" ;
-pub const kC4ReplicatorOptionFilterParams : & [u8 ; 13usize] = b"filterParams\0" ;
-pub const kC4ReplicatorOptionSkipDeleted : & [u8 ; 12usize] = b"skipDeleted\0" ;
-pub const kC4ReplicatorOptionNoIncomingConflicts : & [u8 ; 20usize] = b"noIncomingConflicts\0" ;
-pub const kC4ReplicatorCheckpointInterval : & [u8 ; 19usize] = b"checkpointInterval\0" ;
-pub const kC4ReplicatorOptionRemoteDBUniqueID : & [u8 ; 17usize] = b"remoteDBUniqueID\0" ;
-pub const kC4ReplicatorOptionDisableDeltas : & [u8 ; 9usize] = b"noDeltas\0" ;
-pub const kC4ReplicatorOptionDisablePropertyDecryption : & [u8 ; 13usize] = b"noDecryption\0" ;
-pub const kC4ReplicatorOptionMaxRetries : & [u8 ; 11usize] = b"maxRetries\0" ;
-pub const kC4ReplicatorOptionMaxRetryInterval : & [u8 ; 17usize] = b"maxRetryInterval\0" ;
-pub const kC4ReplicatorOptionAutoPurge : & [u8 ; 10usize] = b"autoPurge\0" ;
-pub const kC4ReplicatorOptionAcceptParentDomainCookies : & [u8 ; 26usize] = b"acceptParentDomainCookies\0" ;
-pub const kC4ReplicatorOptionRootCerts : & [u8 ; 10usize] = b"rootCerts\0" ;
-pub const kC4ReplicatorOptionPinnedServerCert : & [u8 ; 11usize] = b"pinnedCert\0" ;
-pub const kC4ReplicatorOptionOnlySelfSignedServerCert : & [u8 ; 21usize] = b"onlySelfSignedServer\0" ;
-pub const kC4ReplicatorOptionExtraHeaders : & [u8 ; 8usize] = b"headers\0" ;
-pub const kC4ReplicatorOptionCookies : & [u8 ; 8usize] = b"cookies\0" ;
-pub const kC4ReplicatorOptionAuthentication : & [u8 ; 5usize] = b"auth\0" ;
-pub const kC4ReplicatorOptionProxyServer : & [u8 ; 6usize] = b"proxy\0" ;
-pub const kC4ReplicatorHeartbeatInterval : & [u8 ; 10usize] = b"heartbeat\0" ;
-pub const kC4SocketOptionWSProtocols : & [u8 ; 13usize] = b"WS-Protocols\0" ;
-pub const kC4SocketOptionNetworkInterface : & [u8 ; 17usize] = b"networkInterface\0" ;
-pub const kC4ReplicatorCompressionLevel : & [u8 ; 21usize] = b"BLIPCompressionLevel\0" ;
-pub const kC4ReplicatorAuthType : & [u8 ; 5usize] = b"type\0" ;
-pub const kC4ReplicatorAuthUserName : & [u8 ; 9usize] = b"username\0" ;
-pub const kC4ReplicatorAuthPassword : & [u8 ; 9usize] = b"password\0" ;
-pub const kC4ReplicatorAuthEnableChallengeAuth : & [u8 ; 14usize] = b"challengeAuth\0" ;
-pub const kC4ReplicatorAuthClientCert : & [u8 ; 11usize] = b"clientCert\0" ;
-pub const kC4ReplicatorAuthClientCertKey : & [u8 ; 14usize] = b"clientCertKey\0" ;
-pub const kC4ReplicatorAuthToken : & [u8 ; 6usize] = b"token\0" ;
-pub const kC4AuthTypeBasic : & [u8 ; 6usize] = b"Basic\0" ;
-pub const kC4AuthTypeSession : & [u8 ; 8usize] = b"Session\0" ;
-pub const kC4AuthTypeOpenIDConnect : & [u8 ; 15usize] = b"OpenID Connect\0" ;
-pub const kC4AuthTypeFacebook : & [u8 ; 9usize] = b"Facebook\0" ;
-pub const kC4AuthTypeClientCert : & [u8 ; 12usize] = b"Client Cert\0" ;
-pub const kC4ReplicatorProxyType : & [u8 ; 5usize] = b"type\0" ;
-pub const kC4ReplicatorProxyHost : & [u8 ; 5usize] = b"host\0" ;
-pub const kC4ReplicatorProxyPort : & [u8 ; 5usize] = b"port\0" ;
-pub const kC4ReplicatorProxyAuth : & [u8 ; 5usize] = b"auth\0" ;
-pub const kC4ProxyTypeNone : & [u8 ; 5usize] = b"none\0" ;
-pub const kC4ProxyTypeHTTP : & [u8 ; 5usize] = b"HTTP\0" ;
-pub const kC4ProxyTypeHTTPS : & [u8 ; 6usize] = b"HTTPS\0" ;
-pub const kC4ProxyTypeSOCKS : & [u8 ; 6usize] = b"SOCKS\0" ;
+pub const kC4ObjectTypeProperty : & [u8 ; 6] = b"@type\0" ;
+pub const kC4ObjectType_Blob : & [u8 ; 5] = b"blob\0" ;
+pub const kC4BlobDigestProperty : & [u8 ; 7] = b"digest\0" ;
+pub const kC4BlobDataProperty : & [u8 ; 5] = b"data\0" ;
+pub const kC4LegacyAttachmentsProperty : & [u8 ; 13] = b"_attachments\0" ;
+pub const kC4ObjectType_Encryptable : & [u8 ; 12] = b"encryptable\0" ;
+pub const kC4EncryptableValueProperty : & [u8 ; 6] = b"value\0" ;
+pub const kC4ReplicatorOptionDocIDs : & [u8 ; 7] = b"docIDs\0" ;
+pub const kC4ReplicatorOptionChannels : & [u8 ; 9] = b"channels\0" ;
+pub const kC4ReplicatorOptionFilter : & [u8 ; 7] = b"filter\0" ;
+pub const kC4ReplicatorOptionFilterParams : & [u8 ; 13] = b"filterParams\0" ;
+pub const kC4ReplicatorOptionSkipDeleted : & [u8 ; 12] = b"skipDeleted\0" ;
+pub const kC4ReplicatorOptionNoIncomingConflicts : & [u8 ; 20] = b"noIncomingConflicts\0" ;
+pub const kC4ReplicatorCheckpointInterval : & [u8 ; 19] = b"checkpointInterval\0" ;
+pub const kC4ReplicatorOptionRemoteDBUniqueID : & [u8 ; 17] = b"remoteDBUniqueID\0" ;
+pub const kC4ReplicatorOptionDisableDeltas : & [u8 ; 9] = b"noDeltas\0" ;
+pub const kC4ReplicatorOptionDisablePropertyDecryption : & [u8 ; 13] = b"noDecryption\0" ;
+pub const kC4ReplicatorOptionMaxRetries : & [u8 ; 11] = b"maxRetries\0" ;
+pub const kC4ReplicatorOptionMaxRetryInterval : & [u8 ; 17] = b"maxRetryInterval\0" ;
+pub const kC4ReplicatorOptionAutoPurge : & [u8 ; 10] = b"autoPurge\0" ;
+pub const kC4ReplicatorOptionAcceptParentDomainCookies : & [u8 ; 26] = b"acceptParentDomainCookies\0" ;
+pub const kC4ReplicatorOptionRootCerts : & [u8 ; 10] = b"rootCerts\0" ;
+pub const kC4ReplicatorOptionPinnedServerCert : & [u8 ; 11] = b"pinnedCert\0" ;
+pub const kC4ReplicatorOptionOnlySelfSignedServerCert : & [u8 ; 21] = b"onlySelfSignedServer\0" ;
+pub const kC4ReplicatorOptionExtraHeaders : & [u8 ; 8] = b"headers\0" ;
+pub const kC4ReplicatorOptionCookies : & [u8 ; 8] = b"cookies\0" ;
+pub const kC4ReplicatorOptionAuthentication : & [u8 ; 5] = b"auth\0" ;
+pub const kC4ReplicatorOptionProxyServer : & [u8 ; 6] = b"proxy\0" ;
+pub const kC4ReplicatorHeartbeatInterval : & [u8 ; 10] = b"heartbeat\0" ;
+pub const kC4SocketOptionWSProtocols : & [u8 ; 13] = b"WS-Protocols\0" ;
+pub const kC4SocketOptionNetworkInterface : & [u8 ; 17] = b"networkInterface\0" ;
+pub const kC4ReplicatorCompressionLevel : & [u8 ; 21] = b"BLIPCompressionLevel\0" ;
+pub const kC4ReplicatorAuthType : & [u8 ; 5] = b"type\0" ;
+pub const kC4ReplicatorAuthUserName : & [u8 ; 9] = b"username\0" ;
+pub const kC4ReplicatorAuthPassword : & [u8 ; 9] = b"password\0" ;
+pub const kC4ReplicatorAuthEnableChallengeAuth : & [u8 ; 14] = b"challengeAuth\0" ;
+pub const kC4ReplicatorAuthClientCert : & [u8 ; 11] = b"clientCert\0" ;
+pub const kC4ReplicatorAuthClientCertKey : & [u8 ; 14] = b"clientCertKey\0" ;
+pub const kC4ReplicatorAuthToken : & [u8 ; 6] = b"token\0" ;
+pub const kC4AuthTypeBasic : & [u8 ; 6] = b"Basic\0" ;
+pub const kC4AuthTypeSession : & [u8 ; 8] = b"Session\0" ;
+pub const kC4AuthTypeOpenIDConnect : & [u8 ; 15] = b"OpenID Connect\0" ;
+pub const kC4AuthTypeFacebook : & [u8 ; 9] = b"Facebook\0" ;
+pub const kC4AuthTypeClientCert : & [u8 ; 12] = b"Client Cert\0" ;
+pub const kC4ReplicatorProxyType : & [u8 ; 5] = b"type\0" ;
+pub const kC4ReplicatorProxyHost : & [u8 ; 5] = b"host\0" ;
+pub const kC4ReplicatorProxyPort : & [u8 ; 5] = b"port\0" ;
+pub const kC4ReplicatorProxyAuth : & [u8 ; 5] = b"auth\0" ;
+pub const kC4ProxyTypeNone : & [u8 ; 5] = b"none\0" ;
+pub const kC4ProxyTypeHTTP : & [u8 ; 5] = b"HTTP\0" ;
+pub const kC4ProxyTypeHTTPS : & [u8 ; 6] = b"HTTPS\0" ;
+pub const kC4ProxyTypeSOCKS : & [u8 ; 6] = b"SOCKS\0" ;
 pub type __int64_t = :: std :: os :: raw :: c_longlong ;
 pub type __darwin_va_list = __builtin_va_list ;
 pub type __darwin_off_t = __int64_t ;
@@ -377,7 +376,6 @@ extern "C" { pub fn FLSharedKeys_Encode (arg1 : FLSharedKeys , arg2 : FLString ,
 extern "C" { pub fn FLSharedKeys_Decode (arg1 : FLSharedKeys , key : :: std :: os :: raw :: c_int) -> FLString ; }
 extern "C" { pub fn FLSharedKeys_Count (arg1 : FLSharedKeys) -> :: std :: os :: raw :: c_uint ; }
 extern "C" { pub fn FLSharedKeys_RevertToCount (arg1 : FLSharedKeys , oldCount : :: std :: os :: raw :: c_uint) ; }
-extern "C" { pub fn FLSharedKeys_DisableCaching (arg1 : FLSharedKeys) ; }
 extern "C" { pub fn FLSharedKeys_Retain (arg1 : FLSharedKeys) -> FLSharedKeys ; }
 extern "C" { pub fn FLSharedKeys_Release (arg1 : FLSharedKeys) ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _FLSharedKeyScope { _unused : [u8 ; 0] , }
@@ -392,7 +390,7 @@ extern "C" { pub fn FLEncoder_GetBase (arg1 : FLEncoder) -> FLSlice ; }
 extern "C" { pub fn FLEncoder_SuppressTrailer (arg1 : FLEncoder) ; }
 extern "C" { pub fn FLEncoder_GetNextWritePos (arg1 : FLEncoder) -> usize ; }
 extern "C" { pub fn FLEncoder_LastValueWritten (arg1 : FLEncoder) -> isize ; }
-extern "C" { pub fn FLEncoder_WriteValueAgain (arg1 : FLEncoder , preWrittenValue : isize) -> bool ; }
+extern "C" { pub fn FLEncoder_WriteValueAgain (arg1 : FLEncoder , preWrittenValue : isize) ; }
 extern "C" { pub fn FLEncoder_Snip (arg1 : FLEncoder) -> FLSliceResult ; }
 extern "C" { pub fn FLEncoder_FinishItem (arg1 : FLEncoder) -> usize ; }
 extern "C" { pub fn FLJSONEncoder_NextDocument (arg1 : FLEncoder) ; }
@@ -423,7 +421,6 @@ extern "C" { pub static kCFAllocatorMalloc : CFAllocatorRef ; }
 extern "C" { pub static kCFAllocatorMallocZone : CFAllocatorRef ; }
 extern "C" { pub static kCFAllocatorNull : CFAllocatorRef ; }
 extern "C" { pub static kCFAllocatorUseContext : CFAllocatorRef ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4BlobKey { pub bytes : [u8 ; 20usize] , }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -581,8 +578,6 @@ pub type C4DatabaseObserver = C4CollectionObserver ;
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Database { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentObserver { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocEnumerator { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Index { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4IndexUpdater { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4KeyPair { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Listener { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Query { _unused : [u8 ; 0] , }
@@ -616,6 +611,7 @@ extern "C" { pub fn c4_getEnvironmentInfo () -> C4SliceResult ; }
 extern "C" { pub fn c4_now () -> C4Timestamp ; }
 extern "C" { pub fn c4_setTempDir (path : C4String , err : * mut C4Error) -> bool ; }
 extern "C" { pub fn c4_runAsyncTask (task : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void) > , context : * mut :: std :: os :: raw :: c_void ,) ; }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4BlobKey { pub bytes : [u8 ; 20usize] , }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -627,7 +623,6 @@ impl C4DatabaseFlags {
     pub const kC4DB_VersionVectors: C4DatabaseFlags = C4DatabaseFlags(8);
     pub const kC4DB_NoUpgrade: C4DatabaseFlags = C4DatabaseFlags(32);
     pub const kC4DB_NonObservable: C4DatabaseFlags = C4DatabaseFlags(64);
-    pub const kC4DB_FakeVectorClock: C4DatabaseFlags = C4DatabaseFlags(128);
 }
 impl std::ops::BitAnd for C4DatabaseFlags {
         type Output = Self;
@@ -779,7 +774,6 @@ impl C4DocContentLevel {
     pub const kDocGetMetadata: C4DocContentLevel = C4DocContentLevel(0);
     pub const kDocGetCurrentRev: C4DocContentLevel = C4DocContentLevel(1);
     pub const kDocGetAll: C4DocContentLevel = C4DocContentLevel(2);
-    pub const kDocGetUpgraded: C4DocContentLevel = C4DocContentLevel(3);
 }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Revision { pub revID : C4HeapString , pub flags : C4RevisionFlags , pub sequence : C4SequenceNumber , }
 pub type C4DocDeltaApplier = :: std :: option :: Option < unsafe extern "C" fn (context : * mut :: std :: os :: raw :: c_void , doc : * mut C4Document , delta : C4Slice , revFlags : * mut C4RevisionFlags , outError : * mut C4Error ,) -> C4SliceResult , > ;
@@ -807,7 +801,6 @@ impl C4IndexType {
     pub const kC4FullTextIndex: C4IndexType = C4IndexType(1);
     pub const kC4ArrayIndex: C4IndexType = C4IndexType(2);
     pub const kC4PredictiveIndex: C4IndexType = C4IndexType(3);
-    pub const kC4VectorIndex: C4IndexType = C4IndexType(4);
 }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4IndexOptions { pub language : * const :: std :: os :: raw :: c_char , pub ignoreDiacritics : bool , pub disableStemming : bool , pub stopWords : * const :: std :: os :: raw :: c_char , }
 extern "C" { pub fn c4db_getDefaultCollection (db : * mut C4Database , outError : * mut C4Error ,) -> * mut C4Collection ; }
@@ -834,12 +827,10 @@ extern "C" { pub fn c4coll_getDocExpiration (collection : * mut C4Collection , d
 extern "C" { pub fn c4coll_nextDocExpiration (arg1 : * mut C4Collection) -> C4Timestamp ; }
 extern "C" { pub fn c4coll_purgeExpiredDocs (arg1 : * mut C4Collection , arg2 : * mut C4Error) -> i64 ; }
 extern "C" { pub fn c4coll_createIndex (collection : * mut C4Collection , name : C4String , indexSpec : C4String , queryLanguage : C4QueryLanguage , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4coll_getIndex (collection : * mut C4Collection , name : C4String , outError : * mut C4Error ,) -> * mut C4Index ; }
 extern "C" { pub fn c4coll_deleteIndex (collection : * mut C4Collection , name : C4String , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4coll_getIndexesInfo (collection : * mut C4Collection , outError : * mut C4Error ,) -> C4SliceResult ; }
 extern "C" { pub fn c4key_setPassword (encryptionKey : * mut C4EncryptionKey , password : C4String , alg : C4EncryptionAlgorithm ,) -> bool ; }
 extern "C" { pub fn c4key_setPasswordSHA1 (encryptionKey : * mut C4EncryptionKey , password : C4String , alg : C4EncryptionAlgorithm ,) -> bool ; }
-extern "C" { pub fn c4_setExtensionPath (path : C4String) ; }
 extern "C" { pub fn c4db_exists (name : C4String , inDirectory : C4String) -> bool ; }
 extern "C" { pub fn c4db_openNamed (name : C4String , config : * const C4DatabaseConfig2 , outError : * mut C4Error ,) -> * mut C4Database ; }
 extern "C" { pub fn c4db_openAgain (db : * mut C4Database , outError : * mut C4Error) -> * mut C4Database ; }
@@ -871,7 +862,6 @@ extern "C" { pub fn c4db_getDoc (database : * mut C4Database , docID : C4String 
 extern "C" { pub fn c4doc_get (database : * mut C4Database , docID : C4String , mustExist : bool , outError : * mut C4Error ,) -> * mut C4Document ; }
 extern "C" { pub fn c4doc_getBySequence (database : * mut C4Database , arg1 : C4SequenceNumber , outError : * mut C4Error ,) -> * mut C4Document ; }
 extern "C" { pub fn c4doc_save (doc : * mut C4Document , maxRevTreeDepth : u32 , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4doc_isRevRejected (doc : * mut C4Document) -> bool ; }
 extern "C" { pub fn c4doc_selectRevision (doc : * mut C4Document , revID : C4String , withBody : bool , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4doc_selectCurrentRevision (doc : * mut C4Document) -> bool ; }
 extern "C" { pub fn c4doc_loadRevisionBody (doc : * mut C4Document , outError : * mut C4Error) -> bool ; }
@@ -888,7 +878,6 @@ extern "C" { pub fn c4db_getRemoteDBAddress (db : * mut C4Database , remoteID : 
 extern "C" { pub fn c4doc_getRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID ,) -> C4SliceResult ; }
 extern "C" { pub fn c4doc_setRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID , revID : C4String , error : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4rev_getGeneration (revID : C4String) -> :: std :: os :: raw :: c_uint ; }
-extern "C" { pub fn c4rev_getTimestamp (revID : C4String) -> u64 ; }
 extern "C" { pub fn c4rev_equal (rev1 : C4Slice , rev2 : C4Slice) -> bool ; }
 extern "C" { pub fn c4doc_purgeRevision (doc : * mut C4Document , revID : C4String , outError : * mut C4Error ,) -> i32 ; }
 extern "C" { pub fn c4doc_resolveConflict (doc : * mut C4Document , winningRevID : C4String , losingRevID : C4String , mergedBody : C4Slice , mergedFlags : C4RevisionFlags , error : * mut C4Error ,) -> bool ; }
@@ -959,7 +948,6 @@ extern "C" { pub fn c4db_createIndex (database : * mut C4Database , name : C4Str
 extern "C" { pub fn c4db_createIndex2 (database : * mut C4Database , name : C4String , indexSpec : C4String , queryLanguage : C4QueryLanguage , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4db_deleteIndex (database : * mut C4Database , name : C4String , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4db_getIndexesInfo (database : * mut C4Database , outError : * mut C4Error) -> C4SliceResult ; }
-extern "C" { pub fn c4coll_isIndexTrained (collection : * mut C4Collection , name : C4String , outError : * mut C4Error ,) -> bool ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -1022,7 +1010,7 @@ extern "C" { pub fn c4query_explain (arg1 : * mut C4Query) -> C4StringResult ; }
 extern "C" { pub fn c4query_columnCount (arg1 : * mut C4Query) -> :: std :: os :: raw :: c_uint ; }
 extern "C" { pub fn c4query_columnTitle (arg1 : * mut C4Query , column : :: std :: os :: raw :: c_uint) -> FLString ; }
 extern "C" { pub fn c4query_setParameters (query : * mut C4Query , encodedParameters : C4String) ; }
-extern "C" { pub fn c4query_run (query : * mut C4Query , encodedParameters : C4String , outError : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
+extern "C" { pub fn c4query_run (query : * mut C4Query , options : * const C4QueryOptions , encodedParameters : C4String , outError : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
 extern "C" { pub fn c4query_fullTextMatched (query : * mut C4Query , term : * const C4FullTextMatch , outError : * mut C4Error ,) -> C4StringResult ; }
 extern "C" { pub fn c4queryenum_next (e : * mut C4QueryEnumerator , outError : * mut C4Error) -> bool ; }
 extern "C" { pub fn c4queryenum_getRowCount (e : * mut C4QueryEnumerator , outError : * mut C4Error) -> i64 ; }
@@ -1102,8 +1090,8 @@ extern "C" { pub fn c4repl_isValidDatabaseName (dbName : C4String) -> bool ; }
 extern "C" { pub fn c4repl_isValidRemote (remoteAddress : C4Address , remoteDatabaseName : C4String , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4address_fromURL (url : C4String , address : * mut C4Address , dbName : * mut C4String) -> bool ; }
 extern "C" { pub fn c4address_toURL (address : C4Address) -> C4StringResult ; }
-extern "C" { pub fn c4repl_new (db : * mut C4Database , remoteAddress : C4Address , remoteDatabaseName : C4String , params : C4ReplicatorParameters , logPrefix : C4String , outError : * mut C4Error ,) -> * mut C4Replicator ; }
-extern "C" { pub fn c4repl_newWithSocket (db : * mut C4Database , openSocket : * mut C4Socket , params : C4ReplicatorParameters , logPrefix : C4String , outError : * mut C4Error ,) -> * mut C4Replicator ; }
+extern "C" { pub fn c4repl_new (db : * mut C4Database , remoteAddress : C4Address , remoteDatabaseName : C4String , params : C4ReplicatorParameters , outError : * mut C4Error ,) -> * mut C4Replicator ; }
+extern "C" { pub fn c4repl_newWithSocket (db : * mut C4Database , openSocket : * mut C4Socket , params : C4ReplicatorParameters , outError : * mut C4Error ,) -> * mut C4Replicator ; }
 extern "C" { pub fn c4repl_start (repl : * mut C4Replicator , reset : bool) ; }
 extern "C" { pub fn c4repl_stop (repl : * mut C4Replicator) ; }
 extern "C" { pub fn c4repl_retry (repl : * mut C4Replicator , outError : * mut C4Error) -> bool ; }

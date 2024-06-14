@@ -11,7 +11,7 @@ use crate::{
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use serde::Serialize;
 use serde_fleece::NonNullConst;
-use std::ptr::NonNull;
+use std::ptr::{self, NonNull};
 
 pub struct Query<'db> {
     _db: &'db Database,
@@ -73,7 +73,14 @@ impl Query<'_> {
 
     pub fn run(&self) -> Result<Enumerator> {
         let mut c4err = c4error_init();
-        let it = unsafe { c4query_run(self.inner.as_ptr(), C4String::default(), &mut c4err) };
+        let it = unsafe {
+            c4query_run(
+                self.inner.as_ptr(),
+                ptr::null(),
+                C4String::default(),
+                &mut c4err,
+            )
+        };
 
         NonNull::new(it)
             .map(|inner| Enumerator {

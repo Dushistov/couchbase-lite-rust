@@ -11,6 +11,7 @@ use crate::{
     replicator::consts::*,
     value::ValueRef,
 };
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use futures_util::{
     sink::SinkExt,
     stream::{SplitStream, StreamExt},
@@ -807,7 +808,7 @@ impl CloseControl {
 fn http_basic_auth_header(user_id: &str, password: &str) -> String {
     let credentials = format!("{user_id}:{password}");
     let mut ret = "Basic ".to_string();
-    base64::encode_config_buf(credentials.as_bytes(), base64::STANDARD, &mut ret);
+    BASE64_STANDARD.encode_string(credentials.as_bytes(), &mut ret);
     ret
 }
 

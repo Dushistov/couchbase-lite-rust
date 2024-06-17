@@ -666,7 +666,10 @@ fn cmake_build_src_dir(_src_dir: &Path, _is_msvc: bool) -> Vec<PathBuf> {
 
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "linux"))]
 fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std::error::Error>> {
-    use std::{io::Read, process::Stdio};
+    use std::{
+        io::Read,
+        process::{Command, Stdio},
+    };
 
     let mut include_dirs = Vec::new();
     let mut framework_dirs = Vec::new();
@@ -676,6 +679,19 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std:
             if !v.iter().any(|e| *e == it) {
                 v.push(it);
             }
+        }
+    }
+
+    fn contains_subslice<T: PartialEq>(data: &[T], needle: &[T]) -> bool {
+        data.windows(needle.len()).any(|w| w == needle)
+    }
+
+    if getenv_unwrap("CARGO_CFG_TARGET_OS") == "ios" {
+        let output = Command::new("clang").arg("--version").output()?;
+
+        if contains_subslice(&output.stdout, b"Apple clang version 12.0.0") {
+            println!("Using too old apple compiler, which can not handle SDKROOT");
+            std::env::remove_var("SDKROOT");
         }
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "serde-fleece"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 authors = ["Evgeniy A. Dushistov <dushistov@mail.ru>"]
 license = "BSD-3-Clause"
@@ -19,7 +19,7 @@ with-asan = ["couchbase-lite-core-sys/with-asan"]
 docs-rs = ["couchbase-lite-core-sys/docs-rs"]
 
 [dependencies]
-couchbase-lite-core-sys = { version = "0.12.0", default-features = false }
+couchbase-lite-core-sys = { version = "0.12.1", default-features = false }
 serde = { version = "1.0.136", default-features = false, features = ["std"] }
 itoa = "1.0.1"
 ryu = "1.0.9"

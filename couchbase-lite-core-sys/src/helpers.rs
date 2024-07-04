@@ -82,7 +82,13 @@ impl Default for FLSliceResult {
 impl FLSliceResult {
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(self.buf as *const u8, self.size) }
+        if self.size != 0 {
+            unsafe { slice::from_raw_parts(self.buf as *const u8, self.size) }
+        } else {
+            // pointer should not be null, even in zero case
+            // but pointer from FLSlice can be null in zero case, so:
+            &[]
+        }
     }
     #[inline]
     pub fn as_utf8_lossy(&self) -> Cow<str> {
@@ -152,6 +158,13 @@ fn test_null_slice_handling() {
     assert!(slice.is_empty());
 
     let ffi_null_slice: FLSliceResult = unsafe { crate::FLSliceResult_New(0) };
+    let slice: &[u8] = ffi_null_slice.as_bytes();
+    assert!(slice.is_empty());
+
+    let ffi_null_slice = FLSliceResult {
+        buf: ptr::null(),
+        size: 0,
+    };
     let slice: &[u8] = ffi_null_slice.as_bytes();
     assert!(slice.is_empty());
 }

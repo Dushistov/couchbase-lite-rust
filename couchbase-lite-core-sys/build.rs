@@ -27,14 +27,15 @@ fn main() {
     let bdirs = cmake_build_src_dir(&sdir, is_msvc);
     println!("build directory: {bdirs:?}\nsource directory {sdir:?}");
 
-    if bdirs.is_empty() {
+    let native_libs_search_paths = if bdirs.is_empty() {
         panic!("You didn't specify build directory for couchbase-lite-core");
     } else if bdirs.len() == 1 {
-        specify_library_search_dirs_for_std_layout(&bdirs[0]);
+        specify_library_search_dirs_for_std_layout(&bdirs[0])
     } else {
-        for d in &bdirs {
-            println!("cargo:rustc-link-search=native={}", d.display());
-        }
+        bdirs
+    };
+    for path in &native_libs_search_paths {
+        println!("cargo:rustc-link-search=native={}", path.display());
     }
 
     if cfg!(feature = "use-couchbase-lite-sqlite") {
@@ -43,13 +44,25 @@ fn main() {
     if cfg!(feature = "use-couchbase-lite-websocket") {
         println!("cargo:rustc-link-lib=static=LiteCoreWebSocket");
     }
-    println!("cargo:rustc-link-lib=static=LiteCoreStatic");
-    println!("cargo:rustc-link-lib=static=FleeceStatic");
-    println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
-    println!("cargo:rustc-link-lib=static=BLIPStatic");
-    println!("cargo:rustc-link-lib=static=mbedcrypto");
-    println!("cargo:rustc-link-lib=static=mbedtls");
-    println!("cargo:rustc-link-lib=static=mbedx509");
+    for lib in [
+        "LiteCoreStatic",
+        "FleeceStatic",
+        "SQLite3_UnicodeSN",
+        "BLIPStatic",
+        "mbedcrypto",
+        "mbedtls",
+        "mbedx509",
+    ] {
+        println!("cargo:rustc-link-lib=static={lib}");
+        match find_full_library_path(&native_libs_search_paths, lib) {
+            Ok(full_path) => {
+                println!("cargo:rerun-if-changed={}", full_path.display());
+            }
+            Err(err) => {
+                panic!("{err}");
+            }
+        }
+    }
 
     if let Ok(icu_lib_path) = env::var("ICU_LIB_DIR") {
         println!("cargo:rustc-link-search=native={icu_lib_path}");
@@ -113,35 +126,35 @@ fn main() {
     .expect("bindgen failed");
 }
 
-fn specify_library_search_dirs_for_std_layout(bdir: &Path) {
-    println!("cargo:rustc-link-search=native={}", bdir.display());
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor").join("fleece").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("Networking").join("BLIP").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor").join("sqlite3-unicodesn").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
+fn find_full_library_path(
+    native_libs_search_paths: &[PathBuf],
+    lib: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let static_lib_ext = if win_target() { "lib" } else { "a" };
+    let prefix = "lib";
+    let file_name = format!("{prefix}{lib}.{static_lib_ext}");
+
+    for path in native_libs_search_paths {
+        let full_path = path.join(&file_name);
+        if full_path.exists() {
+            return Ok(full_path);
+        }
+    }
+    Err(format!("Can no find {file_name} in {native_libs_search_paths:?}").into())
+}
+
+fn specify_library_search_dirs_for_std_layout(bdir: &Path) -> Vec<PathBuf> {
+    vec![
+        bdir.to_path_buf(),
+        bdir.join("vendor").join("fleece"),
+        bdir.join("Networking").join("BLIP"),
+        bdir.join("vendor").join("sqlite3-unicodesn"),
         bdir.join("vendor")
             .join("mbedtls")
             .join("crypto")
-            .join("library")
-            .display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor")
-            .join("mbedtls")
-            .join("library")
-            .display()
-    );
+            .join("library"),
+        bdir.join("vendor").join("mbedtls").join("library"),
+    ]
 }
 
 #[cfg(feature = "git-download")]
@@ -816,4 +829,14 @@ impl ParseCallbacks for CollectIncludes {
         println!("cargo:rerun-if-changed={}", filename);
         self.0.lock().unwrap().push(filename.into());
     }
+}
+
+/// Tells whether we're building for Windows. This is more suitable than a plain
+/// `cfg!(windows)`, since the latter does not properly handle cross-compilation
+///
+/// Note that there is no way to know at compile-time which system we'll be
+/// targeting, and this test must be made at run-time (of the build script) See
+/// https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
+fn win_target() -> bool {
+    env::var("CARGO_CFG_WINDOWS").is_ok()
 }

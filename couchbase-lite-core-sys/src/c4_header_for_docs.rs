@@ -862,6 +862,7 @@ extern "C" { pub fn c4db_getDoc (database : * mut C4Database , docID : C4String 
 extern "C" { pub fn c4doc_get (database : * mut C4Database , docID : C4String , mustExist : bool , outError : * mut C4Error ,) -> * mut C4Document ; }
 extern "C" { pub fn c4doc_getBySequence (database : * mut C4Database , arg1 : C4SequenceNumber , outError : * mut C4Error ,) -> * mut C4Document ; }
 extern "C" { pub fn c4doc_save (doc : * mut C4Document , maxRevTreeDepth : u32 , outError : * mut C4Error) -> bool ; }
+extern "C" { pub fn c4doc_isRevRejected (doc : * mut C4Document) -> bool ; }
 extern "C" { pub fn c4doc_selectRevision (doc : * mut C4Document , revID : C4String , withBody : bool , outError : * mut C4Error ,) -> bool ; }
 extern "C" { pub fn c4doc_selectCurrentRevision (doc : * mut C4Document) -> bool ; }
 extern "C" { pub fn c4doc_loadRevisionBody (doc : * mut C4Document , outError : * mut C4Error) -> bool ; }

@@ -93,9 +93,9 @@ where
         Err(Error::Unsupported("key must be a string (none)"))
     }
 
-    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         Err(Error::Unsupported("key must be a string (some)"))
     }
@@ -117,18 +117,18 @@ where
         encoder_write!(self.ser, FLEncoder_WriteKey, variant.into())
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         value.serialize(&mut *self)
     }
 
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
         _variant_index: u32,
@@ -136,7 +136,7 @@ where
         _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         Err(Error::Unsupported("key must be a string (newtype variant)"))
     }

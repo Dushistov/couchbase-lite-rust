@@ -29,7 +29,7 @@ pub struct DocumentInfo<'a, 'b> {
     phantom: PhantomData<&'a DocEnumerator<'b>>,
 }
 
-impl<'a, 'b> DocumentInfo<'_, '_> {
+impl DocumentInfo<'_, '_> {
     pub(crate) fn new(inner: C4DocumentInfo) -> Self {
         Self {
             inner,

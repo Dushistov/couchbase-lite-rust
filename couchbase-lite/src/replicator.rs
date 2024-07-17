@@ -260,12 +260,7 @@ impl Replicator {
                     !ctx.is_null(),
                     "Replicator::call_on_status_changed: Internal error - null function pointer"
                 );
-                match ReplicatorState::try_from(status) {
-                    Ok(state) => ((*ctx).state_cb)(state),
-                    Err(err) => {
-                        error!("replicator status change: invalid status {err}");
-                    }
-                }
+                ((*ctx).state_cb)(ReplicatorState::from(status));
             });
             if r.is_err() {
                 error!("Replicator::call_on_status_changed: catch panic aborting");

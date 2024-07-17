@@ -191,9 +191,9 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         encoder_write!(self, FLEncoder_WriteNull)
     }
     #[inline]
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         value.serialize(&mut *self)
     }
@@ -215,18 +215,18 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         encoder_write!(self, FLEncoder_WriteString, variant.into())
     }
     #[inline]
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         value.serialize(&mut *self)
     }
     #[inline]
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
         _variant_index: u32,
@@ -234,7 +234,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         encoder_write!(self, FLEncoder_BeginDict, 1)?;
         encoder_write!(self, FLEncoder_WriteKey, variant.into())?;
@@ -301,9 +301,9 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         Ok(self)
     }
     #[inline]
-    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn collect_str<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Display,
+        T: ?Sized + Display,
     {
         self.serialize_str(&value.to_string())
     }

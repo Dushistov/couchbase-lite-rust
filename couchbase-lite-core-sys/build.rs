@@ -280,7 +280,8 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     let couchbase_includes = collect_includes.0.clone();
     let mut bindings: Builder = bindgen::builder()
         .header(c_file_path.to_str().unwrap())
-        .generate_comments(false)
+        .generate_comments(true)
+        .generate_cstr(true)
         .prepend_enum_name(true)
         .size_t_is_usize(true)
         .allowlist_type("C4.*")
@@ -306,7 +307,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     });
 
     bindings = bindings
-        .rust_target(RustTarget::Stable_1_47)
+        .rust_target(RustTarget::Stable_1_73)
         .opaque_type("timex")//to big reserved part for Debug
         .blocklist_type("max_align_t")//long double not supported,
                                       // see https://github.com/rust-lang/rust-bindgen/issues/550

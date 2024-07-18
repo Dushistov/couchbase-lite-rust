@@ -529,39 +529,12 @@ impl From<C4ReplicatorStatus> for ReplicatorState {
 
 #[allow(non_upper_case_globals)]
 pub(crate) mod consts {
-    /// Convert C constant strings to slices excluding last null char
-    #[inline]
-    const fn slice_without_null_char(cnst: &'static [u8]) -> &'static [u8] {
-        match cnst.split_last() {
-            Some((last, elements)) => {
-                if *last != 0 {
-                    panic!("C string constant has no 0 character at the end");
-                }
-                elements
-            }
-            None => panic!("C string constant empty, not expected"),
-        }
-    }
-
-    /// Convert C constant strings to str excluding last null char
-    #[inline]
-    const fn str_without_null_char(cnst: &'static [u8]) -> &'static str {
-        if !is_valid_ascii_str(cnst) {
-            panic!("C string constant not valid ascii string");
-        }
-        unsafe { std::str::from_utf8_unchecked(cnst) }
-    }
-
-    const fn is_valid_ascii_str(cnst: &'static [u8]) -> bool {
-        match cnst.split_first() {
-            Some((first, rest)) => first.is_ascii() && is_valid_ascii_str(rest),
-            None => true,
-        }
-    }
-
     macro_rules! define_const_str {
 	($($name:ident,)+) => {
-	    $(pub(crate) const $name: &'static str = str_without_null_char($crate::ffi::$name);)*
+	    $(pub(crate) const $name: &'static str = match ($crate::ffi::$name).to_str() {
+                Ok(x) => x,
+                Err(_) => panic!("Invalid utf-8 constant"),
+            };)*
 	};
     }
 
@@ -575,12 +548,8 @@ pub(crate) mod consts {
         kC4ReplicatorOptionAuthentication,
     );
 
-    macro_rules! define_const_slice {
-	($($name:ident,)+) => {
-	    $(pub(crate) const $name: &'static [u8] = slice_without_null_char($crate::ffi::$name);)*
-	};
-    }
-    define_const_slice!(
+    #[cfg(feature = "use-tokio-websocket")]
+    define_const_str!(
         kC4ReplicatorOptionExtraHeaders,
         kC4ReplicatorOptionCookies,
         kC4SocketOptionWSProtocols,

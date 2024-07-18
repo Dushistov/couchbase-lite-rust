@@ -1,162 +1,74 @@
-pub const kInvalidID : u32 = 0 ;
-pub const kCFCoreFoundationVersionNumber10_0 : f64 = 196.4 ;
-pub const kCFCoreFoundationVersionNumber10_0_3 : f64 = 196.5 ;
-pub const kCFCoreFoundationVersionNumber10_1 : f64 = 226.0 ;
-pub const kCFCoreFoundationVersionNumber10_1_1 : f64 = 226.0 ;
-pub const kCFCoreFoundationVersionNumber10_1_2 : f64 = 227.2 ;
-pub const kCFCoreFoundationVersionNumber10_1_3 : f64 = 227.2 ;
-pub const kCFCoreFoundationVersionNumber10_1_4 : f64 = 227.3 ;
-pub const kCFCoreFoundationVersionNumber10_2 : f64 = 263.0 ;
-pub const kCFCoreFoundationVersionNumber10_2_1 : f64 = 263.1 ;
-pub const kCFCoreFoundationVersionNumber10_2_2 : f64 = 263.1 ;
-pub const kCFCoreFoundationVersionNumber10_2_3 : f64 = 263.3 ;
-pub const kCFCoreFoundationVersionNumber10_2_4 : f64 = 263.3 ;
-pub const kCFCoreFoundationVersionNumber10_2_5 : f64 = 263.5 ;
-pub const kCFCoreFoundationVersionNumber10_2_6 : f64 = 263.5 ;
-pub const kCFCoreFoundationVersionNumber10_2_7 : f64 = 263.5 ;
-pub const kCFCoreFoundationVersionNumber10_2_8 : f64 = 263.5 ;
-pub const kCFCoreFoundationVersionNumber10_3 : f64 = 299.0 ;
-pub const kCFCoreFoundationVersionNumber10_3_1 : f64 = 299.0 ;
-pub const kCFCoreFoundationVersionNumber10_3_2 : f64 = 299.0 ;
-pub const kCFCoreFoundationVersionNumber10_3_3 : f64 = 299.3 ;
-pub const kCFCoreFoundationVersionNumber10_3_4 : f64 = 299.31 ;
-pub const kCFCoreFoundationVersionNumber10_3_5 : f64 = 299.31 ;
-pub const kCFCoreFoundationVersionNumber10_3_6 : f64 = 299.32 ;
-pub const kCFCoreFoundationVersionNumber10_3_7 : f64 = 299.33 ;
-pub const kCFCoreFoundationVersionNumber10_3_8 : f64 = 299.33 ;
-pub const kCFCoreFoundationVersionNumber10_3_9 : f64 = 299.35 ;
-pub const kCFCoreFoundationVersionNumber10_4 : f64 = 368.0 ;
-pub const kCFCoreFoundationVersionNumber10_4_1 : f64 = 368.1 ;
-pub const kCFCoreFoundationVersionNumber10_4_2 : f64 = 368.11 ;
-pub const kCFCoreFoundationVersionNumber10_4_3 : f64 = 368.18 ;
-pub const kCFCoreFoundationVersionNumber10_4_4_Intel : f64 = 368.26 ;
-pub const kCFCoreFoundationVersionNumber10_4_4_PowerPC : f64 = 368.25 ;
-pub const kCFCoreFoundationVersionNumber10_4_5_Intel : f64 = 368.26 ;
-pub const kCFCoreFoundationVersionNumber10_4_5_PowerPC : f64 = 368.25 ;
-pub const kCFCoreFoundationVersionNumber10_4_6_Intel : f64 = 368.26 ;
-pub const kCFCoreFoundationVersionNumber10_4_6_PowerPC : f64 = 368.25 ;
-pub const kCFCoreFoundationVersionNumber10_4_7 : f64 = 368.27 ;
-pub const kCFCoreFoundationVersionNumber10_4_8 : f64 = 368.27 ;
-pub const kCFCoreFoundationVersionNumber10_4_9 : f64 = 368.28 ;
-pub const kCFCoreFoundationVersionNumber10_4_10 : f64 = 368.28 ;
-pub const kCFCoreFoundationVersionNumber10_4_11 : f64 = 368.31 ;
-pub const kCFCoreFoundationVersionNumber10_5 : f64 = 476.0 ;
-pub const kCFCoreFoundationVersionNumber10_5_1 : f64 = 476.0 ;
-pub const kCFCoreFoundationVersionNumber10_5_2 : f64 = 476.1 ;
-pub const kCFCoreFoundationVersionNumber10_5_3 : f64 = 476.13 ;
-pub const kCFCoreFoundationVersionNumber10_5_4 : f64 = 476.14 ;
-pub const kCFCoreFoundationVersionNumber10_5_5 : f64 = 476.15 ;
-pub const kCFCoreFoundationVersionNumber10_5_6 : f64 = 476.17 ;
-pub const kCFCoreFoundationVersionNumber10_5_7 : f64 = 476.18 ;
-pub const kCFCoreFoundationVersionNumber10_5_8 : f64 = 476.19 ;
-pub const kCFCoreFoundationVersionNumber10_6 : f64 = 550.0 ;
-pub const kCFCoreFoundationVersionNumber10_6_1 : f64 = 550.0 ;
-pub const kCFCoreFoundationVersionNumber10_6_2 : f64 = 550.13 ;
-pub const kCFCoreFoundationVersionNumber10_6_3 : f64 = 550.19 ;
-pub const kCFCoreFoundationVersionNumber10_6_4 : f64 = 550.29 ;
-pub const kCFCoreFoundationVersionNumber10_6_5 : f64 = 550.42 ;
-pub const kCFCoreFoundationVersionNumber10_6_6 : f64 = 550.42 ;
-pub const kCFCoreFoundationVersionNumber10_6_7 : f64 = 550.42 ;
-pub const kCFCoreFoundationVersionNumber10_6_8 : f64 = 550.43 ;
-pub const kCFCoreFoundationVersionNumber10_7 : f64 = 635.0 ;
-pub const kCFCoreFoundationVersionNumber10_7_1 : f64 = 635.0 ;
-pub const kCFCoreFoundationVersionNumber10_7_2 : f64 = 635.15 ;
-pub const kCFCoreFoundationVersionNumber10_7_3 : f64 = 635.19 ;
-pub const kCFCoreFoundationVersionNumber10_7_4 : f64 = 635.21 ;
-pub const kCFCoreFoundationVersionNumber10_7_5 : f64 = 635.21 ;
-pub const kCFCoreFoundationVersionNumber10_8 : f64 = 744.0 ;
-pub const kCFCoreFoundationVersionNumber10_8_1 : f64 = 744.0 ;
-pub const kCFCoreFoundationVersionNumber10_8_2 : f64 = 744.12 ;
-pub const kCFCoreFoundationVersionNumber10_8_3 : f64 = 744.18 ;
-pub const kCFCoreFoundationVersionNumber10_8_4 : f64 = 744.19 ;
-pub const kCFCoreFoundationVersionNumber10_9 : f64 = 855.11 ;
-pub const kCFCoreFoundationVersionNumber10_9_1 : f64 = 855.11 ;
-pub const kCFCoreFoundationVersionNumber10_9_2 : f64 = 855.14 ;
-pub const kCFCoreFoundationVersionNumber10_10 : f64 = 1151.16 ;
-pub const kCFCoreFoundationVersionNumber10_10_1 : f64 = 1151.16 ;
-pub const kCFCoreFoundationVersionNumber10_10_2 : u32 = 1152 ;
-pub const kCFCoreFoundationVersionNumber10_10_3 : f64 = 1153.18 ;
-pub const kCFCoreFoundationVersionNumber10_10_4 : f64 = 1153.18 ;
-pub const kCFCoreFoundationVersionNumber10_10_5 : f64 = 1153.18 ;
-pub const kCFCoreFoundationVersionNumber10_10_Max : u32 = 1199 ;
-pub const kCFCoreFoundationVersionNumber10_11 : u32 = 1253 ;
-pub const kCFCoreFoundationVersionNumber10_11_1 : f64 = 1255.1 ;
-pub const kCFCoreFoundationVersionNumber10_11_2 : f64 = 1256.14 ;
-pub const kCFCoreFoundationVersionNumber10_11_3 : f64 = 1256.14 ;
-pub const kCFCoreFoundationVersionNumber10_11_4 : f64 = 1258.1 ;
-pub const kCFCoreFoundationVersionNumber10_11_Max : u32 = 1299 ;
-pub const kC4EnvironmentTimezoneKey : & [u8 ; 3] = b"tz\0" ;
-pub const kC4EnvironmentSupportedLocales : & [u8 ; 18] = b"supported_locales\0" ;
+# [allow (unsafe_code)] pub const kC4EnvironmentTimezoneKey : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"tz\0") } ;
+# [allow (unsafe_code)] pub const kC4EnvironmentSupportedLocales : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"supported_locales\0") } ;
 pub const kC4GeneratedIDLength : u32 = 23 ;
-pub const kC4ObjectTypeProperty : & [u8 ; 6] = b"@type\0" ;
-pub const kC4ObjectType_Blob : & [u8 ; 5] = b"blob\0" ;
-pub const kC4BlobDigestProperty : & [u8 ; 7] = b"digest\0" ;
-pub const kC4BlobDataProperty : & [u8 ; 5] = b"data\0" ;
-pub const kC4LegacyAttachmentsProperty : & [u8 ; 13] = b"_attachments\0" ;
-pub const kC4ObjectType_Encryptable : & [u8 ; 12] = b"encryptable\0" ;
-pub const kC4EncryptableValueProperty : & [u8 ; 6] = b"value\0" ;
-pub const kC4ReplicatorOptionDocIDs : & [u8 ; 7] = b"docIDs\0" ;
-pub const kC4ReplicatorOptionChannels : & [u8 ; 9] = b"channels\0" ;
-pub const kC4ReplicatorOptionFilter : & [u8 ; 7] = b"filter\0" ;
-pub const kC4ReplicatorOptionFilterParams : & [u8 ; 13] = b"filterParams\0" ;
-pub const kC4ReplicatorOptionSkipDeleted : & [u8 ; 12] = b"skipDeleted\0" ;
-pub const kC4ReplicatorOptionNoIncomingConflicts : & [u8 ; 20] = b"noIncomingConflicts\0" ;
-pub const kC4ReplicatorCheckpointInterval : & [u8 ; 19] = b"checkpointInterval\0" ;
-pub const kC4ReplicatorOptionRemoteDBUniqueID : & [u8 ; 17] = b"remoteDBUniqueID\0" ;
-pub const kC4ReplicatorOptionDisableDeltas : & [u8 ; 9] = b"noDeltas\0" ;
-pub const kC4ReplicatorOptionDisablePropertyDecryption : & [u8 ; 13] = b"noDecryption\0" ;
-pub const kC4ReplicatorOptionMaxRetries : & [u8 ; 11] = b"maxRetries\0" ;
-pub const kC4ReplicatorOptionMaxRetryInterval : & [u8 ; 17] = b"maxRetryInterval\0" ;
-pub const kC4ReplicatorOptionAutoPurge : & [u8 ; 10] = b"autoPurge\0" ;
-pub const kC4ReplicatorOptionAcceptParentDomainCookies : & [u8 ; 26] = b"acceptParentDomainCookies\0" ;
-pub const kC4ReplicatorOptionRootCerts : & [u8 ; 10] = b"rootCerts\0" ;
-pub const kC4ReplicatorOptionPinnedServerCert : & [u8 ; 11] = b"pinnedCert\0" ;
-pub const kC4ReplicatorOptionOnlySelfSignedServerCert : & [u8 ; 21] = b"onlySelfSignedServer\0" ;
-pub const kC4ReplicatorOptionExtraHeaders : & [u8 ; 8] = b"headers\0" ;
-pub const kC4ReplicatorOptionCookies : & [u8 ; 8] = b"cookies\0" ;
-pub const kC4ReplicatorOptionAuthentication : & [u8 ; 5] = b"auth\0" ;
-pub const kC4ReplicatorOptionProxyServer : & [u8 ; 6] = b"proxy\0" ;
-pub const kC4ReplicatorHeartbeatInterval : & [u8 ; 10] = b"heartbeat\0" ;
-pub const kC4SocketOptionWSProtocols : & [u8 ; 13] = b"WS-Protocols\0" ;
-pub const kC4SocketOptionNetworkInterface : & [u8 ; 17] = b"networkInterface\0" ;
-pub const kC4ReplicatorCompressionLevel : & [u8 ; 21] = b"BLIPCompressionLevel\0" ;
-pub const kC4ReplicatorAuthType : & [u8 ; 5] = b"type\0" ;
-pub const kC4ReplicatorAuthUserName : & [u8 ; 9] = b"username\0" ;
-pub const kC4ReplicatorAuthPassword : & [u8 ; 9] = b"password\0" ;
-pub const kC4ReplicatorAuthEnableChallengeAuth : & [u8 ; 14] = b"challengeAuth\0" ;
-pub const kC4ReplicatorAuthClientCert : & [u8 ; 11] = b"clientCert\0" ;
-pub const kC4ReplicatorAuthClientCertKey : & [u8 ; 14] = b"clientCertKey\0" ;
-pub const kC4ReplicatorAuthToken : & [u8 ; 6] = b"token\0" ;
-pub const kC4AuthTypeBasic : & [u8 ; 6] = b"Basic\0" ;
-pub const kC4AuthTypeSession : & [u8 ; 8] = b"Session\0" ;
-pub const kC4AuthTypeOpenIDConnect : & [u8 ; 15] = b"OpenID Connect\0" ;
-pub const kC4AuthTypeFacebook : & [u8 ; 9] = b"Facebook\0" ;
-pub const kC4AuthTypeClientCert : & [u8 ; 12] = b"Client Cert\0" ;
-pub const kC4ReplicatorProxyType : & [u8 ; 5] = b"type\0" ;
-pub const kC4ReplicatorProxyHost : & [u8 ; 5] = b"host\0" ;
-pub const kC4ReplicatorProxyPort : & [u8 ; 5] = b"port\0" ;
-pub const kC4ReplicatorProxyAuth : & [u8 ; 5] = b"auth\0" ;
-pub const kC4ProxyTypeNone : & [u8 ; 5] = b"none\0" ;
-pub const kC4ProxyTypeHTTP : & [u8 ; 5] = b"HTTP\0" ;
-pub const kC4ProxyTypeHTTPS : & [u8 ; 6] = b"HTTPS\0" ;
-pub const kC4ProxyTypeSOCKS : & [u8 ; 6] = b"SOCKS\0" ;
-pub type __int64_t = :: std :: os :: raw :: c_longlong ;
-pub type __darwin_va_list = __builtin_va_list ;
-pub type __darwin_off_t = __int64_t ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLSlice { pub buf : * const :: std :: os :: raw :: c_void , pub size : usize , }
-# [repr (C)] # [derive (Debug)] pub struct FLSliceResult { pub buf : * const :: std :: os :: raw :: c_void , pub size : usize , }
-pub type FLHeapSlice = FLSlice ;
-pub type FLString = FLSlice ;
-pub type FLStringResult = FLSliceResult ;
-extern "C" { pub fn FLSlice_Equal (a : FLSlice , b : FLSlice) -> bool ; }
-extern "C" { pub fn FLSlice_Compare (arg1 : FLSlice , arg2 : FLSlice) -> :: std :: os :: raw :: c_int ; }
-extern "C" { pub fn FLSlice_Hash (s : FLSlice) -> u32 ; }
-extern "C" { pub fn FLSlice_ToCString (s : FLSlice , buffer : * mut :: std :: os :: raw :: c_char , capacity : usize ,) -> bool ; }
-extern "C" { pub fn FLSliceResult_New (arg1 : usize) -> FLSliceResult ; }
-extern "C" { pub fn FLSlice_Copy (arg1 : FLSlice) -> FLSliceResult ; }
+# [allow (unsafe_code)] pub const kC4ObjectTypeProperty : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"@type\0") } ;
+# [allow (unsafe_code)] pub const kC4ObjectType_Blob : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"blob\0") } ;
+# [allow (unsafe_code)] pub const kC4BlobDigestProperty : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"digest\0") } ;
+# [allow (unsafe_code)] pub const kC4BlobDataProperty : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"data\0") } ;
+# [allow (unsafe_code)] pub const kC4LegacyAttachmentsProperty : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"_attachments\0") } ;
+# [allow (unsafe_code)] pub const kC4ObjectType_Encryptable : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"encryptable\0") } ;
+# [allow (unsafe_code)] pub const kC4EncryptableValueProperty : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"value\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionDocIDs : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"docIDs\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionChannels : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"channels\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionFilter : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"filter\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionFilterParams : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"filterParams\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionSkipDeleted : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"skipDeleted\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionNoIncomingConflicts : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"noIncomingConflicts\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorCheckpointInterval : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"checkpointInterval\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionRemoteDBUniqueID : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"remoteDBUniqueID\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionDisableDeltas : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"noDeltas\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionDisablePropertyDecryption : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"noDecryption\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionMaxRetries : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"maxRetries\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionMaxRetryInterval : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"maxRetryInterval\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionAutoPurge : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"autoPurge\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionAcceptParentDomainCookies : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"acceptParentDomainCookies\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionRootCerts : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"rootCerts\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionPinnedServerCert : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"pinnedCert\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionOnlySelfSignedServerCert : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"onlySelfSignedServer\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionExtraHeaders : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"headers\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionCookies : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"cookies\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionAuthentication : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"auth\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorOptionProxyServer : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"proxy\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorHeartbeatInterval : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"heartbeat\0") } ;
+# [allow (unsafe_code)] pub const kC4SocketOptionWSProtocols : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"WS-Protocols\0") } ;
+# [allow (unsafe_code)] pub const kC4SocketOptionNetworkInterface : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"networkInterface\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorCompressionLevel : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"BLIPCompressionLevel\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorAuthType : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"type\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorAuthUserName : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"username\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorAuthPassword : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"password\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorAuthEnableChallengeAuth : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"challengeAuth\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorAuthClientCert : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"clientCert\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorAuthClientCertKey : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"clientCertKey\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorAuthToken : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"token\0") } ;
+# [allow (unsafe_code)] pub const kC4AuthTypeBasic : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"Basic\0") } ;
+# [allow (unsafe_code)] pub const kC4AuthTypeSession : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"Session\0") } ;
+# [allow (unsafe_code)] pub const kC4AuthTypeOpenIDConnect : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"OpenID Connect\0") } ;
+# [allow (unsafe_code)] pub const kC4AuthTypeFacebook : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"Facebook\0") } ;
+# [allow (unsafe_code)] pub const kC4AuthTypeClientCert : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"Client Cert\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorProxyType : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"type\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorProxyHost : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"host\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorProxyPort : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"port\0") } ;
+# [allow (unsafe_code)] pub const kC4ReplicatorProxyAuth : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"auth\0") } ;
+# [allow (unsafe_code)] pub const kC4ProxyTypeNone : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"none\0") } ;
+# [allow (unsafe_code)] pub const kC4ProxyTypeHTTP : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"HTTP\0") } ;
+# [allow (unsafe_code)] pub const kC4ProxyTypeHTTPS : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"HTTPS\0") } ;
+# [allow (unsafe_code)] pub const kC4ProxyTypeSOCKS : & :: std :: ffi :: CStr = unsafe { :: std :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"SOCKS\0") } ;
+pub type __off_t = :: std :: os :: raw :: c_long ;
+pub type __off64_t = :: std :: os :: raw :: c_long ;
+# [doc = " A simple reference to a block of memory. Does not imply ownership.\n(This is equivalent to the C++ class `slice`.)"] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLSlice { pub buf : * const :: std :: os :: raw :: c_void , pub size : usize , }
+# [doc = " A heap-allocated block of memory returned from an API call.\nThe caller takes ownership, and must call \\ref FLSliceResult_Release when done with it.\n\\warning The contents of the block must not be modified, since others may be using it.\n\\note This is equivalent to the C++ class `alloc_slice`. In C++ the easiest way to deal with\na `FLSliceResult` return value is to construct an `alloc_slice` from it, which will\nadopt the reference, and release it in its destructor. For example:\n`alloc_slice foo( CopyFoo() );`"] # [repr (C)] # [derive (Debug)] pub struct FLSliceResult { pub buf : * const :: std :: os :: raw :: c_void , pub size : usize , }
+# [doc = " A simple reference to a block of memory. Does not imply ownership.\n(This is equivalent to the C++ class `slice`.)"] pub type FLHeapSlice = FLSlice ;
+# [doc = " A simple reference to a block of memory. Does not imply ownership.\n(This is equivalent to the C++ class `slice`.)"] pub type FLString = FLSlice ;
+# [doc = " A heap-allocated block of memory returned from an API call.\nThe caller takes ownership, and must call \\ref FLSliceResult_Release when done with it.\n\\warning The contents of the block must not be modified, since others may be using it.\n\\note This is equivalent to the C++ class `alloc_slice`. In C++ the easiest way to deal with\na `FLSliceResult` return value is to construct an `alloc_slice` from it, which will\nadopt the reference, and release it in its destructor. For example:\n`alloc_slice foo( CopyFoo() );`"] pub type FLStringResult = FLSliceResult ;
+extern "C" { # [doc = " Equality test of two slices."] pub fn FLSlice_Equal (a : FLSlice , b : FLSlice) -> bool ; }
+extern "C" { # [doc = " Lexicographic comparison of two slices; basically like memcmp(), but taking into account\ndifferences in length."] pub fn FLSlice_Compare (arg1 : FLSlice , arg2 : FLSlice) -> :: std :: os :: raw :: c_int ; }
+extern "C" { # [doc = " Computes a 32-bit hash of a slice's data, suitable for use in hash tables."] pub fn FLSlice_Hash (s : FLSlice) -> u32 ; }
+extern "C" { # [doc = " Copies a slice to a buffer, adding a trailing zero byte to make it a valid C string.\nIf there is not enough capacity the slice will be truncated, but the trailing zero byte is\nalways written.\n@param s  The FLSlice to copy.\n@param buffer  Where to copy the bytes. At least `capacity` bytes must be available.\n@param capacity  The maximum number of bytes to copy (including the trailing 0.)\n@return  True if the entire slice was copied, false if it was truncated."] pub fn FLSlice_ToCString (s : FLSlice , buffer : * mut :: std :: os :: raw :: c_char , capacity : usize ,) -> bool ; }
+extern "C" { # [doc = " Allocates an FLSliceResult of the given size, without initializing the buffer."] pub fn FLSliceResult_New (arg1 : usize) -> FLSliceResult ; }
+extern "C" { # [doc = " Allocates an FLSliceResult, copying the given slice."] pub fn FLSlice_Copy (arg1 : FLSlice) -> FLSliceResult ; }
 extern "C" { pub fn _FLBuf_Retain (arg1 : * const :: std :: os :: raw :: c_void) ; }
 extern "C" { pub fn _FLBuf_Release (arg1 : * const :: std :: os :: raw :: c_void) ; }
-extern "C" { pub fn FL_WipeMemory (dst : * mut :: std :: os :: raw :: c_void , size : usize) ; }
+extern "C" { # [doc = " Writes zeroes to `size` bytes of memory starting at `dst`.\nUnlike a call to `memset`, these writes cannot be optimized away by the compiler.\nThis is useful for securely removing traces of passwords or encryption keys."] pub fn FL_WipeMemory (dst : * mut :: std :: os :: raw :: c_void , size : usize) ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _FLValue { _unused : [u8 ; 0] , }
 pub type FLValue = * const _FLValue ;
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _FLArray { _unused : [u8 ; 0] , }
@@ -185,173 +97,175 @@ impl FLError { pub const kFLNotFound : FLError = FLError (8) ; }
 impl FLError { pub const kFLSharedKeysStateError : FLError = FLError (9) ; }
 impl FLError { pub const kFLPOSIXError : FLError = FLError (10) ; }
 impl FLError { pub const kFLUnsupported : FLError = FLError (11) ; }
-# [repr (transparent)] # [derive (Debug , Copy , Clone , Hash , PartialEq , Eq)] pub struct FLError (pub :: std :: os :: raw :: c_uint) ;
-# [repr (u32)] # [derive (Debug , Copy , Clone , Hash , PartialEq , Eq)] pub enum FLTrust { kFLUntrusted = 0 , kFLTrusted = 1 , }
-pub type FLTimestamp = i64 ;
-extern "C" { pub fn FLTimestamp_Now () -> FLTimestamp ; }
-extern "C" { pub fn FLTimestamp_ToString (timestamp : FLTimestamp , asUTC : bool) -> FLStringResult ; }
-extern "C" { pub fn FLTimestamp_FromString (str_ : FLString) -> FLTimestamp ; }
-extern "C" { pub static kFLEmptyArray : FLArray ; }
-extern "C" { pub fn FLArray_Count (arg1 : FLArray) -> u32 ; }
-extern "C" { pub fn FLArray_IsEmpty (arg1 : FLArray) -> bool ; }
-extern "C" { pub fn FLArray_AsMutable (arg1 : FLArray) -> FLMutableArray ; }
-extern "C" { pub fn FLArray_Get (arg1 : FLArray , index : u32) -> FLValue ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLArrayIterator { pub _private1 : * mut :: std :: os :: raw :: c_void , pub _private2 : u32 , pub _private3 : bool , pub _private4 : * mut :: std :: os :: raw :: c_void , }
-extern "C" { pub fn FLArrayIterator_Begin (arg1 : FLArray , arg2 : * mut FLArrayIterator) ; }
-extern "C" { pub fn FLArrayIterator_GetValue (arg1 : * const FLArrayIterator) -> FLValue ; }
-extern "C" { pub fn FLArrayIterator_GetValueAt (arg1 : * const FLArrayIterator , offset : u32) -> FLValue ; }
-extern "C" { pub fn FLArrayIterator_GetCount (arg1 : * const FLArrayIterator) -> u32 ; }
-extern "C" { pub fn FLArrayIterator_Next (arg1 : * mut FLArrayIterator) -> bool ; }
-extern "C" { pub static kFLEmptyDict : FLDict ; }
-extern "C" { pub fn FLDict_Count (arg1 : FLDict) -> u32 ; }
-extern "C" { pub fn FLDict_IsEmpty (arg1 : FLDict) -> bool ; }
-extern "C" { pub fn FLDict_AsMutable (arg1 : FLDict) -> FLMutableDict ; }
-extern "C" { pub fn FLDict_Get (arg1 : FLDict , keyString : FLSlice) -> FLValue ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLDictIterator { pub _private1 : * mut :: std :: os :: raw :: c_void , pub _private2 : u32 , pub _private3 : bool , pub _private4 : * mut :: std :: os :: raw :: c_void , pub _private5 : * mut :: std :: os :: raw :: c_void , pub _private6 : * mut :: std :: os :: raw :: c_void , pub _private7 : * mut :: std :: os :: raw :: c_void , pub _private8 : :: std :: os :: raw :: c_int , }
-extern "C" { pub fn FLDictIterator_Begin (arg1 : FLDict , arg2 : * mut FLDictIterator) ; }
-extern "C" { pub fn FLDictIterator_GetKey (arg1 : * const FLDictIterator) -> FLValue ; }
-extern "C" { pub fn FLDictIterator_GetKeyString (arg1 : * const FLDictIterator) -> FLString ; }
-extern "C" { pub fn FLDictIterator_GetValue (arg1 : * const FLDictIterator) -> FLValue ; }
-extern "C" { pub fn FLDictIterator_GetCount (arg1 : * const FLDictIterator) -> u32 ; }
-extern "C" { pub fn FLDictIterator_Next (arg1 : * mut FLDictIterator) -> bool ; }
-extern "C" { pub fn FLDictIterator_End (arg1 : * mut FLDictIterator) ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLDictKey { pub _private1 : FLSlice , pub _private2 : * mut :: std :: os :: raw :: c_void , pub _private3 : u32 , pub private4 : u32 , pub private5 : bool , }
-extern "C" { pub fn FLDictKey_Init (string : FLSlice) -> FLDictKey ; }
-extern "C" { pub fn FLDictKey_GetString (arg1 : * const FLDictKey) -> FLString ; }
-extern "C" { pub fn FLDict_GetWithKey (arg1 : FLDict , arg2 : * mut FLDictKey) -> FLValue ; }
+# [repr (transparent)] # [doc = " Error codes returned from some API calls."] # [derive (Debug , Copy , Clone , Hash , PartialEq , Eq)] pub struct FLError (pub :: std :: os :: raw :: c_uint) ;
+# [repr (u32)] # [doc = " Specifies whether not input data is trusted to be 100% valid Fleece."] # [derive (Debug , Copy , Clone , Hash , PartialEq , Eq)] pub enum FLTrust { # [doc = " Input data is not trusted to be valid, and will be fully validated by the API call."] kFLUntrusted = 0 , # [doc = " Input data is trusted to be valid. The API will perform only minimal validation when\nreading it. This is faster than kFLUntrusted, but should only be used if\nthe data was generated by a trusted encoder and has not been altered or corrupted. For\nexample, this can be used to parse Fleece data previously stored by your code in local\nstorage.\nIf invalid data is read by this call, subsequent calls to Value accessor functions can\ncrash or return bogus results (including data from arbitrary memory locations.)"] kFLTrusted = 1 , }
+# [doc = " A point in time, expressed as milliseconds since the Unix epoch (1-1-1970 midnight UTC.)"] pub type FLTimestamp = i64 ;
+extern "C" { # [doc = " Returns an FLTimestamp corresponding to the current time."] pub fn FLTimestamp_Now () -> FLTimestamp ; }
+extern "C" { # [doc = " Formats a timestamp as a date-time string in ISO-8601 format.\n@note  See also \\ref FLEncoder_WriteDateString, which writes a timestamp to an `FLEncoder`.\n@param timestamp  A time, given as milliseconds since the Unix epoch (1/1/1970 00:00 UTC.)\n@param asUTC  If true, the timestamp will be given in universal time; if false, in the\nlocal timezone.\n@return  A heap-allocated string, which you are responsible for releasing."] pub fn FLTimestamp_ToString (timestamp : FLTimestamp , asUTC : bool) -> FLStringResult ; }
+extern "C" { # [doc = " Parses an ISO-8601 date-time string to a timestamp. On failure returns `FLTimestampNone`.\n@note  See also \\ref FLValue_AsTimestamp, which takes an `FLValue` and interprets numeric\nrepresentations as well as strings."] pub fn FLTimestamp_FromString (str_ : FLString) -> FLTimestamp ; }
+extern "C" { # [doc = " A constant empty array value."] pub static kFLEmptyArray : FLArray ; }
+extern "C" { # [doc = " Returns the number of items in an array, or 0 if the pointer is NULL."] pub fn FLArray_Count (arg1 : FLArray) -> u32 ; }
+extern "C" { # [doc = " Returns true if an array is empty (or NULL). Depending on the array's representation,\nthis can be faster than `FLArray_Count(a) == 0`"] pub fn FLArray_IsEmpty (arg1 : FLArray) -> bool ; }
+extern "C" { # [doc = " If the array is mutable, returns it cast to FLMutableArray, else NULL."] pub fn FLArray_AsMutable (arg1 : FLArray) -> FLMutableArray ; }
+extern "C" { # [doc = " Returns an value at an array index, or NULL if the index is out of range."] pub fn FLArray_Get (arg1 : FLArray , index : u32) -> FLValue ; }
+# [doc = " Opaque array iterator. Declare one on the stack and pass its address to\n`FLArrayIteratorBegin`."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLArrayIterator { pub _private1 : * mut :: std :: os :: raw :: c_void , pub _private2 : u32 , pub _private3 : bool , pub _private4 : * mut :: std :: os :: raw :: c_void , }
+extern "C" { # [doc = " Initializes a FLArrayIterator struct to iterate over an array.\nCall FLArrayIteratorGetValue to get the first item, then FLArrayIteratorNext."] pub fn FLArrayIterator_Begin (arg1 : FLArray , arg2 : * mut FLArrayIterator) ; }
+extern "C" { # [doc = " Returns the current value being iterated over."] pub fn FLArrayIterator_GetValue (arg1 : * const FLArrayIterator) -> FLValue ; }
+extern "C" { # [doc = " Returns a value in the array at the given offset from the current value."] pub fn FLArrayIterator_GetValueAt (arg1 : * const FLArrayIterator , offset : u32) -> FLValue ; }
+extern "C" { # [doc = " Returns the number of items remaining to be iterated, including the current one."] pub fn FLArrayIterator_GetCount (arg1 : * const FLArrayIterator) -> u32 ; }
+extern "C" { # [doc = " Advances the iterator to the next value, or returns false if at the end."] pub fn FLArrayIterator_Next (arg1 : * mut FLArrayIterator) -> bool ; }
+extern "C" { # [doc = " A constant empty array value."] pub static kFLEmptyDict : FLDict ; }
+extern "C" { # [doc = " Returns the number of items in a dictionary, or 0 if the pointer is NULL."] pub fn FLDict_Count (arg1 : FLDict) -> u32 ; }
+extern "C" { # [doc = " Returns true if a dictionary is empty (or NULL). Depending on the dictionary's\nrepresentation, this can be faster than `FLDict_Count(a) == 0`"] pub fn FLDict_IsEmpty (arg1 : FLDict) -> bool ; }
+extern "C" { # [doc = " If the dictionary is mutable, returns it cast to FLMutableDict, else NULL."] pub fn FLDict_AsMutable (arg1 : FLDict) -> FLMutableDict ; }
+extern "C" { # [doc = " Looks up a key in a dictionary, returning its value.\nReturns NULL if the value is not found or if the dictionary is NULL."] pub fn FLDict_Get (arg1 : FLDict , keyString : FLSlice) -> FLValue ; }
+# [doc = " Opaque dictionary iterator. Declare one on the stack, and pass its address to\nFLDictIterator_Begin."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLDictIterator { pub _private1 : * mut :: std :: os :: raw :: c_void , pub _private2 : u32 , pub _private3 : bool , pub _private4 : * mut :: std :: os :: raw :: c_void , pub _private5 : * mut :: std :: os :: raw :: c_void , pub _private6 : * mut :: std :: os :: raw :: c_void , pub _private7 : * mut :: std :: os :: raw :: c_void , pub _private8 : :: std :: os :: raw :: c_int , }
+extern "C" { # [doc = " Initializes a FLDictIterator struct to iterate over a dictionary.\nCall FLDictIterator_GetKey and FLDictIterator_GetValue to get the first item,\nthen FLDictIterator_Next."] pub fn FLDictIterator_Begin (arg1 : FLDict , arg2 : * mut FLDictIterator) ; }
+extern "C" { # [doc = " Returns the current key being iterated over. This Value will be a string or an integer."] pub fn FLDictIterator_GetKey (arg1 : * const FLDictIterator) -> FLValue ; }
+extern "C" { # [doc = " Returns the current key's string value."] pub fn FLDictIterator_GetKeyString (arg1 : * const FLDictIterator) -> FLString ; }
+extern "C" { # [doc = " Returns the current value being iterated over."] pub fn FLDictIterator_GetValue (arg1 : * const FLDictIterator) -> FLValue ; }
+extern "C" { # [doc = " Returns the number of items remaining to be iterated, including the current one."] pub fn FLDictIterator_GetCount (arg1 : * const FLDictIterator) -> u32 ; }
+extern "C" { # [doc = " Advances the iterator to the next value, or returns false if at the end."] pub fn FLDictIterator_Next (arg1 : * mut FLDictIterator) -> bool ; }
+extern "C" { # [doc = " Cleans up after an iterator. Only needed if (a) the dictionary is a delta, and\n(b) you stop iterating before the end (i.e. before FLDictIterator_Next returns false.)"] pub fn FLDictIterator_End (arg1 : * mut FLDictIterator) ; }
+# [doc = " Opaque key for a dictionary. You are responsible for creating space for these; they can\ngo on the stack, on the heap, inside other objects, anywhere.\nBe aware that the lookup operations that use these will write into the struct to store\n\"hints\" that speed up future searches."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLDictKey { pub _private1 : FLSlice , pub _private2 : * mut :: std :: os :: raw :: c_void , pub _private3 : u32 , pub private4 : u32 , pub private5 : bool , }
+extern "C" { # [doc = " Initializes an FLDictKey struct with a key string.\n@warning  The input string's memory MUST remain valid for as long as the FLDictKey is in\nuse! (The FLDictKey stores a pointer to the string, but does not copy it.)\n@param string  The key string (UTF-8).\n@return  An initialized FLDictKey struct."] pub fn FLDictKey_Init (string : FLSlice) -> FLDictKey ; }
+extern "C" { # [doc = " Returns the string value of the key (which it was initialized with.)"] pub fn FLDictKey_GetString (arg1 : * const FLDictKey) -> FLString ; }
+extern "C" { # [doc = " Looks up a key in a dictionary using an FLDictKey. If the key is found, \"hint\" data will\nbe stored inside the FLDictKey that will speed up subsequent lookups."] pub fn FLDict_GetWithKey (arg1 : FLDict , arg2 : * mut FLDictKey) -> FLValue ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _FLDeepIterator { _unused : [u8 ; 0] , }
 pub type FLDeepIterator = * mut _FLDeepIterator ;
-extern "C" { pub fn FLDeepIterator_New (arg1 : FLValue) -> FLDeepIterator ; }
+extern "C" { # [doc = " Creates a FLDeepIterator to iterate over a dictionary.\nCall FLDeepIterator_GetKey and FLDeepIterator_GetValue to get the first item,\nthen FLDeepIterator_Next."] pub fn FLDeepIterator_New (arg1 : FLValue) -> FLDeepIterator ; }
 extern "C" { pub fn FLDeepIterator_Free (arg1 : FLDeepIterator) ; }
-extern "C" { pub fn FLDeepIterator_GetValue (arg1 : FLDeepIterator) -> FLValue ; }
-extern "C" { pub fn FLDeepIterator_GetParent (arg1 : FLDeepIterator) -> FLValue ; }
-extern "C" { pub fn FLDeepIterator_GetKey (arg1 : FLDeepIterator) -> FLSlice ; }
-extern "C" { pub fn FLDeepIterator_GetIndex (arg1 : FLDeepIterator) -> u32 ; }
-extern "C" { pub fn FLDeepIterator_GetDepth (arg1 : FLDeepIterator) -> usize ; }
-extern "C" { pub fn FLDeepIterator_SkipChildren (arg1 : FLDeepIterator) ; }
-extern "C" { pub fn FLDeepIterator_Next (arg1 : FLDeepIterator) -> bool ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLPathComponent { pub key : FLSlice , pub index : u32 , }
-extern "C" { pub fn FLDeepIterator_GetPath (arg1 : FLDeepIterator , outPath : * mut * mut FLPathComponent , outDepth : * mut usize ,) ; }
-extern "C" { pub fn FLDeepIterator_GetPathString (arg1 : FLDeepIterator) -> FLSliceResult ; }
-extern "C" { pub fn FLDeepIterator_GetJSONPointer (arg1 : FLDeepIterator) -> FLSliceResult ; }
-extern "C" { pub fn FLDoc_FromResultData (data : FLSliceResult , arg1 : FLTrust , arg2 : FLSharedKeys , externData : FLSlice ,) -> FLDoc ; }
-extern "C" { pub fn FLDoc_Release (arg1 : FLDoc) ; }
-extern "C" { pub fn FLDoc_Retain (arg1 : FLDoc) -> FLDoc ; }
-extern "C" { pub fn FLDoc_GetData (arg1 : FLDoc) -> FLSlice ; }
-extern "C" { pub fn FLDoc_GetAllocedData (arg1 : FLDoc) -> FLSliceResult ; }
-extern "C" { pub fn FLDoc_GetRoot (arg1 : FLDoc) -> FLValue ; }
-extern "C" { pub fn FLDoc_GetSharedKeys (arg1 : FLDoc) -> FLSharedKeys ; }
-extern "C" { pub fn FLValue_FindDoc (arg1 : FLValue) -> FLDoc ; }
-extern "C" { pub fn FLDoc_SetAssociated (doc : FLDoc , pointer : * mut :: std :: os :: raw :: c_void , type_ : * const :: std :: os :: raw :: c_char ,) -> bool ; }
-extern "C" { pub fn FLDoc_GetAssociated (doc : FLDoc , type_ : * const :: std :: os :: raw :: c_char ,) -> * mut :: std :: os :: raw :: c_void ; }
-pub type va_list = __darwin_va_list ;
-pub type fpos_t = __darwin_off_t ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __sbuf { pub _base : * mut :: std :: os :: raw :: c_uchar , pub _size : :: std :: os :: raw :: c_int , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __sFILEX { _unused : [u8 ; 0] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __sFILE { pub _p : * mut :: std :: os :: raw :: c_uchar , pub _r : :: std :: os :: raw :: c_int , pub _w : :: std :: os :: raw :: c_int , pub _flags : :: std :: os :: raw :: c_short , pub _file : :: std :: os :: raw :: c_short , pub _bf : __sbuf , pub _lbfsize : :: std :: os :: raw :: c_int , pub _cookie : * mut :: std :: os :: raw :: c_void , pub _close : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void) -> :: std :: os :: raw :: c_int , > , pub _read : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void , arg2 : * mut :: std :: os :: raw :: c_char , arg3 : :: std :: os :: raw :: c_int ,) -> :: std :: os :: raw :: c_int , > , pub _seek : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void , arg2 : fpos_t , arg3 : :: std :: os :: raw :: c_int ,) -> fpos_t , > , pub _write : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void , arg2 : * const :: std :: os :: raw :: c_char , arg3 : :: std :: os :: raw :: c_int ,) -> :: std :: os :: raw :: c_int , > , pub _ub : __sbuf , pub _extra : * mut __sFILEX , pub _ur : :: std :: os :: raw :: c_int , pub _ubuf : [:: std :: os :: raw :: c_uchar ; 3usize] , pub _nbuf : [:: std :: os :: raw :: c_uchar ; 1usize] , pub _lb : __sbuf , pub _blksize : :: std :: os :: raw :: c_int , pub _offset : fpos_t , }
-pub type FILE = __sFILE ;
-pub const FLEncoderFormat_kFLEncodeFleece : FLEncoderFormat = 0 ;
-pub const FLEncoderFormat_kFLEncodeJSON : FLEncoderFormat = 1 ;
-pub const FLEncoderFormat_kFLEncodeJSON5 : FLEncoderFormat = 2 ;
-pub type FLEncoderFormat = :: std :: os :: raw :: c_uint ;
-extern "C" { pub fn FLEncoder_New () -> FLEncoder ; }
-extern "C" { pub fn FLEncoder_NewWithOptions (format : FLEncoderFormat , reserveSize : usize , uniqueStrings : bool ,) -> FLEncoder ; }
-extern "C" { pub fn FLEncoder_NewWritingToFile (arg1 : * mut FILE , uniqueStrings : bool) -> FLEncoder ; }
-extern "C" { pub fn FLEncoder_Free (arg1 : FLEncoder) ; }
-extern "C" { pub fn FLEncoder_SetSharedKeys (arg1 : FLEncoder , arg2 : FLSharedKeys) ; }
-extern "C" { pub fn FLEncoder_SetExtraInfo (arg1 : FLEncoder , info : * mut :: std :: os :: raw :: c_void) ; }
-extern "C" { pub fn FLEncoder_GetExtraInfo (arg1 : FLEncoder) -> * mut :: std :: os :: raw :: c_void ; }
-extern "C" { pub fn FLEncoder_Reset (arg1 : FLEncoder) ; }
-extern "C" { pub fn FLEncoder_BytesWritten (arg1 : FLEncoder) -> usize ; }
-extern "C" { pub fn FLEncoder_WriteNull (arg1 : FLEncoder) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteUndefined (arg1 : FLEncoder) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteBool (arg1 : FLEncoder , arg2 : bool) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteInt (arg1 : FLEncoder , arg2 : i64) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteUInt (arg1 : FLEncoder , arg2 : u64) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteFloat (arg1 : FLEncoder , arg2 : f32) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteDouble (arg1 : FLEncoder , arg2 : f64) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteString (arg1 : FLEncoder , arg2 : FLString) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteDateString (encoder : FLEncoder , ts : FLTimestamp , asUTC : bool) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteData (arg1 : FLEncoder , arg2 : FLSlice) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteValue (arg1 : FLEncoder , arg2 : FLValue) -> bool ; }
-extern "C" { pub fn FLEncoder_BeginArray (arg1 : FLEncoder , reserveCount : usize) -> bool ; }
-extern "C" { pub fn FLEncoder_EndArray (arg1 : FLEncoder) -> bool ; }
-extern "C" { pub fn FLEncoder_BeginDict (arg1 : FLEncoder , reserveCount : usize) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteKey (arg1 : FLEncoder , arg2 : FLString) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteKeyValue (arg1 : FLEncoder , arg2 : FLValue) -> bool ; }
-extern "C" { pub fn FLEncoder_EndDict (arg1 : FLEncoder) -> bool ; }
-extern "C" { pub fn FLEncoder_WriteRaw (arg1 : FLEncoder , arg2 : FLSlice) -> bool ; }
-extern "C" { pub fn FLEncoder_FinishDoc (arg1 : FLEncoder , outError : * mut FLError) -> FLDoc ; }
-extern "C" { pub fn FLEncoder_Finish (arg1 : FLEncoder , outError : * mut FLError) -> FLSliceResult ; }
-extern "C" { pub fn FLEncoder_GetError (arg1 : FLEncoder) -> FLError ; }
-extern "C" { pub fn FLEncoder_GetErrorMessage (arg1 : FLEncoder) -> * const :: std :: os :: raw :: c_char ; }
-extern "C" { pub fn FLValue_ToJSON (arg1 : FLValue) -> FLStringResult ; }
-extern "C" { pub fn FLValue_ToJSON5 (arg1 : FLValue) -> FLStringResult ; }
-extern "C" { pub fn FLValue_ToJSONX (v : FLValue , json5 : bool , canonicalForm : bool) -> FLStringResult ; }
-extern "C" { pub fn FLDoc_FromJSON (json : FLSlice , outError : * mut FLError) -> FLDoc ; }
-extern "C" { pub fn FLMutableArray_NewFromJSON (json : FLString , outError : * mut FLError) -> FLMutableArray ; }
-extern "C" { pub fn FLMutableDict_NewFromJSON (json : FLString , outError : * mut FLError) -> FLMutableDict ; }
-extern "C" { pub fn FLEncoder_ConvertJSON (arg1 : FLEncoder , json : FLSlice) -> bool ; }
+extern "C" { # [doc = " Returns the current value being iterated over. or NULL at the end of iteration."] pub fn FLDeepIterator_GetValue (arg1 : FLDeepIterator) -> FLValue ; }
+extern "C" { # [doc = " Returns the parent/container of the current value, or NULL at the end of iteration."] pub fn FLDeepIterator_GetParent (arg1 : FLDeepIterator) -> FLValue ; }
+extern "C" { # [doc = " Returns the key of the current value in its parent, or an empty slice if not in a dictionary."] pub fn FLDeepIterator_GetKey (arg1 : FLDeepIterator) -> FLSlice ; }
+extern "C" { # [doc = " Returns the array index of the current value in its parent, or 0 if not in an array."] pub fn FLDeepIterator_GetIndex (arg1 : FLDeepIterator) -> u32 ; }
+extern "C" { # [doc = " Returns the current depth in the hierarchy, starting at 1 for the top-level children."] pub fn FLDeepIterator_GetDepth (arg1 : FLDeepIterator) -> usize ; }
+extern "C" { # [doc = " Tells the iterator to skip the children of the current value."] pub fn FLDeepIterator_SkipChildren (arg1 : FLDeepIterator) ; }
+extern "C" { # [doc = " Advances the iterator to the next value, or returns false if at the end."] pub fn FLDeepIterator_Next (arg1 : FLDeepIterator) -> bool ; }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct FLPathComponent { # [doc = "< Dict key, or kFLSliceNull if none"] pub key : FLSlice , # [doc = "< Array index, only if there's no key"] pub index : u32 , }
+extern "C" { # [doc = " Returns the path as an array of FLPathComponents."] pub fn FLDeepIterator_GetPath (arg1 : FLDeepIterator , outPath : * mut * mut FLPathComponent , outDepth : * mut usize ,) ; }
+extern "C" { # [doc = " Returns the current path in JavaScript format."] pub fn FLDeepIterator_GetPathString (arg1 : FLDeepIterator) -> FLSliceResult ; }
+extern "C" { # [doc = " Returns the current path in JSONPointer format (RFC 6901)."] pub fn FLDeepIterator_GetJSONPointer (arg1 : FLDeepIterator) -> FLSliceResult ; }
+extern "C" { # [doc = " Creates an FLDoc from Fleece-encoded data that's been returned as a result from\nFLSlice_Copy or other API. The resulting document retains the data, so you don't need to\nworry about it remaining valid."] pub fn FLDoc_FromResultData (data : FLSliceResult , arg1 : FLTrust , arg2 : FLSharedKeys , externData : FLSlice ,) -> FLDoc ; }
+extern "C" { # [doc = " Releases a reference to an FLDoc. This must be called once to free an FLDoc you created."] pub fn FLDoc_Release (arg1 : FLDoc) ; }
+extern "C" { # [doc = " Adds a reference to an FLDoc. This extends its lifespan until at least such time as you\ncall FLRelease to remove the reference."] pub fn FLDoc_Retain (arg1 : FLDoc) -> FLDoc ; }
+extern "C" { # [doc = " Returns the encoded Fleece data backing the document."] pub fn FLDoc_GetData (arg1 : FLDoc) -> FLSlice ; }
+extern "C" { # [doc = " Returns the FLSliceResult data owned by the document, if any, else a null slice."] pub fn FLDoc_GetAllocedData (arg1 : FLDoc) -> FLSliceResult ; }
+extern "C" { # [doc = " Returns the root value in the FLDoc, usually an FLDict."] pub fn FLDoc_GetRoot (arg1 : FLDoc) -> FLValue ; }
+extern "C" { # [doc = " Returns the FLSharedKeys used by this FLDoc, as specified when it was created."] pub fn FLDoc_GetSharedKeys (arg1 : FLDoc) -> FLSharedKeys ; }
+extern "C" { # [doc = " Looks up the Doc containing the Value, or NULL if there is none.\n@note Caller must release the FLDoc reference!!"] pub fn FLValue_FindDoc (arg1 : FLValue) -> FLDoc ; }
+extern "C" { # [doc = " Associates an arbitrary pointer value with a document, and thus its contained values.\nAllows client code to associate its own pointer with this FLDoc and its Values,\nwhich can later be retrieved with \\ref FLDoc_GetAssociated.\nFor example, this could be a pointer to an `app::Document` object, of which this Doc's\nroot FLDict is its properties. You would store it by calling\n`FLDoc_SetAssociated(doc, myDoc, \"app::Document\");`.\n@param doc  The FLDoc to store a pointer in.\n@param pointer  The pointer to store in the FLDoc.\n@param type  A C string literal identifying the type. This is used to avoid collisions\nwith unrelated code that might try to store a different type of value.\n@return  True if the pointer was stored, false if a pointer of a different type is\nalready stored.\n@warning  Be sure to clear this before the associated object is freed/invalidated!\n@warning  This function is not thread-safe. Do not concurrently get & set objects."] pub fn FLDoc_SetAssociated (doc : FLDoc , pointer : * mut :: std :: os :: raw :: c_void , type_ : * const :: std :: os :: raw :: c_char ,) -> bool ; }
+extern "C" { # [doc = " Returns the pointer associated with the document. You can use this together with\n\\ref FLValue_FindDoc to associate your own object with Fleece values, for instance to find\nyour object that \"owns\" a value:\n`myDoc = (app::Document*)FLDoc_GetAssociated(FLValue_FindDoc(val), \"app::Document\");`.\n@param doc  The FLDoc to get a pointer from.\n@param type  The type of object expected, i.e. the same string literal passed to\n\\ref FLDoc_SetAssociated.\n@return  The associated pointer of that type, if any."] pub fn FLDoc_GetAssociated (doc : FLDoc , type_ : * const :: std :: os :: raw :: c_char ,) -> * mut :: std :: os :: raw :: c_void ; }
+pub type __gnuc_va_list = __builtin_va_list ;
+pub type FILE = _IO_FILE ;
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_marker { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_codecvt { _unused : [u8 ; 0] , }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_wide_data { _unused : [u8 ; 0] , }
+pub type _IO_lock_t = :: std :: os :: raw :: c_void ;
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _IO_FILE { pub _flags : :: std :: os :: raw :: c_int , pub _IO_read_ptr : * mut :: std :: os :: raw :: c_char , pub _IO_read_end : * mut :: std :: os :: raw :: c_char , pub _IO_read_base : * mut :: std :: os :: raw :: c_char , pub _IO_write_base : * mut :: std :: os :: raw :: c_char , pub _IO_write_ptr : * mut :: std :: os :: raw :: c_char , pub _IO_write_end : * mut :: std :: os :: raw :: c_char , pub _IO_buf_base : * mut :: std :: os :: raw :: c_char , pub _IO_buf_end : * mut :: std :: os :: raw :: c_char , pub _IO_save_base : * mut :: std :: os :: raw :: c_char , pub _IO_backup_base : * mut :: std :: os :: raw :: c_char , pub _IO_save_end : * mut :: std :: os :: raw :: c_char , pub _markers : * mut _IO_marker , pub _chain : * mut _IO_FILE , pub _fileno : :: std :: os :: raw :: c_int , pub _flags2 : :: std :: os :: raw :: c_int , pub _old_offset : __off_t , pub _cur_column : :: std :: os :: raw :: c_ushort , pub _vtable_offset : :: std :: os :: raw :: c_schar , pub _shortbuf : [:: std :: os :: raw :: c_char ; 1usize] , pub _lock : * mut _IO_lock_t , pub _offset : __off64_t , pub _codecvt : * mut _IO_codecvt , pub _wide_data : * mut _IO_wide_data , pub _freeres_list : * mut _IO_FILE , pub _freeres_buf : * mut :: std :: os :: raw :: c_void , pub __pad5 : usize , pub _mode : :: std :: os :: raw :: c_int , pub _unused2 : [:: std :: os :: raw :: c_char ; 20usize] , }
+pub type va_list = __gnuc_va_list ;
+# [doc = "< Fleece encoding"] pub const FLEncoderFormat_kFLEncodeFleece : FLEncoderFormat = 0 ;
+# [doc = "< JSON encoding"] pub const FLEncoderFormat_kFLEncodeJSON : FLEncoderFormat = 1 ;
+# [doc = "< [JSON5](http://json5.org), an extension of JSON with a more readable syntax"] pub const FLEncoderFormat_kFLEncodeJSON5 : FLEncoderFormat = 2 ;
+# [doc = " Output formats a FLEncoder can generate."] pub type FLEncoderFormat = :: std :: os :: raw :: c_uint ;
+extern "C" { # [doc = " Creates a new encoder, for generating Fleece data. Call FLEncoder_Free when done."] pub fn FLEncoder_New () -> FLEncoder ; }
+extern "C" { # [doc = " Creates a new encoder, allowing some options to be customized.\n@param format  The output format to generate (Fleece, JSON, or JSON5.)\n@param reserveSize  The number of bytes to preallocate for the output. (Default is 256)\n@param uniqueStrings  (Fleece only) If true, string values that appear multiple times will be written\nas a single shared value. This saves space but makes encoding slightly slower.\nYou should only turn this off if you know you're going to be writing large numbers\nof non-repeated strings. (Default is true)"] pub fn FLEncoder_NewWithOptions (format : FLEncoderFormat , reserveSize : usize , uniqueStrings : bool ,) -> FLEncoder ; }
+extern "C" { # [doc = " Creates a new Fleece encoder that writes to a file, not to memory."] pub fn FLEncoder_NewWritingToFile (arg1 : * mut FILE , uniqueStrings : bool) -> FLEncoder ; }
+extern "C" { # [doc = " Frees the space used by an encoder."] pub fn FLEncoder_Free (arg1 : FLEncoder) ; }
+extern "C" { # [doc = " Tells the encoder to use a shared-keys mapping when encoding dictionary keys."] pub fn FLEncoder_SetSharedKeys (arg1 : FLEncoder , arg2 : FLSharedKeys) ; }
+extern "C" { # [doc = " Associates an arbitrary user-defined value with the encoder."] pub fn FLEncoder_SetExtraInfo (arg1 : FLEncoder , info : * mut :: std :: os :: raw :: c_void) ; }
+extern "C" { # [doc = " Returns the user-defined value associated with the encoder; NULL by default."] pub fn FLEncoder_GetExtraInfo (arg1 : FLEncoder) -> * mut :: std :: os :: raw :: c_void ; }
+extern "C" { # [doc = " Resets the state of an encoder without freeing it. It can then be reused to encode\nanother value."] pub fn FLEncoder_Reset (arg1 : FLEncoder) ; }
+extern "C" { # [doc = " Returns the number of bytes encoded so far."] pub fn FLEncoder_BytesWritten (arg1 : FLEncoder) -> usize ; }
+extern "C" { # [doc = " Writes a `null` value to an encoder. (This is an explicitly-stored null, like the JSON\n`null`, not the \"undefined\" value represented by a NULL FLValue pointer.)"] pub fn FLEncoder_WriteNull (arg1 : FLEncoder) -> bool ; }
+extern "C" { # [doc = " Writes an `undefined` value to an encoder. (Its value when read will not be a `NULL`\npointer, but it can be recognized by `FLValue_GetType` returning `kFLUndefined`.)\n@note The only real use for writing undefined values is to represent \"holes\" in an array.\nAn undefined dictionary value should be written simply by skipping the key and value."] pub fn FLEncoder_WriteUndefined (arg1 : FLEncoder) -> bool ; }
+extern "C" { # [doc = " Writes a boolean value (true or false) to an encoder."] pub fn FLEncoder_WriteBool (arg1 : FLEncoder , arg2 : bool) -> bool ; }
+extern "C" { # [doc = " Writes an integer to an encoder. The parameter is typed as `int64_t` but you can pass any\nintegral type (signed or unsigned) except for huge `uint64_t`s.\nThe number will be written in a compact form that uses only as many bytes as necessary."] pub fn FLEncoder_WriteInt (arg1 : FLEncoder , arg2 : i64) -> bool ; }
+extern "C" { # [doc = " Writes an unsigned integer to an encoder.\n@note This function is only really necessary for huge\n64-bit integers greater than or equal to 2^63, which can't be represented as int64_t."] pub fn FLEncoder_WriteUInt (arg1 : FLEncoder , arg2 : u64) -> bool ; }
+extern "C" { # [doc = " Writes a 32-bit floating point number to an encoder.\n@note As an implementation detail, if the number has no fractional part and can be\nrepresented exactly as an integer, it'll be encoded as an integer to save space. This is\ntransparent to the reader, since if it requests the value as a float it'll be returned\nas floating-point."] pub fn FLEncoder_WriteFloat (arg1 : FLEncoder , arg2 : f32) -> bool ; }
+extern "C" { # [doc = " Writes a 64-bit floating point number to an encoder.\n@note As an implementation detail, the number may be encoded as a 32-bit float or even\nas an integer, if this can be done without losing precision. For example, 123.0 will be\nwritten as an integer, and 123.75 as a float.)"] pub fn FLEncoder_WriteDouble (arg1 : FLEncoder , arg2 : f64) -> bool ; }
+extern "C" { # [doc = " Writes a string to an encoder. The string must be UTF-8-encoded and must not contain any\nzero bytes.\n@warning Do _not_ use this to write a dictionary key; use FLEncoder_WriteKey instead."] pub fn FLEncoder_WriteString (arg1 : FLEncoder , arg2 : FLString) -> bool ; }
+extern "C" { # [doc = " Writes a timestamp to an encoder, as an ISO-8601 date string.\n@note Since neither Fleece nor JSON have a 'Date' type, the encoded string has no\nmetadata that distinguishes it as a date. It's just a string.)\n@param encoder  The encoder to write to.\n@param ts  The timestamp (milliseconds since Unix epoch 1-1-1970).\n@param asUTC  If true, date is written in UTC (GMT); if false, with the local timezone.\n@return  True on success, false on error."] pub fn FLEncoder_WriteDateString (encoder : FLEncoder , ts : FLTimestamp , asUTC : bool) -> bool ; }
+extern "C" { # [doc = " Writes a binary data value (a blob) to an encoder. This can contain absolutely anything\nincluding null bytes.\nIf the encoder is generating JSON, the blob will be written as a base64-encoded string."] pub fn FLEncoder_WriteData (arg1 : FLEncoder , arg2 : FLSlice) -> bool ; }
+extern "C" { # [doc = " Writes a Fleece Value to an Encoder."] pub fn FLEncoder_WriteValue (arg1 : FLEncoder , arg2 : FLValue) -> bool ; }
+extern "C" { # [doc = " Begins writing an array value to an encoder. This pushes a new state where each\nsubsequent value written becomes an array item, until FLEncoder_EndArray is called.\n@param reserveCount  Number of array elements to reserve space for. If you know the size\nof the array, providing it here speeds up encoding slightly. If you don't know,\njust use zero."] pub fn FLEncoder_BeginArray (arg1 : FLEncoder , reserveCount : usize) -> bool ; }
+extern "C" { # [doc = " Ends writing an array value; pops back the previous encoding state."] pub fn FLEncoder_EndArray (arg1 : FLEncoder) -> bool ; }
+extern "C" { # [doc = " Begins writing a dictionary value to an encoder. This pushes a new state where each\nsubsequent key and value written are added to the dictionary, until FLEncoder_EndDict is\ncalled.\nBefore adding each value, you must call FLEncoder_WriteKey (_not_ FLEncoder_WriteString!),\nto write the dictionary key.\n@param reserveCount  Number of dictionary items to reserve space for. If you know the size\nof the dictionary, providing it here speeds up encoding slightly. If you don't know,\njust use zero."] pub fn FLEncoder_BeginDict (arg1 : FLEncoder , reserveCount : usize) -> bool ; }
+extern "C" { # [doc = " Specifies the key for the next value to be written to the current dictionary."] pub fn FLEncoder_WriteKey (arg1 : FLEncoder , arg2 : FLString) -> bool ; }
+extern "C" { # [doc = " Specifies the key for the next value to be written to the current dictionary.\nThe key is given as a Value, which must be a string or integer."] pub fn FLEncoder_WriteKeyValue (arg1 : FLEncoder , arg2 : FLValue) -> bool ; }
+extern "C" { # [doc = " Ends writing a dictionary value; pops back the previous encoding state."] pub fn FLEncoder_EndDict (arg1 : FLEncoder) -> bool ; }
+extern "C" { # [doc = " Writes raw data directly to the encoded output.\n(This is not the same as \\ref FLEncoder_WriteData, which safely encodes a blob.)\n@warning **Do not call this** unless you really know what you're doing ...\nit's quite unsafe, and only used for certain advanced purposes."] pub fn FLEncoder_WriteRaw (arg1 : FLEncoder , arg2 : FLSlice) -> bool ; }
+extern "C" { # [doc = " Ends encoding; if there has been no error, it returns the encoded Fleece data packaged in\nan FLDoc. (This function does not support JSON encoding.)\nThis does not free the FLEncoder; call FLEncoder_Free (or FLEncoder_Reset) next."] pub fn FLEncoder_FinishDoc (arg1 : FLEncoder , outError : * mut FLError) -> FLDoc ; }
+extern "C" { # [doc = " Ends encoding; if there has been no error, it returns the encoded data, else null.\nThis does not free the FLEncoder; call FLEncoder_Free (or FLEncoder_Reset) next."] pub fn FLEncoder_Finish (arg1 : FLEncoder , outError : * mut FLError) -> FLSliceResult ; }
+extern "C" { # [doc = " Returns the error code of an encoder, or NoError (0) if there's no error."] pub fn FLEncoder_GetError (arg1 : FLEncoder) -> FLError ; }
+extern "C" { # [doc = " Returns the error message of an encoder, or NULL if there's no error."] pub fn FLEncoder_GetErrorMessage (arg1 : FLEncoder) -> * const :: std :: os :: raw :: c_char ; }
+extern "C" { # [doc = " Encodes a Fleece value as JSON (or a JSON fragment.)\n@note Any Data values will be encoded as base64-encoded strings."] pub fn FLValue_ToJSON (arg1 : FLValue) -> FLStringResult ; }
+extern "C" { # [doc = " Encodes a Fleece value as JSON5, a more lenient variant of JSON that allows dictionary\nkeys to be unquoted if they're alphanumeric. This tends to be more readable.\n@note Any Data values will be encoded as base64-encoded strings."] pub fn FLValue_ToJSON5 (arg1 : FLValue) -> FLStringResult ; }
+extern "C" { # [doc = " Most general Fleece to JSON converter.\n@param v  The Fleece value to encode\n@param json5  If true, outputs JSON5, like \\ref FLValue_ToJSON5\n@param canonicalForm  If true, outputs the JSON in a consistent \"canonical\" form. All\nequivalent values should produce byte-for-byte identical canonical JSON.\nThis is useful for creating digital signatures, for example."] pub fn FLValue_ToJSONX (v : FLValue , json5 : bool , canonicalForm : bool) -> FLStringResult ; }
+extern "C" { # [doc = " Creates an FLDoc from JSON-encoded data. The data is first encoded into Fleece, and the\nFleece data is kept by the doc; the input JSON data is no longer needed after this\nfunction returns."] pub fn FLDoc_FromJSON (json : FLSlice , outError : * mut FLError) -> FLDoc ; }
+extern "C" { # [doc = " Creates a new mutable Array from JSON. It is an error if the JSON is not an array.\nIts initial ref-count is 1, so a call to FLMutableArray_Release will free it."] pub fn FLMutableArray_NewFromJSON (json : FLString , outError : * mut FLError) -> FLMutableArray ; }
+extern "C" { # [doc = " Creates a new mutable Dict from json. It is an error if the JSON is not a dictionary/object.\nIts initial ref-count is 1, so a call to FLMutableDict_Release will free it."] pub fn FLMutableDict_NewFromJSON (json : FLString , outError : * mut FLError) -> FLMutableDict ; }
+extern "C" { # [doc = " Parses JSON data and writes the value(s) to the encoder as their Fleece equivalents.\n(This acts as a single write, like WriteInt; it's just that the value written is likely to\nbe an entire dictionary or array.)"] pub fn FLEncoder_ConvertJSON (arg1 : FLEncoder , json : FLSlice) -> bool ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _FLKeyPath { _unused : [u8 ; 0] , }
 pub type FLKeyPath = * mut _FLKeyPath ;
-extern "C" { pub fn FLKeyPath_New (specifier : FLSlice , outError : * mut FLError) -> FLKeyPath ; }
-extern "C" { pub fn FLKeyPath_Free (arg1 : FLKeyPath) ; }
-extern "C" { pub fn FLKeyPath_Eval (arg1 : FLKeyPath , root : FLValue) -> FLValue ; }
-extern "C" { pub fn FLKeyPath_EvalOnce (specifier : FLSlice , root : FLValue , outError : * mut FLError) -> FLValue ; }
-extern "C" { pub fn FLKeyPath_ToString (path : FLKeyPath) -> FLStringResult ; }
-extern "C" { pub fn FLKeyPath_Equals (path1 : FLKeyPath , path2 : FLKeyPath) -> bool ; }
-extern "C" { pub fn FLKeyPath_GetElement (arg1 : FLKeyPath , i : usize , outDictKey : * mut FLSlice , outArrayIndex : * mut i32 ,) -> bool ; }
-# [repr (i32)] # [derive (Debug , Copy , Clone , Hash , PartialEq , Eq)] pub enum FLValueType { kFLUndefined = - 1 , kFLNull = 0 , kFLBoolean = 1 , kFLNumber = 2 , kFLString = 3 , kFLData = 4 , kFLArray = 5 , kFLDict = 6 , }
-extern "C" { pub static kFLNullValue : FLValue ; }
-extern "C" { pub static kFLUndefinedValue : FLValue ; }
-extern "C" { pub fn FLValue_GetType (arg1 : FLValue) -> FLValueType ; }
-extern "C" { pub fn FLValue_IsInteger (arg1 : FLValue) -> bool ; }
-extern "C" { pub fn FLValue_IsUnsigned (arg1 : FLValue) -> bool ; }
-extern "C" { pub fn FLValue_IsDouble (arg1 : FLValue) -> bool ; }
-extern "C" { pub fn FLValue_AsBool (arg1 : FLValue) -> bool ; }
-extern "C" { pub fn FLValue_AsInt (arg1 : FLValue) -> i64 ; }
-extern "C" { pub fn FLValue_AsUnsigned (arg1 : FLValue) -> u64 ; }
-extern "C" { pub fn FLValue_AsFloat (arg1 : FLValue) -> f32 ; }
-extern "C" { pub fn FLValue_AsDouble (arg1 : FLValue) -> f64 ; }
-extern "C" { pub fn FLValue_AsString (arg1 : FLValue) -> FLString ; }
-extern "C" { pub fn FLValue_AsTimestamp (arg1 : FLValue) -> FLTimestamp ; }
-extern "C" { pub fn FLValue_AsData (arg1 : FLValue) -> FLSlice ; }
-extern "C" { pub fn FLValue_AsArray (arg1 : FLValue) -> FLArray ; }
-extern "C" { pub fn FLValue_AsDict (arg1 : FLValue) -> FLDict ; }
-extern "C" { pub fn FLValue_ToString (arg1 : FLValue) -> FLStringResult ; }
-extern "C" { pub fn FLValue_IsEqual (v1 : FLValue , v2 : FLValue) -> bool ; }
-extern "C" { pub fn FLValue_IsMutable (arg1 : FLValue) -> bool ; }
-extern "C" { pub fn FLValue_Retain (arg1 : FLValue) -> FLValue ; }
-extern "C" { pub fn FLValue_Release (arg1 : FLValue) ; }
-pub const FLCopyFlags_kFLDefaultCopy : FLCopyFlags = 0 ;
-pub const FLCopyFlags_kFLDeepCopy : FLCopyFlags = 1 ;
-pub const FLCopyFlags_kFLCopyImmutables : FLCopyFlags = 2 ;
-pub const FLCopyFlags_kFLDeepCopyImmutables : FLCopyFlags = 3 ;
-pub type FLCopyFlags = :: std :: os :: raw :: c_uint ;
-extern "C" { pub fn FLArray_MutableCopy (arg1 : FLArray , arg2 : FLCopyFlags) -> FLMutableArray ; }
-extern "C" { pub fn FLMutableArray_New () -> FLMutableArray ; }
-extern "C" { pub fn FLMutableArray_GetSource (arg1 : FLMutableArray) -> FLArray ; }
-extern "C" { pub fn FLMutableArray_IsChanged (arg1 : FLMutableArray) -> bool ; }
-extern "C" { pub fn FLMutableArray_SetChanged (arg1 : FLMutableArray , changed : bool) ; }
-extern "C" { pub fn FLMutableArray_Insert (array : FLMutableArray , firstIndex : u32 , count : u32) ; }
-extern "C" { pub fn FLMutableArray_Remove (array : FLMutableArray , firstIndex : u32 , count : u32) ; }
-extern "C" { pub fn FLMutableArray_Resize (array : FLMutableArray , size : u32) ; }
-extern "C" { pub fn FLMutableArray_GetMutableArray (arg1 : FLMutableArray , index : u32) -> FLMutableArray ; }
-extern "C" { pub fn FLMutableArray_GetMutableDict (arg1 : FLMutableArray , index : u32) -> FLMutableDict ; }
-extern "C" { pub fn FLDict_MutableCopy (source : FLDict , arg1 : FLCopyFlags) -> FLMutableDict ; }
-extern "C" { pub fn FLMutableDict_New () -> FLMutableDict ; }
-extern "C" { pub fn FLMutableDict_GetSource (arg1 : FLMutableDict) -> FLDict ; }
-extern "C" { pub fn FLMutableDict_IsChanged (arg1 : FLMutableDict) -> bool ; }
-extern "C" { pub fn FLMutableDict_SetChanged (arg1 : FLMutableDict , arg2 : bool) ; }
-extern "C" { pub fn FLMutableDict_Remove (arg1 : FLMutableDict , key : FLString) ; }
-extern "C" { pub fn FLMutableDict_RemoveAll (arg1 : FLMutableDict) ; }
-extern "C" { pub fn FLMutableDict_GetMutableArray (arg1 : FLMutableDict , key : FLString) -> FLMutableArray ; }
-extern "C" { pub fn FLMutableDict_GetMutableDict (arg1 : FLMutableDict , key : FLString) -> FLMutableDict ; }
-extern "C" { pub fn FLValue_NewString (arg1 : FLString) -> FLValue ; }
-extern "C" { pub fn FLValue_NewData (arg1 : FLSlice) -> FLValue ; }
-extern "C" { pub fn FLMutableArray_Set (arg1 : FLMutableArray , index : u32) -> FLSlot ; }
-extern "C" { pub fn FLMutableArray_Append (arg1 : FLMutableArray) -> FLSlot ; }
-extern "C" { pub fn FLMutableDict_Set (arg1 : FLMutableDict , key : FLString) -> FLSlot ; }
+extern "C" { # [doc = " Creates a new FLKeyPath object by compiling a path specifier string."] pub fn FLKeyPath_New (specifier : FLSlice , outError : * mut FLError) -> FLKeyPath ; }
+extern "C" { # [doc = " Frees a compiled FLKeyPath object. (It's ok to pass NULL.)"] pub fn FLKeyPath_Free (arg1 : FLKeyPath) ; }
+extern "C" { # [doc = " Evaluates a compiled key-path for a given Fleece root object."] pub fn FLKeyPath_Eval (arg1 : FLKeyPath , root : FLValue) -> FLValue ; }
+extern "C" { # [doc = " Evaluates a key-path from a specifier string, for a given Fleece root object.\nIf you only need to evaluate the path once, this is a bit faster than creating an\nFLKeyPath object, evaluating, then freeing it."] pub fn FLKeyPath_EvalOnce (specifier : FLSlice , root : FLValue , outError : * mut FLError) -> FLValue ; }
+extern "C" { # [doc = " Returns a path in string form."] pub fn FLKeyPath_ToString (path : FLKeyPath) -> FLStringResult ; }
+extern "C" { # [doc = " Equality test."] pub fn FLKeyPath_Equals (path1 : FLKeyPath , path2 : FLKeyPath) -> bool ; }
+extern "C" { # [doc = " Returns an element of a path, either a key or an array index."] pub fn FLKeyPath_GetElement (arg1 : FLKeyPath , i : usize , outDictKey : * mut FLSlice , outArrayIndex : * mut i32 ,) -> bool ; }
+# [repr (i32)] # [doc = " Types of Fleece values. Basically JSON, with the addition of Data (raw blob)."] # [derive (Debug , Copy , Clone , Hash , PartialEq , Eq)] pub enum FLValueType { # [doc = "< Type of a NULL pointer, i.e. no such value, like JSON `undefined`.\nAlso the type of \\ref kFLUndefinedValue, and of a value created by\n\\ref FLEncoder_WriteUndefined()."] kFLUndefined = - 1 , # [doc = "< Equivalent to a JSON 'null'"] kFLNull = 0 , # [doc = "< A `true` or `false` value"] kFLBoolean = 1 , # [doc = "< A numeric value, either integer or floating-point"] kFLNumber = 2 , # [doc = "< A string"] kFLString = 3 , # [doc = "< Binary data (no JSON equivalent)"] kFLData = 4 , # [doc = "< An array of values"] kFLArray = 5 , # [doc = "< A mapping of strings to values (AKA \"object\" in JSON.)"] kFLDict = 6 , }
+extern "C" { # [doc = " A constant null value (like a JSON `null`, not a NULL pointer!)"] pub static kFLNullValue : FLValue ; }
+extern "C" { # [doc = " A constant undefined value. This is not a NULL pointer, but its type is \\ref kFLUndefined.\nIt can be stored in an \\ref FLMutableArray or \\ref FLMutableDict if you really, really\nneed to store an undefined/empty value, not just a JSON `null`."] pub static kFLUndefinedValue : FLValue ; }
+extern "C" { # [doc = " Returns the data type of an arbitrary value.\nIf the parameter is a NULL pointer, returns `kFLUndefined`."] pub fn FLValue_GetType (arg1 : FLValue) -> FLValueType ; }
+extern "C" { # [doc = " Returns true if the value is non-NULL and represents an integer."] pub fn FLValue_IsInteger (arg1 : FLValue) -> bool ; }
+extern "C" { # [doc = " Returns true if the value is non-NULL and represents an integer >= 2^63. Such a value can't\nbe represented in C as an `int64_t`, only a `uint64_t`, so you should access it by calling\n`FLValueAsUnsigned`, _not_ FLValueAsInt, which would return  an incorrect (negative)\nvalue."] pub fn FLValue_IsUnsigned (arg1 : FLValue) -> bool ; }
+extern "C" { # [doc = " Returns true if the value is non-NULL and represents a 64-bit floating-point number."] pub fn FLValue_IsDouble (arg1 : FLValue) -> bool ; }
+extern "C" { # [doc = " Returns a value coerced to boolean. This will be true unless the value is NULL (undefined),\nnull, false, or zero."] pub fn FLValue_AsBool (arg1 : FLValue) -> bool ; }
+extern "C" { # [doc = " Returns a value coerced to an integer. True and false are returned as 1 and 0, and\nfloating-point numbers are rounded. All other types are returned as 0.\n@warning  Large 64-bit unsigned integers (2^63 and above) will come out wrong. You can\ncheck for these by calling `FLValueIsUnsigned`."] pub fn FLValue_AsInt (arg1 : FLValue) -> i64 ; }
+extern "C" { # [doc = " Returns a value coerced to an unsigned integer.\nThis is the same as `FLValueAsInt` except that it _can't_ handle negative numbers, but\ndoes correctly return large `uint64_t` values of 2^63 and up."] pub fn FLValue_AsUnsigned (arg1 : FLValue) -> u64 ; }
+extern "C" { # [doc = " Returns a value coerced to a 32-bit floating point number.\nTrue and false are returned as 1.0 and 0.0, and integers are converted to float. All other\ntypes are returned as 0.0.\n@warning  Large integers (outside approximately +/- 2^23) will lose precision due to the\nlimitations of IEEE 32-bit float format."] pub fn FLValue_AsFloat (arg1 : FLValue) -> f32 ; }
+extern "C" { # [doc = " Returns a value coerced to a 32-bit floating point number.\nTrue and false are returned as 1.0 and 0.0, and integers are converted to float. All other\ntypes are returned as 0.0.\n@warning  Very large integers (outside approximately +/- 2^50) will lose precision due to\nthe limitations of IEEE 32-bit float format."] pub fn FLValue_AsDouble (arg1 : FLValue) -> f64 ; }
+extern "C" { # [doc = " Returns the exact contents of a string value, or null for all other types."] pub fn FLValue_AsString (arg1 : FLValue) -> FLString ; }
+extern "C" { # [doc = " Converts a value to a timestamp, in milliseconds since Unix epoch, or INT64_MIN on failure.\n- A string is parsed as ISO-8601 (standard JSON date format).\n- A number is interpreted as a timestamp and returned as-is."] pub fn FLValue_AsTimestamp (arg1 : FLValue) -> FLTimestamp ; }
+extern "C" { # [doc = " Returns the exact contents of a data value, or null for all other types."] pub fn FLValue_AsData (arg1 : FLValue) -> FLSlice ; }
+extern "C" { # [doc = " If a FLValue represents an array, returns it cast to FLArray, else NULL."] pub fn FLValue_AsArray (arg1 : FLValue) -> FLArray ; }
+extern "C" { # [doc = " If a FLValue represents a dictionary, returns it as an FLDict, else NULL."] pub fn FLValue_AsDict (arg1 : FLValue) -> FLDict ; }
+extern "C" { # [doc = " Returns a string representation of any scalar value. Data values are returned in raw form.\nArrays and dictionaries don't have a representation and will return NULL."] pub fn FLValue_ToString (arg1 : FLValue) -> FLStringResult ; }
+extern "C" { # [doc = " Compares two values for equality. This is a deep recursive comparison."] pub fn FLValue_IsEqual (v1 : FLValue , v2 : FLValue) -> bool ; }
+extern "C" { # [doc = " Returns true if the value is mutable."] pub fn FLValue_IsMutable (arg1 : FLValue) -> bool ; }
+extern "C" { # [doc = " Increments the ref-count of a mutable value, or of an immutable value's \\ref FLDoc.\n@warning It is illegal to call this on a value obtained from \\ref FLValue_FromData."] pub fn FLValue_Retain (arg1 : FLValue) -> FLValue ; }
+extern "C" { # [doc = " Decrements the ref-count of a mutable value, or of an immutable value's \\ref FLDoc.\nIf the ref-count reaches zero the corresponding object is freed.\n@warning It is illegal to call this on a value obtained from \\ref FLValue_FromData."] pub fn FLValue_Release (arg1 : FLValue) ; }
+# [doc = "< Shallow copy. References immutables instead of copying."] pub const FLCopyFlags_kFLDefaultCopy : FLCopyFlags = 0 ;
+# [doc = "< Deep copy of mutable values"] pub const FLCopyFlags_kFLDeepCopy : FLCopyFlags = 1 ;
+# [doc = "< Makes mutable copies of immutables instead of just refs."] pub const FLCopyFlags_kFLCopyImmutables : FLCopyFlags = 2 ;
+# [doc = "< Both deep-copy and copy-immutables."] pub const FLCopyFlags_kFLDeepCopyImmutables : FLCopyFlags = 3 ;
+# [doc = " Option flags for making mutable copies of values."] pub type FLCopyFlags = :: std :: os :: raw :: c_uint ;
+extern "C" { # [doc = " Creates a new mutable Array that's a copy of the source Array.\nIts initial ref-count is 1, so a call to \\ref FLMutableArray_Release will free it.\n\nCopying an immutable Array is very cheap (only one small allocation) unless the flag\n\\ref kFLCopyImmutables is set.\n\nCopying a mutable Array is cheap if it's a shallow copy; but if \\ref kFLDeepCopy is set,\nnested mutable Arrays and Dicts are also copied, recursively; if \\ref kFLCopyImmutables is\nalso set, immutable values are also copied, recursively.\n\nIf the source Array is NULL, then NULL is returned."] pub fn FLArray_MutableCopy (arg1 : FLArray , arg2 : FLCopyFlags) -> FLMutableArray ; }
+extern "C" { # [doc = " Creates a new empty mutable Array.\nIts initial ref-count is 1, so a call to FLMutableArray_Release will free it."] pub fn FLMutableArray_New () -> FLMutableArray ; }
+extern "C" { # [doc = " If the Array was created by FLArray_MutableCopy, returns the original source Array."] pub fn FLMutableArray_GetSource (arg1 : FLMutableArray) -> FLArray ; }
+extern "C" { # [doc = " Returns true if the Array has been changed from the source it was copied from."] pub fn FLMutableArray_IsChanged (arg1 : FLMutableArray) -> bool ; }
+extern "C" { # [doc = " Sets or clears the mutable Array's \"changed\" flag."] pub fn FLMutableArray_SetChanged (arg1 : FLMutableArray , changed : bool) ; }
+extern "C" { # [doc = " Inserts a contiguous range of JSON `null` values into the array.\n@param array  The array to operate on.\n@param firstIndex  The zero-based index of the first value to be inserted.\n@param count  The number of items to insert."] pub fn FLMutableArray_Insert (array : FLMutableArray , firstIndex : u32 , count : u32) ; }
+extern "C" { # [doc = " Removes contiguous items from the array.\n@param array  The array to operate on.\n@param firstIndex  The zero-based index of the first item to remove.\n@param count  The number of items to remove."] pub fn FLMutableArray_Remove (array : FLMutableArray , firstIndex : u32 , count : u32) ; }
+extern "C" { # [doc = " Changes the size of an array.\nIf the new size is larger, the array is padded with JSON `null` values.\nIf it's smaller, values are removed from the end."] pub fn FLMutableArray_Resize (array : FLMutableArray , size : u32) ; }
+extern "C" { # [doc = " Convenience function for getting an array-valued property in mutable form.\n- If the value for the key is not an array, returns NULL.\n- If the value is a mutable array, returns it.\n- If the value is an immutable array, this function makes a mutable copy, assigns the\ncopy as the property value, and returns the copy."] pub fn FLMutableArray_GetMutableArray (arg1 : FLMutableArray , index : u32) -> FLMutableArray ; }
+extern "C" { # [doc = " Convenience function for getting an array-valued property in mutable form.\n- If the value for the key is not an array, returns NULL.\n- If the value is a mutable array, returns it.\n- If the value is an immutable array, this function makes a mutable copy, assigns the\ncopy as the property value, and returns the copy."] pub fn FLMutableArray_GetMutableDict (arg1 : FLMutableArray , index : u32) -> FLMutableDict ; }
+extern "C" { # [doc = " Creates a new mutable Dict that's a copy of the source Dict.\nIts initial ref-count is 1, so a call to FLMutableDict_Release will free it.\n\nCopying an immutable Dict is very cheap (only one small allocation.) The `deepCopy` flag\nis ignored.\n\nCopying a mutable Dict is cheap if it's a shallow copy, but if `deepCopy` is true,\nnested mutable Dicts and Arrays are also copied, recursively.\n\nIf the source dict is NULL, then NULL is returned."] pub fn FLDict_MutableCopy (source : FLDict , arg1 : FLCopyFlags) -> FLMutableDict ; }
+extern "C" { # [doc = " Creates a new empty mutable Dict.\nIts initial ref-count is 1, so a call to FLMutableDict_Release will free it."] pub fn FLMutableDict_New () -> FLMutableDict ; }
+extern "C" { # [doc = " If the Dict was created by FLDict_MutableCopy, returns the original source Dict."] pub fn FLMutableDict_GetSource (arg1 : FLMutableDict) -> FLDict ; }
+extern "C" { # [doc = " Returns true if the Dict has been changed from the source it was copied from."] pub fn FLMutableDict_IsChanged (arg1 : FLMutableDict) -> bool ; }
+extern "C" { # [doc = " Sets or clears the mutable Dict's \"changed\" flag."] pub fn FLMutableDict_SetChanged (arg1 : FLMutableDict , arg2 : bool) ; }
+extern "C" { # [doc = " Removes the value for a key."] pub fn FLMutableDict_Remove (arg1 : FLMutableDict , key : FLString) ; }
+extern "C" { # [doc = " Removes all keys and values."] pub fn FLMutableDict_RemoveAll (arg1 : FLMutableDict) ; }
+extern "C" { # [doc = " Convenience function for getting an array-valued property in mutable form.\n- If the value for the key is not an array, returns NULL.\n- If the value is a mutable array, returns it.\n- If the value is an immutable array, this function makes a mutable copy, assigns the\ncopy as the property value, and returns the copy."] pub fn FLMutableDict_GetMutableArray (arg1 : FLMutableDict , key : FLString) -> FLMutableArray ; }
+extern "C" { # [doc = " Convenience function for getting a dict-valued property in mutable form.\n- If the value for the key is not a dict, returns NULL.\n- If the value is a mutable dict, returns it.\n- If the value is an immutable dict, this function makes a mutable copy, assigns the\ncopy as the property value, and returns the copy."] pub fn FLMutableDict_GetMutableDict (arg1 : FLMutableDict , key : FLString) -> FLMutableDict ; }
+extern "C" { # [doc = " Allocates a string value on the heap. This is rarely needed -- usually you'd just add a string\nto a mutable Array or Dict directly using one of their \"...SetString\" or \"...AppendString\"\nmethods."] pub fn FLValue_NewString (arg1 : FLString) -> FLValue ; }
+extern "C" { # [doc = " Allocates a data/blob value on the heap. This is rarely needed -- usually you'd just add data\nto a mutable Array or Dict directly using one of their \"...SetData or \"...AppendData\"\nmethods."] pub fn FLValue_NewData (arg1 : FLSlice) -> FLValue ; }
+extern "C" { # [doc = " Returns an \\ref FLSlot that refers to the given index of the given array.\nYou store a value to it by calling one of the nine `FLSlot_Set...` functions.\n\\warning You should immediately store a value into the `FLSlot`. Do not keep it around;\nany changes to the array invalidate it."] pub fn FLMutableArray_Set (arg1 : FLMutableArray , index : u32) -> FLSlot ; }
+extern "C" { # [doc = " Appends a null value to the array and returns an \\ref FLSlot that refers to that position.\nYou store a value to it by calling one of the nine `FLSlot_Set...` functions.\n\\warning You should immediately store a value into the `FLSlot`. Do not keep it around;\nany changes to the array invalidate it."] pub fn FLMutableArray_Append (arg1 : FLMutableArray) -> FLSlot ; }
+extern "C" { # [doc = " Returns an \\ref FLSlot that refers to the given key/value pair of the given dictionary.\nYou store a value to it by calling one of the nine `FLSlot_Set...` functions.\n\\warning You should immediately store a value into the `FLSlot`. Do not keep it around;\nany changes to the dictionary invalidate it."] pub fn FLMutableDict_Set (arg1 : FLMutableDict , key : FLString) -> FLSlot ; }
 extern "C" { pub fn FLSlot_SetNull (arg1 : FLSlot) ; }
 extern "C" { pub fn FLSlot_SetBool (arg1 : FLSlot , arg2 : bool) ; }
 extern "C" { pub fn FLSlot_SetInt (arg1 : FLSlot , arg2 : i64) ; }
@@ -361,66 +275,42 @@ extern "C" { pub fn FLSlot_SetDouble (arg1 : FLSlot , arg2 : f64) ; }
 extern "C" { pub fn FLSlot_SetString (arg1 : FLSlot , arg2 : FLString) ; }
 extern "C" { pub fn FLSlot_SetData (arg1 : FLSlot , arg2 : FLSlice) ; }
 extern "C" { pub fn FLSlot_SetValue (arg1 : FLSlot , arg2 : FLValue) ; }
-extern "C" { pub fn FLCreateJSONDelta (old : FLValue , nuu : FLValue) -> FLSliceResult ; }
-extern "C" { pub fn FLEncodeJSONDelta (old : FLValue , nuu : FLValue , jsonEncoder : FLEncoder) -> bool ; }
-extern "C" { pub fn FLApplyJSONDelta (old : FLValue , jsonDelta : FLSlice , outError : * mut FLError ,) -> FLSliceResult ; }
-extern "C" { pub fn FLEncodeApplyingJSONDelta (old : FLValue , jsonDelta : FLSlice , encoder : FLEncoder) -> bool ; }
-extern "C" { pub fn FLSharedKeys_New () -> FLSharedKeys ; }
+extern "C" { # [doc = " Returns JSON that encodes the changes to turn the value `old` into `nuu`.\n(The format is documented in Fleece.md, but you should treat it as a black box.)\n@param old  A value that's typically the old/original state of some data.\n@param nuu  A value that's typically the new/changed state of the `old` data.\n@return  JSON data representing the changes from `old` to `nuu`, or NULL on\n(extremely unlikely) failure."] pub fn FLCreateJSONDelta (old : FLValue , nuu : FLValue) -> FLSliceResult ; }
+extern "C" { # [doc = " Writes JSON that describes the changes to turn the value `old` into `nuu`.\n(The format is documented in Fleece.md, but you should treat it as a black box.)\n@param old  A value that's typically the old/original state of some data.\n@param nuu  A value that's typically the new/changed state of the `old` data.\n@param jsonEncoder  An encoder to write the JSON to. Must have been created using\n`FLEncoder_NewWithOptions`, with JSON or JSON5 format.\n@return  True on success, false on (extremely unlikely) failure."] pub fn FLEncodeJSONDelta (old : FLValue , nuu : FLValue , jsonEncoder : FLEncoder) -> bool ; }
+extern "C" { # [doc = " Applies the JSON data created by `CreateJSONDelta` to the value `old`, which must be equal\nto the `old` value originally passed to `FLCreateJSONDelta`, and returns a Fleece document\nequal to the original `nuu` value.\n@param old  A value that's typically the old/original state of some data. This must be\nequal to the `old` value used when creating the `jsonDelta`.\n@param jsonDelta  A JSON-encoded delta created by `FLCreateJSONDelta` or `FLEncodeJSONDelta`.\n@param outError  On failure, error information will be stored where this points, if non-null.\n@return  The corresponding `nuu` value, encoded as Fleece, or null if an error occurred."] pub fn FLApplyJSONDelta (old : FLValue , jsonDelta : FLSlice , outError : * mut FLError ,) -> FLSliceResult ; }
+extern "C" { # [doc = " Applies the (parsed) JSON data created by `CreateJSONDelta` to the value `old`, which must be\nequal to the `old` value originally passed to `FLCreateJSONDelta`, and writes the corresponding\n`nuu` value to the encoder.\n@param old  A value that's typically the old/original state of some data. This must be\nequal to the `old` value used when creating the `jsonDelta`.\n@param jsonDelta  A JSON-encoded delta created by `FLCreateJSONDelta` or `FLEncodeJSONDelta`.\n@param encoder  A Fleece encoder to write the decoded `nuu` value to. (JSON encoding is not\nsupported.)\n@return  True on success, false on error; call `FLEncoder_GetError` for details."] pub fn FLEncodeApplyingJSONDelta (old : FLValue , jsonDelta : FLSlice , encoder : FLEncoder) -> bool ; }
+extern "C" { # [doc = " Creates a new empty FLSharedKeys object, which must eventually be released."] pub fn FLSharedKeys_New () -> FLSharedKeys ; }
 pub type FLSharedKeysReadCallback = :: std :: option :: Option < unsafe extern "C" fn (context : * mut :: std :: os :: raw :: c_void , arg1 : FLSharedKeys) -> bool , > ;
 extern "C" { pub fn FLSharedKeys_NewWithRead (arg1 : FLSharedKeysReadCallback , context : * mut :: std :: os :: raw :: c_void ,) -> FLSharedKeys ; }
-extern "C" { pub fn FLSharedKeys_GetStateData (arg1 : FLSharedKeys) -> FLSliceResult ; }
-extern "C" { pub fn FLSharedKeys_LoadStateData (arg1 : FLSharedKeys , arg2 : FLSlice) -> bool ; }
-extern "C" { pub fn FLSharedKeys_WriteState (arg1 : FLSharedKeys , arg2 : FLEncoder) ; }
-extern "C" { pub fn FLSharedKeys_LoadState (arg1 : FLSharedKeys , arg2 : FLValue) -> bool ; }
-extern "C" { pub fn FLSharedKeys_Encode (arg1 : FLSharedKeys , arg2 : FLString , add : bool ,) -> :: std :: os :: raw :: c_int ; }
-extern "C" { pub fn FLSharedKeys_Decode (arg1 : FLSharedKeys , key : :: std :: os :: raw :: c_int) -> FLString ; }
-extern "C" { pub fn FLSharedKeys_Count (arg1 : FLSharedKeys) -> :: std :: os :: raw :: c_uint ; }
-extern "C" { pub fn FLSharedKeys_RevertToCount (arg1 : FLSharedKeys , oldCount : :: std :: os :: raw :: c_uint) ; }
-extern "C" { pub fn FLSharedKeys_Retain (arg1 : FLSharedKeys) -> FLSharedKeys ; }
-extern "C" { pub fn FLSharedKeys_Release (arg1 : FLSharedKeys) ; }
+extern "C" { # [doc = " Returns a data blob containing the current state (all the keys and their integers.)"] pub fn FLSharedKeys_GetStateData (arg1 : FLSharedKeys) -> FLSliceResult ; }
+extern "C" { # [doc = " Updates an FLSharedKeys with saved state data created by \\ref FLSharedKeys_GetStateData."] pub fn FLSharedKeys_LoadStateData (arg1 : FLSharedKeys , arg2 : FLSlice) -> bool ; }
+extern "C" { # [doc = " Writes the current state to a Fleece encoder as a single value,\nwhich can later be decoded and passed to \\ref FLSharedKeys_LoadState."] pub fn FLSharedKeys_WriteState (arg1 : FLSharedKeys , arg2 : FLEncoder) ; }
+extern "C" { # [doc = " Updates an FLSharedKeys object with saved state, a Fleece value previously written by\n\\ref FLSharedKeys_WriteState."] pub fn FLSharedKeys_LoadState (arg1 : FLSharedKeys , arg2 : FLValue) -> bool ; }
+extern "C" { # [doc = " Maps a key string to a number in the range [0...2047], or returns -1 if it isn't mapped.\nIf the key doesn't already have a mapping, and the `add` flag is true,\na new mapping is assigned and returned.\nHowever, the `add` flag has no effect if the key is unmappable (is longer than 16 bytes\nor contains non-identifier characters), or if all available integers have been assigned."] pub fn FLSharedKeys_Encode (arg1 : FLSharedKeys , arg2 : FLString , add : bool ,) -> :: std :: os :: raw :: c_int ; }
+extern "C" { # [doc = " Returns the key string that maps to the given integer `key`, else NULL."] pub fn FLSharedKeys_Decode (arg1 : FLSharedKeys , key : :: std :: os :: raw :: c_int) -> FLString ; }
+extern "C" { # [doc = " Returns the number of keys in the mapping. This number increases whenever the mapping\nis changed, and never decreases."] pub fn FLSharedKeys_Count (arg1 : FLSharedKeys) -> :: std :: os :: raw :: c_uint ; }
+extern "C" { # [doc = " Reverts an FLSharedKeys by \"forgetting\" any keys added since it had the count `oldCount`."] pub fn FLSharedKeys_RevertToCount (arg1 : FLSharedKeys , oldCount : :: std :: os :: raw :: c_uint) ; }
+extern "C" { # [doc = " Increments the reference count of an FLSharedKeys."] pub fn FLSharedKeys_Retain (arg1 : FLSharedKeys) -> FLSharedKeys ; }
+extern "C" { # [doc = " Decrements the reference count of an FLSharedKeys, freeing it when it reaches zero."] pub fn FLSharedKeys_Release (arg1 : FLSharedKeys) ; }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct _FLSharedKeyScope { _unused : [u8 ; 0] , }
 pub type FLSharedKeyScope = * mut _FLSharedKeyScope ;
-extern "C" { pub fn FLSharedKeyScope_WithRange (range : FLSlice , arg1 : FLSharedKeys) -> FLSharedKeyScope ; }
-extern "C" { pub fn FLSharedKeyScope_Free (arg1 : FLSharedKeyScope) ; }
-extern "C" { pub fn FLValue_FromData (data : FLSlice , trust : FLTrust) -> FLValue ; }
-extern "C" { pub fn FLJSON5_ToJSON (json5 : FLString , outErrorMessage : * mut FLStringResult , outErrorPos : * mut usize , outError : * mut FLError ,) -> FLStringResult ; }
-extern "C" { pub fn FLData_ConvertJSON (json : FLSlice , outError : * mut FLError) -> FLSliceResult ; }
-extern "C" { pub fn FLEncoder_Amend (e : FLEncoder , base : FLSlice , reuseStrings : bool , externPointers : bool) ; }
-extern "C" { pub fn FLEncoder_GetBase (arg1 : FLEncoder) -> FLSlice ; }
-extern "C" { pub fn FLEncoder_SuppressTrailer (arg1 : FLEncoder) ; }
-extern "C" { pub fn FLEncoder_GetNextWritePos (arg1 : FLEncoder) -> usize ; }
-extern "C" { pub fn FLEncoder_LastValueWritten (arg1 : FLEncoder) -> isize ; }
-extern "C" { pub fn FLEncoder_WriteValueAgain (arg1 : FLEncoder , preWrittenValue : isize) ; }
-extern "C" { pub fn FLEncoder_Snip (arg1 : FLEncoder) -> FLSliceResult ; }
-extern "C" { pub fn FLEncoder_FinishItem (arg1 : FLEncoder) -> usize ; }
-extern "C" { pub fn FLJSONEncoder_NextDocument (arg1 : FLEncoder) ; }
-extern "C" { pub fn FLDump (arg1 : FLValue) -> * const :: std :: os :: raw :: c_char ; }
-extern "C" { pub fn FLDumpData (data : FLSlice) -> * const :: std :: os :: raw :: c_char ; }
-extern "C" { pub fn FLData_Dump (data : FLSlice) -> FLStringResult ; }
-pub const kNilOptions : _bindgen_ty_2 = 0 ;
-pub type _bindgen_ty_2 = :: std :: os :: raw :: c_uint ;
-pub const kVariableLengthArray : _bindgen_ty_3 = 1 ;
-pub type _bindgen_ty_3 = :: std :: os :: raw :: c_uint ;
-pub const kUnknownType : _bindgen_ty_4 = 1061109567 ;
-pub type _bindgen_ty_4 = :: std :: os :: raw :: c_uint ;
-extern "C" { pub static mut kCFCoreFoundationVersionNumber : f64 ; }
-pub type CFIndex = :: std :: os :: raw :: c_long ;
-pub const kCFCompareLessThan : _bindgen_ty_7 = - 1 ;
-pub const kCFCompareEqualTo : _bindgen_ty_7 = 0 ;
-pub const kCFCompareGreaterThan : _bindgen_ty_7 = 1 ;
-pub type _bindgen_ty_7 = :: std :: os :: raw :: c_int ;
-pub const kCFNotFound : CFIndex = - 1 ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __CFNull { _unused : [u8 ; 0] , }
-pub type CFNullRef = * const __CFNull ;
-extern "C" { pub static kCFNull : CFNullRef ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __CFAllocator { _unused : [u8 ; 0] , }
-pub type CFAllocatorRef = * const __CFAllocator ;
-extern "C" { pub static kCFAllocatorDefault : CFAllocatorRef ; }
-extern "C" { pub static kCFAllocatorSystemDefault : CFAllocatorRef ; }
-extern "C" { pub static kCFAllocatorMalloc : CFAllocatorRef ; }
-extern "C" { pub static kCFAllocatorMallocZone : CFAllocatorRef ; }
-extern "C" { pub static kCFAllocatorNull : CFAllocatorRef ; }
-extern "C" { pub static kCFAllocatorUseContext : CFAllocatorRef ; }
+extern "C" { # [doc = " Registers a range of memory containing Fleece data that uses the given shared keys.\nThis allows Dict accessors to look up the values of shared keys."] pub fn FLSharedKeyScope_WithRange (range : FLSlice , arg1 : FLSharedKeys) -> FLSharedKeyScope ; }
+extern "C" { # [doc = " Unregisters a scope created by \\ref FLSharedKeyScope_WithRange."] pub fn FLSharedKeyScope_Free (arg1 : FLSharedKeyScope) ; }
+extern "C" { # [doc = " Returns a pointer to the root value in the encoded data, or NULL if validation failed.\nYou should generally use an \\ref FLDoc instead; it's safer. Here's why:\n\nOn the plus side, \\ref FLValue_FromData is _extremely_ fast: it allocates no memory,\nonly scans enough of the data to ensure it's valid (and if `trust` is set to `kFLTrusted`,\nit doesn't even do that.)\n\nBut it's potentially _very_ dangerous: the FLValue, and all values found through it, are\nonly valid as long as the input `data` remains intact and unchanged. If you violate\nthat, the values will be pointing to garbage and Bad Things will happen when you access\nthem..."] pub fn FLValue_FromData (data : FLSlice , trust : FLTrust) -> FLValue ; }
+extern "C" { # [doc = " Converts valid JSON5 <https://json5.org> to JSON. Among other things, it converts single\nquotes to double, adds missing quotes around dictionary keys, removes trailing commas,\nand removes comments.\n@note If given invalid JSON5, it will _usually_ return an error, but may just ouput\ncomparably invalid JSON, in which case the caller's subsequent JSON parsing will\ndetect the error. The types of errors it overlooks tend to be subtleties of string\nor number encoding.\n@param json5  The JSON5 to parse\n@param outErrorMessage  On failure, the error message will be stored here (if not NULL.)\nAs this is a \\ref FLStringResult, you will be responsible for freeing it.\n@param outErrorPos  On a parse error, the byte offset in the input where the error occurred\nwill be stored here (if it's not NULL.)\n@param outError  On failure, the error code will be stored here (if it's not NULL.)\n@return  The converted JSON."] pub fn FLJSON5_ToJSON (json5 : FLString , outErrorMessage : * mut FLStringResult , outErrorPos : * mut usize , outError : * mut FLError ,) -> FLStringResult ; }
+extern "C" { # [doc = " Directly converts JSON data to Fleece-encoded data. Not commonly needed.\nPrefer \\ref FLDoc_FromJSON instead."] pub fn FLData_ConvertJSON (json : FLSlice , outError : * mut FLError) -> FLSliceResult ; }
+extern "C" { # [doc = " Tells the encoder to logically append to the given Fleece document, rather than making a\nstandalone document. Any calls to FLEncoder_WriteValue() where the value points inside the\nbase data will write a pointer back to the original value.\nThe resulting data returned by FLEncoder_FinishDoc() will *NOT* be standalone; it can only\nbe used by first appending it to the base data.\n@param e  The FLEncoder affected.\n@param base  The base document to create an amendment of.\n@param reuseStrings  If true, then writing a string that already exists in the base will\njust create a pointer back to the original. But the encoder has to scan the\nbase for strings first.\n@param externPointers  If true, pointers into the base will be marked with the `extern`\nflag. This allows them to be resolved using the `FLResolver_Begin` function,\nso that when the delta is used the base document can be anywhere in memory,\nnot just immediately preceding the delta document."] pub fn FLEncoder_Amend (e : FLEncoder , base : FLSlice , reuseStrings : bool , externPointers : bool) ; }
+extern "C" { # [doc = " Returns the `base` value passed to FLEncoder_Amend."] pub fn FLEncoder_GetBase (arg1 : FLEncoder) -> FLSlice ; }
+extern "C" { # [doc = " Tells the encoder not to write the two-byte Fleece trailer at the end of the data.\nThis is only useful for certain special purposes."] pub fn FLEncoder_SuppressTrailer (arg1 : FLEncoder) ; }
+extern "C" { # [doc = " Returns the byte offset in the encoded data where the next value will be written.\n(Due to internal buffering, this is not the same as FLEncoder_BytesWritten.)"] pub fn FLEncoder_GetNextWritePos (arg1 : FLEncoder) -> usize ; }
+extern "C" { # [doc = " Returns an opaque reference to the last complete value written to the encoder, if possible.\nFails (returning 0) if nothing has been written, or if the value is inline and can't be\nreferenced this way -- that only happens with small scalars or empty collections."] pub fn FLEncoder_LastValueWritten (arg1 : FLEncoder) -> isize ; }
+extern "C" { # [doc = " Writes another reference (a \"pointer\") to an already-written value, given a reference previously\nreturned from \\ref FLEncoder_LastValueWritten. The effect is exactly the same as if you wrote the\nentire value again, except that the size of the encoded data only grows by 4 bytes."] pub fn FLEncoder_WriteValueAgain (arg1 : FLEncoder , preWrittenValue : isize) ; }
+extern "C" { # [doc = " Returns the data written so far as a standalone Fleece document, whose root is the last\nvalue written. You can continue writing, and the final output returned by \\ref FLEncoder_Finish will\nconsist of everything after this point. That second part can be used in the future by loading it\nas an `FLDoc` with the first part as its `extern` reference."] pub fn FLEncoder_Snip (arg1 : FLEncoder) -> FLSliceResult ; }
+extern "C" { # [doc = " Finishes encoding the current item, and returns its offset in the output data."] pub fn FLEncoder_FinishItem (arg1 : FLEncoder) -> usize ; }
+extern "C" { # [doc = " In a JSON encoder, adds a newline ('\\n') and prepares to start encoding another\ntop-level object. The encoder MUST be not be within an array or dict.\nHas no effect in a Fleece encoder."] pub fn FLJSONEncoder_NextDocument (arg1 : FLEncoder) ; }
+extern "C" { # [doc = " Debugging function that returns a C string of JSON.\nDoes not free the string's memory!"] pub fn FLDump (arg1 : FLValue) -> * const :: std :: os :: raw :: c_char ; }
+extern "C" { # [doc = " Debugging function that parses Fleece data and returns a C string of JSON.\nDoes not free the string's memory!"] pub fn FLDumpData (data : FLSlice) -> * const :: std :: os :: raw :: c_char ; }
+extern "C" { # [doc = " Produces a human-readable dump of Fleece-encoded data.\nThis is only useful if you already know, or want to learn, the encoding format."] pub fn FLData_Dump (data : FLSlice) -> FLStringResult ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -508,19 +398,19 @@ impl C4NetworkErrorCode {
     pub const kC4NetErrUnknownInterface: C4NetworkErrorCode = C4NetworkErrorCode(27);
     pub const kC4NumNetErrorCodesPlus1: C4NetworkErrorCode = C4NetworkErrorCode(28);
 }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Error { pub domain : C4ErrorDomain , pub code : :: std :: os :: raw :: c_int , pub internal_info : :: std :: os :: raw :: c_uint , }
-extern "C" { pub fn c4error_getMessage (error : C4Error) -> FLStringResult ; }
-extern "C" { pub fn c4error_getDescription (error : C4Error) -> FLSliceResult ; }
-extern "C" { pub fn c4error_getDescriptionC (error : C4Error , outBuffer : * mut :: std :: os :: raw :: c_char , bufferSize : usize ,) -> * mut :: std :: os :: raw :: c_char ; }
-extern "C" { pub fn c4error_setCaptureBacktraces (arg1 : bool) ; }
+# [doc = " An error value. These are returned by reference from API calls whose last parameter is a\nC4Error*. The semantics are based on Cocoa's usage of NSError:\n A caller can pass NULL if it doesn't care about the error.\n The error is filled in only if the function fails, as indicated by its return value\n(e.g. false or NULL.) If the function doesn't fail, it does NOT zero out the error, so its\ncontents should be considered uninitialized garbage."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Error { pub domain : C4ErrorDomain , pub code : :: std :: os :: raw :: c_int , pub internal_info : :: std :: os :: raw :: c_uint , }
+extern "C" { # [doc = " Returns an error message describing a C4Error. Remember to free the result."] pub fn c4error_getMessage (error : C4Error) -> FLStringResult ; }
+extern "C" { # [doc = " Returns a description of an error, including the domain and code as well as the message.\nRemember to free the result."] pub fn c4error_getDescription (error : C4Error) -> FLSliceResult ; }
+extern "C" { # [doc = " Returns a description of an error, including the domain and code as well as the message.\nThe description is copied to the buffer as a C string.\nIt will not write past the end of the buffer; the message will be truncated if necessary.\n@param error  The error to describe\n@param outBuffer  Where to write the C string to\n@param bufferSize  The size of the buffer\n@return  A pointer to the string, i.e. to the first byte of the buffer."] pub fn c4error_getDescriptionC (error : C4Error , outBuffer : * mut :: std :: os :: raw :: c_char , bufferSize : usize ,) -> * mut :: std :: os :: raw :: c_char ; }
+extern "C" { # [doc = " If set to `true`, then when a C4Error is created the current thread's stack backtrace will\nbe captured along with it, and can later be examined by calling \\ref c4error_getBacktrace.\nEven if false, some errors (like assertion failures) will still have backtraces."] pub fn c4error_setCaptureBacktraces (arg1 : bool) ; }
 extern "C" { pub fn c4error_getCaptureBacktraces () -> bool ; }
-extern "C" { pub fn c4error_getBacktrace (error : C4Error) -> FLStringResult ; }
-extern "C" { pub fn c4error_make (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString ,) -> C4Error ; }
-extern "C" { pub fn c4error_printf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , ...) -> C4Error ; }
-extern "C" { pub fn c4error_vprintf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , args : va_list ,) -> C4Error ; }
-extern "C" { pub fn c4error_return (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString , outError : * mut C4Error ,) ; }
-extern "C" { pub fn c4error_mayBeTransient (err : C4Error) -> bool ; }
-extern "C" { pub fn c4error_mayBeNetworkDependent (err : C4Error) -> bool ; }
+extern "C" { # [doc = " Returns the stack backtrace, if any, associated with a C4Error.\nThis is formatted in human-readable form similar to a debugger or crash log."] pub fn c4error_getBacktrace (error : C4Error) -> FLStringResult ; }
+extern "C" { # [doc = " Creates a C4Error struct with the given domain and code, and associates the message with it."] pub fn c4error_make (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString ,) -> C4Error ; }
+extern "C" { # [doc = " Creates a C4Error struct with the given domain and code, formats the message as with\n`printf`, and associates the message with the error."] pub fn c4error_printf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , ...) -> C4Error ; }
+extern "C" { # [doc = " Same as \\ref c4error_printf, but with a premade `va_list`."] pub fn c4error_vprintf (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , format : * const :: std :: os :: raw :: c_char , args : * mut __va_list_tag ,) -> C4Error ; }
+extern "C" { # [doc = " Creates and stores a C4Error in `*outError`, if not NULL. Useful in functions that use the\nLiteCore error reporting convention of taking a `C4Error *outError` parameter."] pub fn c4error_return (domain : C4ErrorDomain , code : :: std :: os :: raw :: c_int , message : FLString , outError : * mut C4Error ,) ; }
+extern "C" { # [doc = " Returns true if this is a network error that may be transient,\ni.e. the client should retry after a delay."] pub fn c4error_mayBeTransient (err : C4Error) -> bool ; }
+extern "C" { # [doc = " Returns true if this error might go away when the network environment changes,\ni.e. the client should retry after notification of a network status change."] pub fn c4error_mayBeNetworkDependent (err : C4Error) -> bool ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -534,42 +424,42 @@ impl C4LogLevel {
     pub const kC4LogNone: C4LogLevel = C4LogLevel(5);
 }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct c4LogDomain { _unused : [u8 ; 0] , }
-pub type C4LogDomain = * mut c4LogDomain ;
-extern "C" { pub static kC4DefaultLog : C4LogDomain ; }
-extern "C" { pub static mut kC4DatabaseLog : C4LogDomain ; }
-extern "C" { pub static mut kC4QueryLog : C4LogDomain ; }
-extern "C" { pub static mut kC4SyncLog : C4LogDomain ; }
-extern "C" { pub static mut kC4WebSocketLog : C4LogDomain ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4LogFileOptions { pub log_level : C4LogLevel , pub base_path : FLString , pub max_size_bytes : i64 , pub max_rotate_count : i32 , pub use_plaintext : bool , pub header : FLString , }
-extern "C" { pub fn c4log_writeToBinaryFile (options : C4LogFileOptions , error : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4log_binaryFilePath () -> FLStringResult ; }
-extern "C" { pub fn c4log_flushLogFiles () ; }
-extern "C" { pub fn c4log_binaryFileLevel () -> C4LogLevel ; }
-extern "C" { pub fn c4log_setBinaryFileLevel (level : C4LogLevel) ; }
-extern "C" { pub fn c4log_writeToCallback (level : C4LogLevel , callback : :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : va_list ,) , > , preformatted : bool ,) ; }
-extern "C" { pub fn c4log_getCallback () -> :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : va_list ,) , > ; }
-extern "C" { pub fn c4log_callbackLevel () -> C4LogLevel ; }
-extern "C" { pub fn c4log_setCallbackLevel (level : C4LogLevel) ; }
-extern "C" { pub fn c4log_getDomain (name : * const :: std :: os :: raw :: c_char , create : bool) -> C4LogDomain ; }
-extern "C" { pub fn c4log_getDomainName (arg1 : C4LogDomain) -> * const :: std :: os :: raw :: c_char ; }
-extern "C" { pub fn c4log_getLevel (arg1 : C4LogDomain) -> C4LogLevel ; }
-extern "C" { pub fn c4log_willLog (arg1 : C4LogDomain , arg2 : C4LogLevel) -> bool ; }
-extern "C" { pub fn c4log_setLevel (c4Domain : C4LogDomain , level : C4LogLevel) ; }
-extern "C" { pub fn c4log_warnOnErrors (arg1 : bool) ; }
-extern "C" { pub fn c4log_getWarnOnErrors () -> bool ; }
-extern "C" { pub fn c4log_enableFatalExceptionBacktrace () ; }
-extern "C" { pub fn c4log (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , ...) ; }
-extern "C" { pub fn c4vlog (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , args : va_list ,) ; }
-extern "C" { pub fn c4slog (domain : C4LogDomain , level : C4LogLevel , msg : FLString) ; }
-pub type C4Slice = FLSlice ;
-pub type C4HeapSlice = FLHeapSlice ;
-pub type C4SliceResult = FLSliceResult ;
-pub type C4String = C4Slice ;
-pub type C4HeapString = C4HeapSlice ;
-pub type C4StringResult = C4SliceResult ;
-pub type C4SequenceNumber = u64 ;
-pub type C4Timestamp = i64 ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ExtraInfo { pub pointer : * mut :: std :: os :: raw :: c_void , pub destructor : :: std :: option :: Option < unsafe extern "C" fn (ptr : * mut :: std :: os :: raw :: c_void) > , }
+# [doc = " Reference to a _log domain_: a specific source of logs that can be enabled or disabled."] pub type C4LogDomain = * mut c4LogDomain ;
+extern "C" { # [doc = "< The default log domain"] pub static kC4DefaultLog : C4LogDomain ; }
+extern "C" { # [doc = "< Log domain for database operations"] pub static mut kC4DatabaseLog : C4LogDomain ; }
+extern "C" { # [doc = "< Log domain for query operations"] pub static mut kC4QueryLog : C4LogDomain ; }
+extern "C" { # [doc = "< Log domain for replication operations"] pub static mut kC4SyncLog : C4LogDomain ; }
+extern "C" { # [doc = "< Log domain for WebSocket operations"] pub static mut kC4WebSocketLog : C4LogDomain ; }
+# [doc = " Configuration for file-based logging."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4LogFileOptions { # [doc = "< The minimum level of message to be logged"] pub log_level : C4LogLevel , # [doc = "< The path to the binary log file base name (other elements will be added)"] pub base_path : FLString , # [doc = "< The maximum size of each log file (minimum 1024)"] pub max_size_bytes : i64 , # [doc = "< The maximum amount of old log files to keep"] pub max_rotate_count : i32 , # [doc = "< Disables binary encoding of the logs (not recommended)"] pub use_plaintext : bool , # [doc = "< Header text to print at the start of every log file"] pub header : FLString , }
+extern "C" { # [doc = " Causes log messages to be written to a file, overwriting any previous contents.\nThe data is written in an efficient and compact binary form that can be read using the\n\"litecorelog\" tool.\n@param options The options to use when setting up the binary logger\n@param error  On failure, the filesystem error that caused the call to fail.\n@return  True on success, false on failure."] pub fn c4log_writeToBinaryFile (options : C4LogFileOptions , error : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Returns the filesystem path of the directory where log files are kept."] pub fn c4log_binaryFilePath () -> FLStringResult ; }
+extern "C" { # [doc = " Ensures all log messages have been written to the current log files."] pub fn c4log_flushLogFiles () ; }
+extern "C" { # [doc = " Returns the minimum level of log messages to be written to the log file,\nregardless of what level individual log domains are set to."] pub fn c4log_binaryFileLevel () -> C4LogLevel ; }
+extern "C" { # [doc = " Sets the minimum level of log messages to be written to the log file."] pub fn c4log_setBinaryFileLevel (level : C4LogLevel) ; }
+extern "C" { # [doc = " Registers (or unregisters) a log callback, and sets the minimum log level to report.\nBefore this is called, a default callback is used that writes to stderr at the Info level.\nNOTE: this setting is global to the entire process.\n@param level  The minimum level of message to log.\n@param callback  The logging callback, or NULL to disable logging entirely.\n@param preformatted  If true, log messages will be formatted before invoking the callback,\nso the `fmt` parameter will be the actual string to log, and the `args` parameter\nwill be NULL."] pub fn c4log_writeToCallback (level : C4LogLevel , callback : :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : * mut __va_list_tag ,) , > , preformatted : bool ,) ; }
+extern "C" { # [doc = " Returns the current logging callback, or the default one if none has been set."] pub fn c4log_getCallback () -> :: std :: option :: Option < unsafe extern "C" fn (arg1 : C4LogDomain , arg2 : C4LogLevel , arg3 : * const :: std :: os :: raw :: c_char , arg4 : * mut __va_list_tag ,) , > ; }
+extern "C" { # [doc = " Returns the minimum level of log messages to be reported via callback,\nregardless of what level individual log domains are set to."] pub fn c4log_callbackLevel () -> C4LogLevel ; }
+extern "C" { # [doc = " Sets the minimum level of log messages to be reported via callback."] pub fn c4log_setCallbackLevel (level : C4LogLevel) ; }
+extern "C" { # [doc = " Looks up a named log domain.\n@param name  The name of the domain, or NULL for the default domain.\n@param create  If true, the domain will be created if it doesn't exist.\n@return  The domain object, or NULL if not found."] pub fn c4log_getDomain (name : * const :: std :: os :: raw :: c_char , create : bool) -> C4LogDomain ; }
+extern "C" { # [doc = " Returns the name of a log domain. (The default domain's name is an empty string.)"] pub fn c4log_getDomainName (arg1 : C4LogDomain) -> * const :: std :: os :: raw :: c_char ; }
+extern "C" { # [doc = " Returns the current log level of a domain, the minimum level of message it will log."] pub fn c4log_getLevel (arg1 : C4LogDomain) -> C4LogLevel ; }
+extern "C" { # [doc = " Returns true if logging to this domain at this level will have an effect.\nThis is called by the C4Log macros (below), to skip the possibly-expensive evaluation of\nparameters if nothing will be logged anyway.\n(This is not the same as comparing c4log_getLevel, because even if the domain's level\nindicates it would log, logging could still be suppressed by the global callbackLevel or\nbinaryFileLevel.)"] pub fn c4log_willLog (arg1 : C4LogDomain , arg2 : C4LogLevel) -> bool ; }
+extern "C" { # [doc = " Changes the level of the given log domain.\nThis setting is global to the entire process.\nLogging is further limited by the levels assigned to the current callback and/or binary file.\nFor example, if you set the Foo domain's level to Verbose, and the current log callback is\nat level Warning while the binary file is at Verbose, then verbose Foo log messages will be\nwritten to the file but not to the callback."] pub fn c4log_setLevel (c4Domain : C4LogDomain , level : C4LogLevel) ; }
+extern "C" { # [doc = " If set to true, LiteCore will log a warning of the form \"LiteCore throwing %s error %d: %s\"\njust before throwing an internal exception. This can be a good way to catch the source where\nan error occurs."] pub fn c4log_warnOnErrors (arg1 : bool) ; }
+extern "C" { # [doc = " Returns true if warn-on-errors is on; see \\ref c4log_warnOnErrors. Default is false."] pub fn c4log_getWarnOnErrors () -> bool ; }
+extern "C" { # [doc = " Registers a handler with the C++ runtime that will log a backtrace when an uncaught C++\nexception occurs, just before the process aborts."] pub fn c4log_enableFatalExceptionBacktrace () ; }
+extern "C" { # [doc = " Logs a message/warning/error to a specific domain, if its current level is less than\nor equal to the given level. This message will then be written to the current callback and/or\nbinary file, if their levels are less than or equal to the given level.\n@param domain  The domain to log to.\n@param level  The level of the message. If the domain's level is greater than this,\nnothing will be logged.\n@param fmt  printf-style format string, followed by arguments (if any)."] pub fn c4log (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , ...) ; }
+extern "C" { # [doc = " Same as c4log, for use in calling functions that already take variable args."] pub fn c4vlog (domain : C4LogDomain , level : C4LogLevel , fmt : * const :: std :: os :: raw :: c_char , args : * mut __va_list_tag ,) ; }
+extern "C" { # [doc = " Same as c4log, except it accepts preformatted messages as FLSlices"] pub fn c4slog (domain : C4LogDomain , level : C4LogLevel , msg : FLString) ; }
+# [doc = " A simple reference to a block of memory. Does not imply ownership.\n(This is equivalent to the C++ class `slice`.)"] pub type C4Slice = FLSlice ;
+# [doc = " A simple reference to a block of memory. Does not imply ownership.\n(This is equivalent to the C++ class `slice`.)"] pub type C4HeapSlice = FLHeapSlice ;
+# [doc = " A heap-allocated block of memory returned from an API call.\nThe caller takes ownership, and must call \\ref FLSliceResult_Release when done with it.\n\\warning The contents of the block must not be modified, since others may be using it.\n\\note This is equivalent to the C++ class `alloc_slice`. In C++ the easiest way to deal with\na `FLSliceResult` return value is to construct an `alloc_slice` from it, which will\nadopt the reference, and release it in its destructor. For example:\n`alloc_slice foo( CopyFoo() );`"] pub type C4SliceResult = FLSliceResult ;
+# [doc = " A simple reference to a block of memory. Does not imply ownership.\n(This is equivalent to the C++ class `slice`.)"] pub type C4String = C4Slice ;
+# [doc = " A simple reference to a block of memory. Does not imply ownership.\n(This is equivalent to the C++ class `slice`.)"] pub type C4HeapString = C4HeapSlice ;
+# [doc = " A heap-allocated block of memory returned from an API call.\nThe caller takes ownership, and must call \\ref FLSliceResult_Release when done with it.\n\\warning The contents of the block must not be modified, since others may be using it.\n\\note This is equivalent to the C++ class `alloc_slice`. In C++ the easiest way to deal with\na `FLSliceResult` return value is to construct an `alloc_slice` from it, which will\nadopt the reference, and release it in its destructor. For example:\n`alloc_slice foo( CopyFoo() );`"] pub type C4StringResult = C4SliceResult ;
+# [doc = " A database sequence number, representing the order in which a revision was created."] pub type C4SequenceNumber = u64 ;
+# [doc = " A date/time representation used for document expiration (and in date/time queries.)\nMeasured in milliseconds since the Unix epoch (1/1/1970, midnight UTC.)\nA value of 0 represents \"no expiration\"."] pub type C4Timestamp = i64 ;
+# [doc = " Client-defined metadata that can be associated with some objects like C4Database.\n(See \\ref c4db_setExtraInfo, \\ref c4db_getExtraInfo.)\nFor example, if you have your own \"Database\" class, you could store a pointer to it in the\nExtraInfo of the corresponding `C4Database` so you can map from it back to your object.\n\nThe `destructor` callback is optional, but gives you a chance to clean up (e.g. release) your\nown object when the containing C4 object is freed."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ExtraInfo { pub pointer : * mut :: std :: os :: raw :: c_void , # [doc = " Client-specific pointer; can be anything"] pub destructor : :: std :: option :: Option < unsafe extern "C" fn (ptr : * mut :: std :: os :: raw :: c_void) > , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4BlobStore { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Cert { _unused : [u8 ; 0] , }
 # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Collection { _unused : [u8 ; 0] , }
@@ -597,21 +487,21 @@ extern "C" { pub fn c4socket_release (arg1 : * mut C4Socket) ; }
 extern "C" { pub fn c4dbobs_free (arg1 : * mut C4CollectionObserver) ; }
 extern "C" { pub fn c4docobs_free (arg1 : * mut C4DocumentObserver) ; }
 extern "C" { pub fn c4enum_free (arg1 : * mut C4DocEnumerator) ; }
-extern "C" { pub fn c4listener_free (arg1 : * mut C4Listener) ; }
+extern "C" { # [doc = " Closes and disposes a listener."] pub fn c4listener_free (arg1 : * mut C4Listener) ; }
 extern "C" { pub fn c4queryobs_free (arg1 : * mut C4QueryObserver) ; }
-extern "C" { pub fn c4raw_free (arg1 : * mut C4RawDocument) ; }
-extern "C" { pub fn c4repl_free (arg1 : * mut C4Replicator) ; }
-extern "C" { pub fn c4stream_close (arg1 : * mut C4ReadStream) ; }
-extern "C" { pub fn c4stream_closeWriter (arg1 : * mut C4WriteStream) ; }
-extern "C" { pub fn c4_getObjectCount () -> :: std :: os :: raw :: c_int ; }
-extern "C" { pub fn c4_dumpInstances () ; }
-extern "C" { pub fn c4_getBuildInfo () -> C4StringResult ; }
-extern "C" { pub fn c4_getVersion () -> C4StringResult ; }
-extern "C" { pub fn c4_getEnvironmentInfo () -> C4SliceResult ; }
-extern "C" { pub fn c4_now () -> C4Timestamp ; }
-extern "C" { pub fn c4_setTempDir (path : C4String , err : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4_runAsyncTask (task : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void) > , context : * mut :: std :: os :: raw :: c_void ,) ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4BlobKey { pub bytes : [u8 ; 20usize] , }
+extern "C" { # [doc = " Frees the storage occupied by a raw document."] pub fn c4raw_free (arg1 : * mut C4RawDocument) ; }
+extern "C" { # [doc = " Frees a replicator reference.\nDoes not stop the replicator -- if the replicator still has other internal references,\nit will keep going. If you need the replicator to stop, call \\ref c4repl_stop first.\n\\note This function is thread-safe."] pub fn c4repl_free (arg1 : * mut C4Replicator) ; }
+extern "C" { # [doc = " Closes a read-stream. (A NULL parameter is allowed.)"] pub fn c4stream_close (arg1 : * mut C4ReadStream) ; }
+extern "C" { # [doc = " Closes a blob write-stream. If c4stream_install was not already called (or was called but\nfailed), the temporary file will be deleted without adding the blob to the store.\n(A NULL parameter is allowed, and is a no-op.)"] pub fn c4stream_closeWriter (arg1 : * mut C4WriteStream) ; }
+extern "C" { # [doc = " Returns the number of objects that have been created but not yet freed.\nThis can be used as a debugging/testing tool to detect leaks; for example, capture the value\nat the start of a test, then call again at the end and compare."] pub fn c4_getObjectCount () -> :: std :: os :: raw :: c_int ; }
+extern "C" { # [doc = " Logs information about object in memory. Useful for debugging when \\ref c4_getObjectCount\nindicates there are leaks. (Note: In release builds this doesn't have much to say, because\nthe instrumentation it needs is suppressed for performance purposes.)"] pub fn c4_dumpInstances () ; }
+extern "C" { # [doc = " A string describing the version of LiteCore. Currently this just describes the Git branch and\ncommit, in the form \"Built from master branch, commit 0bc68f0d\"."] pub fn c4_getBuildInfo () -> C4StringResult ; }
+extern "C" { # [doc = " A short version string."] pub fn c4_getVersion () -> C4StringResult ; }
+extern "C" { # [doc = " Returns information about LiteCore's view of the environment in the following format:\n\n Fleece Encoded Dictionary\n {\n     kC4EnvironmentTimezoneKey: numeric offset from UTC in seconds\n     kC4EnvironmentSupportedLocales: string array of locale identifiers\n }"] pub fn c4_getEnvironmentInfo () -> C4SliceResult ; }
+extern "C" { # [doc = " Returns the current time, in _milliseconds_ since 1/1/1970."] pub fn c4_now () -> C4Timestamp ; }
+extern "C" { # [doc = " Wiring call for platforms without discoverable temporary directories.  Simply sets the SQLite\ntemp directory so that it can write its temporary files without error.  Several platforms need\nto do this, but not all need to use this API.\n@param path The path to a writable directory for temporary files for SQLite\n@param err  If an error happens (e.g. it is an error to call this function twice), this parameter\nrecords it.\n@note  If you do call this function, you should call it before opening any databases.\n@note  Needless to say, the directory must already exist."] pub fn c4_setTempDir (path : C4String , err : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Schedules a function to be called asynchronously on a background thread.\n@param task  A pointer to the function to run. It must take a single `void*` argument and\nreturn `void`. If it needs to return a value, it should call some other function you\ndefine and pass that value as a parameter.\n@param context  An arbitrary pointer that will be passed to the function. You can use this\nto provide state. Obviously, whatever this points to must remain valid until the\nfuture time when `task` is called."] pub fn c4_runAsyncTask (task : :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut :: std :: os :: raw :: c_void) > , context : * mut :: std :: os :: raw :: c_void ,) ; }
+# [doc = " A unique identifier of a blob based on a SHA-1 digest of its contents."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4BlobKey { pub bytes : [u8 ; 20usize] , }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -656,11 +546,11 @@ impl C4EncryptionAlgorithm {
 impl C4EncryptionKeySize {
     pub const kC4EncryptionKeySizeAES256: C4EncryptionKeySize = C4EncryptionKeySize(32);
 }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4EncryptionKey { pub algorithm : C4EncryptionAlgorithm , pub bytes : [u8 ; 32usize] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DatabaseConfig2 { pub parentDirectory : C4Slice , pub flags : C4DatabaseFlags , pub encryptionKey : C4EncryptionKey , }
-extern "C" { pub static kC4DatabaseFilenameExtension : * const :: std :: os :: raw :: c_char ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4UUID { pub bytes : [u8 ; 16usize] , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionSpec { pub name : C4String , pub scope : C4String , }
+# [doc = " Encryption key specified in a C4DatabaseConfig."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4EncryptionKey { pub algorithm : C4EncryptionAlgorithm , pub bytes : [u8 ; 32usize] , }
+# [doc = " Main database configuration struct (version 2) for use with c4db_openNamed etc."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DatabaseConfig2 { # [doc = "< Directory for databases"] pub parentDirectory : C4Slice , # [doc = "< Flags for opening db, versioning, ..."] pub flags : C4DatabaseFlags , # [doc = "< Encryption to use creating/opening the db"] pub encryptionKey : C4EncryptionKey , }
+extern "C" { # [doc = " Filename extension of databases -- \".cblite2\". Includes the period."] pub static kC4DatabaseFilenameExtension : * const :: std :: os :: raw :: c_char ; }
+# [doc = " @} */\n/** \\name Accessors\n@{"] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4UUID { pub bytes : [u8 ; 16usize] , }
+# [doc = " Full identifier of a collection in a database, including its scope."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionSpec { pub name : C4String , pub scope : C4String , }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -672,7 +562,7 @@ impl C4MaintenanceType {
     pub const kC4QuickOptimize: C4MaintenanceType = C4MaintenanceType(3);
     pub const kC4FullOptimize: C4MaintenanceType = C4MaintenanceType(4);
 }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4RawDocument { pub key : C4String , pub meta : C4String , pub body : C4String , }
+# [doc = " Contents of a raw document."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4RawDocument { # [doc = "< The key (document ID)"] pub key : C4String , # [doc = "< Metadata (usage is up to the caller)"] pub meta : C4String , # [doc = "< Body data"] pub body : C4String , }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -684,29 +574,29 @@ impl C4DocumentVersioning {
 }
 pub type C4StorageEngine = * const :: std :: os :: raw :: c_char ;
 extern "C" { pub static kC4SQLiteStorageEngine : C4StorageEngine ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DatabaseConfig { pub flags : C4DatabaseFlags , pub storageEngine : C4StorageEngine , pub versioning : C4DocumentVersioning , pub encryptionKey : C4EncryptionKey , }
-extern "C" { pub fn c4blob_keyFromString (str_ : C4String , arg1 : * mut C4BlobKey) -> bool ; }
-extern "C" { pub fn c4blob_keyToString (arg1 : C4BlobKey) -> C4StringResult ; }
-extern "C" { pub fn c4db_getBlobStore (db : * mut C4Database , outError : * mut C4Error) -> * mut C4BlobStore ; }
-extern "C" { pub fn c4blob_openStore (dirPath : C4String , flags : C4DatabaseFlags , encryptionKey : * const C4EncryptionKey , outError : * mut C4Error ,) -> * mut C4BlobStore ; }
-extern "C" { pub fn c4blob_freeStore (arg1 : * mut C4BlobStore) ; }
-extern "C" { pub fn c4blob_deleteStore (arg1 : * mut C4BlobStore , arg2 : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4blob_getSize (arg1 : * mut C4BlobStore , arg2 : C4BlobKey) -> i64 ; }
-extern "C" { pub fn c4blob_getContents (arg1 : * mut C4BlobStore , arg2 : C4BlobKey , arg3 : * mut C4Error ,) -> C4SliceResult ; }
-extern "C" { pub fn c4blob_getFilePath (arg1 : * mut C4BlobStore , arg2 : C4BlobKey , arg3 : * mut C4Error ,) -> C4StringResult ; }
-extern "C" { pub fn c4blob_computeKey (contents : C4Slice) -> C4BlobKey ; }
-extern "C" { pub fn c4blob_create (store : * mut C4BlobStore , contents : C4Slice , expectedKey : * const C4BlobKey , outKey : * mut C4BlobKey , error : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4blob_delete (arg1 : * mut C4BlobStore , arg2 : C4BlobKey , arg3 : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4blob_openReadStream (arg1 : * mut C4BlobStore , arg2 : C4BlobKey , arg3 : * mut C4Error ,) -> * mut C4ReadStream ; }
-extern "C" { pub fn c4stream_read (stream : * mut C4ReadStream , buffer : * mut :: std :: os :: raw :: c_void , maxBytesToRead : usize , error : * mut C4Error ,) -> usize ; }
-extern "C" { pub fn c4stream_getLength (arg1 : * mut C4ReadStream , arg2 : * mut C4Error) -> i64 ; }
-extern "C" { pub fn c4stream_seek (arg1 : * mut C4ReadStream , position : u64 , arg2 : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4blob_openWriteStream (arg1 : * mut C4BlobStore , arg2 : * mut C4Error) -> * mut C4WriteStream ; }
-extern "C" { pub fn c4stream_write (arg1 : * mut C4WriteStream , bytes : * const :: std :: os :: raw :: c_void , length : usize , arg2 : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4stream_bytesWritten (arg1 : * mut C4WriteStream) -> u64 ; }
-extern "C" { pub fn c4stream_computeBlobKey (arg1 : * mut C4WriteStream) -> C4BlobKey ; }
-extern "C" { pub fn c4stream_install (arg1 : * mut C4WriteStream , expectedKey : * const C4BlobKey , arg2 : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4cert_getValidTimespan (cert : * mut C4Cert , outCreated : * mut C4Timestamp , outExpires : * mut C4Timestamp ,) ; }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DatabaseConfig { # [doc = "< Create, ReadOnly, AutoCompact, Bundled..."] pub flags : C4DatabaseFlags , # [doc = "< Which storage to use, or NULL for no preference"] pub storageEngine : C4StorageEngine , # [doc = "< Type of document versioning"] pub versioning : C4DocumentVersioning , # [doc = "< Encryption to use creating/opening the db"] pub encryptionKey : C4EncryptionKey , }
+extern "C" { # [doc = " Decodes a string of the form \"sha1-\"+base64 into a raw key."] pub fn c4blob_keyFromString (str_ : C4String , arg1 : * mut C4BlobKey) -> bool ; }
+extern "C" { # [doc = " Encodes a blob key to a string of the form \"sha1-\"+base64."] pub fn c4blob_keyToString (arg1 : C4BlobKey) -> C4StringResult ; }
+extern "C" { # [doc = " Returns the BlobStore associated with a bundled database.\nFails if the database is not bundled.\nDO NOT call c4blob_freeStore on this! The C4Database will free it when it closes."] pub fn c4db_getBlobStore (db : * mut C4Database , outError : * mut C4Error) -> * mut C4BlobStore ; }
+extern "C" { # [doc = " Opens a BlobStore in a directory. If the flags allow creating, the directory will be\ncreated if necessary.\nCall c4blob_freeStore() when finished using the BlobStore.\n\\warning This should only be used for unit testing. Naked BlobStores are not supported.\n@param dirPath  The filesystem path of the directory holding the attachments.\n@param flags  Specifies options like create, read-only\n@param encryptionKey  Optional encryption algorithm & key\n@param outError  Error is returned here\n@return  The BlobStore reference, or NULL on error"] pub fn c4blob_openStore (dirPath : C4String , flags : C4DatabaseFlags , encryptionKey : * const C4EncryptionKey , outError : * mut C4Error ,) -> * mut C4BlobStore ; }
+extern "C" { # [doc = " Closes/frees a BlobStore. (A NULL parameter is allowed.)\n\\warning This should only be used for unit testing. Never free a BlobStore belonging to a\nC4Database."] pub fn c4blob_freeStore (arg1 : * mut C4BlobStore) ; }
+extern "C" { # [doc = " Deletes the BlobStore's blobs and directory, and (if successful) frees the object.\n\\warning This should only be used for unit testing. Never delete a BlobStore belonging to a\nC4Database."] pub fn c4blob_deleteStore (arg1 : * mut C4BlobStore , arg2 : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Gets the content size of a blob given its key. Returns -1 if it doesn't exist.\nWARNING: If the blob is encrypted, the return value is a conservative estimate that may\nbe up to 16 bytes larger than the actual size."] pub fn c4blob_getSize (arg1 : * mut C4BlobStore , arg2 : C4BlobKey) -> i64 ; }
+extern "C" { # [doc = " Reads the entire contents of a blob into memory. Caller is responsible for freeing it."] pub fn c4blob_getContents (arg1 : * mut C4BlobStore , arg2 : C4BlobKey , arg3 : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { # [doc = " Returns the path of the file that stores the blob, if possible. This call may fail with\nerror kC4ErrorWrongFormat if the blob is encrypted (in which case the file would be\nunreadable by the caller) or with kC4ErrorUnsupported if for some implementation reason\nthe blob isn't stored as a standalone file.\nThus, the caller MUST use this function only as an optimization, and fall back to reading\nthe contents via the API if it fails.\nAlso, it goes without saying that the caller MUST not modify the file!"] pub fn c4blob_getFilePath (arg1 : * mut C4BlobStore , arg2 : C4BlobKey , arg3 : * mut C4Error ,) -> C4StringResult ; }
+extern "C" { # [doc = " Derives the key of the given data, without storing it."] pub fn c4blob_computeKey (contents : C4Slice) -> C4BlobKey ; }
+extern "C" { # [doc = " Stores a blob. The associated key will be written to `outKey`, if non-NULL.\nIf `expectedKey` is not NULL, then the operation will fail unless the contents actually\nhave that key."] pub fn c4blob_create (store : * mut C4BlobStore , contents : C4Slice , expectedKey : * const C4BlobKey , outKey : * mut C4BlobKey , error : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Deletes a blob from the store given its key."] pub fn c4blob_delete (arg1 : * mut C4BlobStore , arg2 : C4BlobKey , arg3 : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Opens a blob for reading, as a random-access byte stream."] pub fn c4blob_openReadStream (arg1 : * mut C4BlobStore , arg2 : C4BlobKey , arg3 : * mut C4Error ,) -> * mut C4ReadStream ; }
+extern "C" { # [doc = " Reads from an open stream.\n@param stream  The open stream to read from\n@param buffer  Where to copy the read data to\n@param maxBytesToRead  The maximum number of bytes to read to the buffer\n@param error  Error is returned here\n@return  The actual number of bytes read, or 0 if an error occurred"] pub fn c4stream_read (stream : * mut C4ReadStream , buffer : * mut :: std :: os :: raw :: c_void , maxBytesToRead : usize , error : * mut C4Error ,) -> usize ; }
+extern "C" { # [doc = " Returns the exact length in bytes of the stream."] pub fn c4stream_getLength (arg1 : * mut C4ReadStream , arg2 : * mut C4Error) -> i64 ; }
+extern "C" { # [doc = " Moves to a random location in the stream; the next c4stream_read call will read from that\nlocation."] pub fn c4stream_seek (arg1 : * mut C4ReadStream , position : u64 , arg2 : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Opens a write stream for creating a new blob. You should then call c4stream_write to\nwrite the data, ending with c4stream_install to compute the blob's key and add it to\nthe store, and then c4stream_closeWriter."] pub fn c4blob_openWriteStream (arg1 : * mut C4BlobStore , arg2 : * mut C4Error) -> * mut C4WriteStream ; }
+extern "C" { # [doc = " Writes data to a stream."] pub fn c4stream_write (arg1 : * mut C4WriteStream , bytes : * const :: std :: os :: raw :: c_void , length : usize , arg2 : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Returns the number of bytes written to the stream."] pub fn c4stream_bytesWritten (arg1 : * mut C4WriteStream) -> u64 ; }
+extern "C" { # [doc = " Computes the blob-key (digest) of the data written to the stream. This should only be\ncalled after writing the entire data. No more data can be written after this call."] pub fn c4stream_computeBlobKey (arg1 : * mut C4WriteStream) -> C4BlobKey ; }
+extern "C" { # [doc = " Adds the data written to the stream as a finished blob to the store.\nIf `expectedKey` is not NULL, then the operation will fail unless the contents actually\nhave that key. (If you don't know ahead of time what the key should be, call\nc4stream_computeBlobKey beforehand to derive it, and pass NULL for expectedKey.)\nThis function does not close the writer."] pub fn c4stream_install (arg1 : * mut C4WriteStream , expectedKey : * const C4BlobKey , arg2 : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Returns the time range during which a (signed) certificate is valid.\n@param cert  The signed certificate.\n@param outCreated  On return, the date/time the cert became valid (was signed).\n@param outExpires  On return, the date/time at which the certificate expires."] pub fn c4cert_getValidTimespan (cert : * mut C4Cert , outCreated : * mut C4Timestamp , outExpires : * mut C4Timestamp ,) ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -765,7 +655,7 @@ impl std::ops::BitAnd for C4RevisionFlags {
             Self(self.0 | other.0)
         }
     }
-pub type C4RemoteID = u32 ;
+# [doc = " Identifies a remote database being replicated with."] pub type C4RemoteID = u32 ;
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -775,12 +665,12 @@ impl C4DocContentLevel {
     pub const kDocGetCurrentRev: C4DocContentLevel = C4DocContentLevel(1);
     pub const kDocGetAll: C4DocContentLevel = C4DocContentLevel(2);
 }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Revision { pub revID : C4HeapString , pub flags : C4RevisionFlags , pub sequence : C4SequenceNumber , }
-pub type C4DocDeltaApplier = :: std :: option :: Option < unsafe extern "C" fn (context : * mut :: std :: os :: raw :: c_void , doc : * mut C4Document , delta : C4Slice , revFlags : * mut C4RevisionFlags , outError : * mut C4Error ,) -> C4SliceResult , > ;
-# [repr (C)] # [derive (Debug)] pub struct C4DocPutRequest { pub body : C4String , pub docID : C4String , pub revFlags : C4RevisionFlags , pub existingRevision : bool , pub allowConflict : bool , pub history : * const C4String , pub historyCount : usize , pub save : bool , pub maxRevTreeDepth : u32 , pub remoteDBID : C4RemoteID , pub allocedBody : C4SliceResult , pub deltaCB : C4DocDeltaApplier , pub deltaCBContext : * mut :: std :: os :: raw :: c_void , pub deltaSourceRevID : C4String , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionChange { pub docID : C4HeapString , pub revID : C4HeapString , pub sequence : C4SequenceNumber , pub bodySize : u32 , pub flags : C4RevisionFlags , }
-pub type C4DatabaseChange = C4CollectionChange ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionObservation { pub numChanges : u32 , pub external : bool , pub collection : * mut C4Collection , }
+# [doc = " Describes a revision of a document. A sub-struct of C4Document."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Revision { # [doc = "< Revision ID"] pub revID : C4HeapString , # [doc = "< Flags (deleted?, leaf?, new? hasAttachments?)"] pub flags : C4RevisionFlags , # [doc = "< Sequence number in database"] pub sequence : C4SequenceNumber , }
+# [doc = " Optional callback to `c4doc_put` that generates the new revision body, based on an earlier\nrevision body and the body of the `C4DocPutRequest`. It's intended for use when the new\nrevision is specified as a delta.\n@param context  The same value given in the `C4DocPutRequest`'s `deltaCBContext` field.\n@param doc  The document; its selected revision is the one requested in the `deltaSourceRevID`.\n@param delta  The contents of the request's `body` or `allocedBody`.\n@param revFlags If not nullptr, its value may be updated after the delta is applied.\n@param outError  If the callback fails, store an error here if it's non-NULL.\n@return  The body to store in the new revision, or a null slice on failure."] pub type C4DocDeltaApplier = :: std :: option :: Option < unsafe extern "C" fn (context : * mut :: std :: os :: raw :: c_void , doc : * mut C4Document , delta : C4Slice , revFlags : * mut C4RevisionFlags , outError : * mut C4Error ,) -> C4SliceResult , > ;
+# [doc = " Parameters for adding a revision using c4doc_put."] # [repr (C)] # [derive (Debug)] pub struct C4DocPutRequest { # [doc = "< Revision's body"] pub body : C4String , # [doc = "< Document ID"] pub docID : C4String , # [doc = "< Revision flags (deletion, attachments, keepBody)"] pub revFlags : C4RevisionFlags , # [doc = "< Is this an already-existing rev coming from replication?"] pub existingRevision : bool , # [doc = "< OK to create a conflict, i.e. can parent be non-leaf?"] pub allowConflict : bool , # [doc = "< Array of ancestor revision IDs"] pub history : * const C4String , # [doc = "< Size of history[] array"] pub historyCount : usize , # [doc = "< Save the document after inserting the revision?"] pub save : bool , # [doc = "< Max depth of revision tree to save (or 0 for default)"] pub maxRevTreeDepth : u32 , # [doc = "< Identifier of remote db this rev's from (or 0 if local)"] pub remoteDBID : C4RemoteID , # [doc = "< Set this instead of body if body is heap-allocated"] pub allocedBody : C4SliceResult , # [doc = "< If non-NULL, will be called to generate the actual body"] pub deltaCB : C4DocDeltaApplier , # [doc = "< Passed to `deltaCB` callback"] pub deltaCBContext : * mut :: std :: os :: raw :: c_void , # [doc = "< Source rev for delta (must be valid if deltaCB is given)"] pub deltaSourceRevID : C4String , }
+# [doc = " Represents a change to a document in a collection, as returned from \\ref c4dbobs_getChanges."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionChange { # [doc = "< The document's ID"] pub docID : C4HeapString , # [doc = "< The current revision ID (or null if doc was purged)"] pub revID : C4HeapString , # [doc = "< The current sequence number (or 0 if doc was purged)"] pub sequence : C4SequenceNumber , # [doc = "< The size of the revision body in bytes"] pub bodySize : u32 , # [doc = "< The current revision's flags"] pub flags : C4RevisionFlags , }
+# [doc = " Represents a change to a document in a collection, as returned from \\ref c4dbobs_getChanges."] pub type C4DatabaseChange = C4CollectionChange ;
+# [doc = " A struct to hold the results of a call to \\ref c4dbobs_getChanges"] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4CollectionObservation { pub numChanges : u32 , pub external : bool , pub collection : * mut C4Collection , }
 
     #[repr(u32)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -788,10 +678,10 @@ pub type C4DatabaseChange = C4CollectionChange ;
     kC4JSONQuery = 0,
     kC4N1QLQuery = 1,
 }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4QueryOptions { pub rankFullText_DEPRECATED : bool , }
-extern "C" { pub static kC4DefaultQueryOptions : C4QueryOptions ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4FullTextMatch { pub dataSource : u64 , pub property : u32 , pub term : u32 , pub start : u32 , pub length : u32 , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4QueryEnumerator { pub columns : FLArrayIterator , pub missingColumns : u64 , pub fullTextMatchCount : u32 , pub fullTextMatches : * const C4FullTextMatch , }
+# [doc = " Options for running queries."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4QueryOptions { # [doc = "< Ignored; use the `rank()` query function instead."] pub rankFullText_DEPRECATED : bool , }
+extern "C" { # [doc = " Default query options. Has skip=0, limit=UINT_MAX, rankFullText=true."] pub static kC4DefaultQueryOptions : C4QueryOptions ; }
+# [doc = " Info about a match of a full-text query term."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4FullTextMatch { # [doc = "< Opaque identifier of where text is stored"] pub dataSource : u64 , # [doc = "< Which property in the index was matched (array index in `expressionsJSON`)"] pub property : u32 , # [doc = "< Which search term (word) in the query was matched"] pub term : u32 , # [doc = "< *Byte* range start of the match in the full text"] pub start : u32 , # [doc = "< *Byte* range length of the match in the full text"] pub length : u32 , }
+# [doc = " A query result enumerator.\nCreated by c4db_query. Must be freed with c4queryenum_release.\nThe fields of this struct represent the current matched index row, and are valid until the\nnext call to c4queryenum_next or c4queryenum_release."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4QueryEnumerator { # [doc = " The columns of this result, in the same order as in the query's `WHAT` clause."] pub columns : FLArrayIterator , # [doc = " A bitmap where a 1 bit represents a column whose value is MISSING.\nThis is how you tell a missing property value from a value that's JSON 'null',\nsince the value in the `columns` array will be a Fleece `null` either way."] pub missingColumns : u64 , # [doc = " The number of full-text matches (i.e. the number of items in `fullTextMatches`)"] pub fullTextMatchCount : u32 , # [doc = " Array with details of each full-text match"] pub fullTextMatches : * const C4FullTextMatch , }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -802,109 +692,109 @@ impl C4IndexType {
     pub const kC4ArrayIndex: C4IndexType = C4IndexType(2);
     pub const kC4PredictiveIndex: C4IndexType = C4IndexType(3);
 }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4IndexOptions { pub language : * const :: std :: os :: raw :: c_char , pub ignoreDiacritics : bool , pub disableStemming : bool , pub stopWords : * const :: std :: os :: raw :: c_char , }
-extern "C" { pub fn c4db_getDefaultCollection (db : * mut C4Database , outError : * mut C4Error ,) -> * mut C4Collection ; }
-extern "C" { pub fn c4db_hasCollection (db : * mut C4Database , spec : C4CollectionSpec) -> bool ; }
-extern "C" { pub fn c4db_hasScope (db : * mut C4Database , name : C4String) -> bool ; }
-extern "C" { pub fn c4db_getCollection (db : * mut C4Database , spec : C4CollectionSpec , outError : * mut C4Error ,) -> * mut C4Collection ; }
-extern "C" { pub fn c4db_createCollection (db : * mut C4Database , spec : C4CollectionSpec , outError : * mut C4Error ,) -> * mut C4Collection ; }
-extern "C" { pub fn c4db_deleteCollection (db : * mut C4Database , spec : C4CollectionSpec , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_collectionNames (db : * mut C4Database , inScope : C4String , outError : * mut C4Error ,) -> FLMutableArray ; }
-extern "C" { pub fn c4db_scopeNames (db : * mut C4Database , outError : * mut C4Error) -> FLMutableArray ; }
-extern "C" { pub fn c4coll_isValid (arg1 : * mut C4Collection) -> bool ; }
-extern "C" { pub fn c4coll_getSpec (arg1 : * mut C4Collection) -> C4CollectionSpec ; }
-extern "C" { pub fn c4coll_getDatabase (arg1 : * mut C4Collection) -> * mut C4Database ; }
-extern "C" { pub fn c4coll_getDocumentCount (arg1 : * mut C4Collection) -> u64 ; }
-extern "C" { pub fn c4coll_getLastSequence (arg1 : * mut C4Collection) -> C4SequenceNumber ; }
-extern "C" { pub fn c4coll_getDoc (collection : * mut C4Collection , docID : C4String , mustExist : bool , content : C4DocContentLevel , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4coll_getDocBySequence (collection : * mut C4Collection , arg1 : C4SequenceNumber , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4coll_putDoc (collection : * mut C4Collection , request : * const C4DocPutRequest , outCommonAncestorIndex : * mut usize , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4coll_createDoc (collection : * mut C4Collection , docID : C4String , body : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4coll_moveDoc (collection : * mut C4Collection , docID : C4String , toCollection : * mut C4Collection , newDocID : C4String , error : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4coll_purgeDoc (collection : * mut C4Collection , docID : C4String , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4coll_setDocExpiration (collection : * mut C4Collection , docID : C4String , timestamp : C4Timestamp , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4coll_getDocExpiration (collection : * mut C4Collection , docID : C4String , outError : * mut C4Error ,) -> C4Timestamp ; }
-extern "C" { pub fn c4coll_nextDocExpiration (arg1 : * mut C4Collection) -> C4Timestamp ; }
-extern "C" { pub fn c4coll_purgeExpiredDocs (arg1 : * mut C4Collection , arg2 : * mut C4Error) -> i64 ; }
-extern "C" { pub fn c4coll_createIndex (collection : * mut C4Collection , name : C4String , indexSpec : C4String , queryLanguage : C4QueryLanguage , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4coll_deleteIndex (collection : * mut C4Collection , name : C4String , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4coll_getIndexesInfo (collection : * mut C4Collection , outError : * mut C4Error ,) -> C4SliceResult ; }
-extern "C" { pub fn c4key_setPassword (encryptionKey : * mut C4EncryptionKey , password : C4String , alg : C4EncryptionAlgorithm ,) -> bool ; }
-extern "C" { pub fn c4key_setPasswordSHA1 (encryptionKey : * mut C4EncryptionKey , password : C4String , alg : C4EncryptionAlgorithm ,) -> bool ; }
-extern "C" { pub fn c4db_exists (name : C4String , inDirectory : C4String) -> bool ; }
-extern "C" { pub fn c4db_openNamed (name : C4String , config : * const C4DatabaseConfig2 , outError : * mut C4Error ,) -> * mut C4Database ; }
-extern "C" { pub fn c4db_openAgain (db : * mut C4Database , outError : * mut C4Error) -> * mut C4Database ; }
-extern "C" { pub fn c4db_copyNamed (sourcePath : C4String , destinationName : C4String , config : * const C4DatabaseConfig2 , error : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_close (database : * mut C4Database , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4db_delete (database : * mut C4Database , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4db_deleteNamed (dbName : C4String , inDirectory : C4String , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_rekey (database : * mut C4Database , newKey : * const C4EncryptionKey , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4_shutdown (outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4db_getName (arg1 : * mut C4Database) -> C4String ; }
-extern "C" { pub fn c4db_getPath (arg1 : * mut C4Database) -> C4StringResult ; }
-extern "C" { pub fn c4db_getConfig2 (database : * mut C4Database) -> * const C4DatabaseConfig2 ; }
-extern "C" { pub fn c4db_getDocumentCount (database : * mut C4Database) -> u64 ; }
-extern "C" { pub fn c4db_getLastSequence (database : * mut C4Database) -> C4SequenceNumber ; }
-extern "C" { pub fn c4db_nextDocExpiration (database : * mut C4Database) -> C4Timestamp ; }
-extern "C" { pub fn c4db_purgeExpiredDocs (db : * mut C4Database , arg1 : * mut C4Error) -> i64 ; }
-extern "C" { pub fn c4db_getUUIDs (database : * mut C4Database , publicUUID : * mut C4UUID , privateUUID : * mut C4UUID , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_setExtraInfo (database : * mut C4Database , arg1 : C4ExtraInfo) ; }
-extern "C" { pub fn c4db_getExtraInfo (database : * mut C4Database) -> C4ExtraInfo ; }
-extern "C" { pub fn c4db_maintenance (database : * mut C4Database , type_ : C4MaintenanceType , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_beginTransaction (database : * mut C4Database , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4db_endTransaction (database : * mut C4Database , commit : bool , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_isInTransaction (database : * mut C4Database) -> bool ; }
-extern "C" { pub fn c4raw_get (database : * mut C4Database , storeName : C4String , docID : C4String , outError : * mut C4Error ,) -> * mut C4RawDocument ; }
-extern "C" { pub fn c4raw_put (database : * mut C4Database , storeName : C4String , key : C4String , meta : C4String , body : C4String , outError : * mut C4Error ,) -> bool ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Document { pub _internal1 : * mut :: std :: os :: raw :: c_void , pub _internal2 : * mut :: std :: os :: raw :: c_void , pub flags : C4DocumentFlags , pub docID : C4HeapString , pub revID : C4HeapString , pub sequence : C4SequenceNumber , pub selectedRev : C4Revision , pub extraInfo : C4ExtraInfo , }
-extern "C" { pub fn c4doc_generateID (buffer : * mut :: std :: os :: raw :: c_char , bufferSize : usize ,) -> * mut :: std :: os :: raw :: c_char ; }
-extern "C" { pub fn c4db_getDoc (database : * mut C4Database , docID : C4String , mustExist : bool , content : C4DocContentLevel , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_get (database : * mut C4Database , docID : C4String , mustExist : bool , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_getBySequence (database : * mut C4Database , arg1 : C4SequenceNumber , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_save (doc : * mut C4Document , maxRevTreeDepth : u32 , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4doc_isRevRejected (doc : * mut C4Document) -> bool ; }
-extern "C" { pub fn c4doc_selectRevision (doc : * mut C4Document , revID : C4String , withBody : bool , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_selectCurrentRevision (doc : * mut C4Document) -> bool ; }
-extern "C" { pub fn c4doc_loadRevisionBody (doc : * mut C4Document , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4doc_hasRevisionBody (doc : * mut C4Document) -> bool ; }
-extern "C" { pub fn c4doc_getRevisionBody (doc : * mut C4Document) -> C4Slice ; }
-extern "C" { pub fn c4doc_getRevisionHistory (doc : * mut C4Document , maxRevs : :: std :: os :: raw :: c_uint , backToRevs : * const C4String , backToRevsCount : :: std :: os :: raw :: c_uint ,) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_getSelectedRevIDGlobalForm (doc : * mut C4Document) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_selectParentRevision (doc : * mut C4Document) -> bool ; }
-extern "C" { pub fn c4doc_selectNextRevision (doc : * mut C4Document) -> bool ; }
-extern "C" { pub fn c4doc_selectNextLeafRevision (doc : * mut C4Document , includeDeleted : bool , withBody : bool , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_selectCommonAncestorRevision (doc : * mut C4Document , rev1ID : C4String , rev2ID : C4String ,) -> bool ; }
-extern "C" { pub fn c4db_getRemoteDBID (db : * mut C4Database , remoteAddress : C4String , canCreate : bool , outError : * mut C4Error ,) -> C4RemoteID ; }
-extern "C" { pub fn c4db_getRemoteDBAddress (db : * mut C4Database , remoteID : C4RemoteID) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_getRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID ,) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_setRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID , revID : C4String , error : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4rev_getGeneration (revID : C4String) -> :: std :: os :: raw :: c_uint ; }
-extern "C" { pub fn c4rev_equal (rev1 : C4Slice , rev2 : C4Slice) -> bool ; }
-extern "C" { pub fn c4doc_purgeRevision (doc : * mut C4Document , revID : C4String , outError : * mut C4Error ,) -> i32 ; }
-extern "C" { pub fn c4doc_resolveConflict (doc : * mut C4Document , winningRevID : C4String , losingRevID : C4String , mergedBody : C4Slice , mergedFlags : C4RevisionFlags , error : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_purgeDoc (database : * mut C4Database , docID : C4String , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_setExpiration (db : * mut C4Database , docID : C4String , timestamp : C4Timestamp , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_getExpiration (db : * mut C4Database , docID : C4String , outError : * mut C4Error ,) -> C4Timestamp ; }
-extern "C" { pub fn c4doc_put (database : * mut C4Database , request : * const C4DocPutRequest , outCommonAncestorIndex : * mut usize , outError : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_create (db : * mut C4Database , docID : C4String , body : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_update (doc : * mut C4Document , revisionBody : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_getProperties (arg1 : * mut C4Document) -> FLDict ; }
-extern "C" { pub fn c4doc_createFleeceDoc (arg1 : * mut C4Document) -> FLDoc ; }
-extern "C" { pub fn c4doc_resolveConflict2 (doc : * mut C4Document , winningRevID : C4String , losingRevID : C4String , mergedProperties : FLDict , mergedFlags : C4RevisionFlags , error : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4doc_containingValue (value : FLValue) -> * mut C4Document ; }
-extern "C" { pub fn c4doc_isOldMetaProperty (prop : C4String) -> bool ; }
-extern "C" { pub fn c4doc_hasOldMetaProperties (doc : FLDict) -> bool ; }
-extern "C" { pub fn c4doc_encodeStrippingOldMetaProperties (doc : FLDict , sk : FLSharedKeys , outError : * mut C4Error ,) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_getDictBlobKey (dict : FLDict , outKey : * mut C4BlobKey) -> bool ; }
-extern "C" { pub fn c4doc_dictIsBlob (dict : FLDict , outKey : * mut C4BlobKey) -> bool ; }
+# [doc = " Options for indexes; these each apply to specific types of indexes."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4IndexOptions { # [doc = " Dominant language of text to be indexed; setting this enables word stemming, i.e.\nmatching different cases of the same word (\"big\" and \"bigger\", for instance.)\nCan be an ISO-639 language code or a lowercase (English) language name; supported\nlanguages are: da/danish, nl/dutch, en/english, fi/finnish, fr/french, de/german,\nhu/hungarian, it/italian, no/norwegian, pt/portuguese, ro/romanian, ru/russian,\nes/spanish, sv/swedish, tr/turkish.\nIf left null,  or set to an unrecognized language, no language-specific behaviors\nsuch as stemming and stop-word removal occur."] pub language : * const :: std :: os :: raw :: c_char , # [doc = " Should diacritical marks (accents) be ignored? Defaults to false.\nGenerally this should be left false for non-English text."] pub ignoreDiacritics : bool , # [doc = " \"Stemming\" coalesces different grammatical forms of the same word (\"big\" and \"bigger\",\nfor instance.) Full-text search normally uses stemming if the language is one for\nwhich stemming rules are available, but this flag can be set to `true` to disable it.\nStemming is currently available for these languages: da/danish, nl/dutch, en/english,\nfi/finnish, fr/french, de/german, hu/hungarian, it/italian, no/norwegian, pt/portuguese,\nro/romanian, ru/russian, s/spanish, sv/swedish, tr/turkish."] pub disableStemming : bool , # [doc = " List of words to ignore (\"stop words\") for full-text search. Ignoring common words\nlike \"the\" and \"a\" helps keep down the size of the index.\nIf NULL, a default word list will be used based on the `language` option, if there is\none for that language.\nTo suppress stop-words, use an empty string.\nTo provide a custom list of words, use a string containing the words in lowercase\nseparated by spaces."] pub stopWords : * const :: std :: os :: raw :: c_char , }
+extern "C" { # [doc = " Returns the default collection, whose name is \"`_default`\" (`kC4DefaultCollectionName`).\nThis is the one collection that exists in every newly created database.\nWhen a pre-existing database is upgraded to support collections, all its documents are put\nin the default collection.\n@note Be sure to read `C4Collection` Lifespan in c4Collection.h."] pub fn c4db_getDefaultCollection (db : * mut C4Database , outError : * mut C4Error ,) -> * mut C4Collection ; }
+extern "C" { # [doc = " Returns true if the collection exists."] pub fn c4db_hasCollection (db : * mut C4Database , spec : C4CollectionSpec) -> bool ; }
+extern "C" { # [doc = " Returns true if the named scope exists.  Note that _default will always return true."] pub fn c4db_hasScope (db : * mut C4Database , name : C4String) -> bool ; }
+extern "C" { # [doc = " Returns the existing collection with the given name & scope, or NULL if it doesn't exist.\n@note Be sure to read `C4Collection` Lifespan in c4Collection.h."] pub fn c4db_getCollection (db : * mut C4Database , spec : C4CollectionSpec , outError : * mut C4Error ,) -> * mut C4Collection ; }
+extern "C" { # [doc = " Creates and returns an empty collection with the given name & scope.\nIf the collection already exists, it just returns it.\nIf the scope doesn't exist, it is implicitly created.\n@note Be sure to read `C4Collection` Lifespan in c4Collection.h."] pub fn c4db_createCollection (db : * mut C4Database , spec : C4CollectionSpec , outError : * mut C4Error ,) -> * mut C4Collection ; }
+extern "C" { # [doc = " Deletes the collection with the given name & scope.\nDeleting the last collection from a scope implicitly deletes the scope.\n@note  It is legal to delete the default collection, but it cannot be re-created."] pub fn c4db_deleteCollection (db : * mut C4Database , spec : C4CollectionSpec , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Returns the names of all existing collections in the given scope,\nin the order in which they were created.\n@note  You are responsible for releasing the returned Fleece array."] pub fn c4db_collectionNames (db : * mut C4Database , inScope : C4String , outError : * mut C4Error ,) -> FLMutableArray ; }
+extern "C" { # [doc = " Returns the names of all existing scopes, in the order in which they were created.\n@note  You are responsible for releasing the returned Fleece array."] pub fn c4db_scopeNames (db : * mut C4Database , outError : * mut C4Error) -> FLMutableArray ; }
+extern "C" { # [doc = " Returns false if this collection has been deleted, or its database closed."] pub fn c4coll_isValid (arg1 : * mut C4Collection) -> bool ; }
+extern "C" { # [doc = " Returns the name and scope of the collection."] pub fn c4coll_getSpec (arg1 : * mut C4Collection) -> C4CollectionSpec ; }
+extern "C" { # [doc = " Returns the database containing the collection, or NULL if the collection is invalid."] pub fn c4coll_getDatabase (arg1 : * mut C4Collection) -> * mut C4Database ; }
+extern "C" { # [doc = " Returns the number of (undeleted) documents in the collection."] pub fn c4coll_getDocumentCount (arg1 : * mut C4Collection) -> u64 ; }
+extern "C" { # [doc = " Returns the latest sequence number allocated to a revision."] pub fn c4coll_getLastSequence (arg1 : * mut C4Collection) -> C4SequenceNumber ; }
+extern "C" { # [doc = " Gets a document from the collection given its ID.\nThe current revision is selected (if the document exists.)\n@note  You must call \\ref c4doc_release when finished with the document.\n@param collection  The collection to read from.\n@param docID  The document's ID.\n@param mustExist  Governs behavior if no document with that ID exists. If true, the call fails\nwith error kC4NotFound. If false, a C4Document with no contents is returned.\n@param content  How much content to retrieve: metadata only, current revision, or all revisions.\n@param outError  On failure, error information is stored here.\n@return  A new C4Document instance (which must be released), or NULL."] pub fn c4coll_getDoc (collection : * mut C4Collection , docID : C4String , mustExist : bool , content : C4DocContentLevel , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " Gets a document from the collection given its sequence number.\n@note  You must call `c4doc_release()` when finished with the document."] pub fn c4coll_getDocBySequence (collection : * mut C4Collection , arg1 : C4SequenceNumber , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " A high-level Put operation, to insert a new or downloaded revision.\n- If `request->existingRevision` is true, then request->history must contain the revision's\nhistory, with the revision's ID as the first item.\n- Otherwise, a new revision will be created and assigned a revID. The parent revision ID,\nif any, should be given as the single item of request->history.\nEither way, on success the document is returned with the inserted revision selected.\n\nNote that actually saving the document back to the database is optional -- it only happens\nif request->save is true. You can set this to false if you want to review the changes\nbefore saving, e.g. to run them through a validation function.\n@note  You must call \\ref c4doc_release when finished with the returned document."] pub fn c4coll_putDoc (collection : * mut C4Collection , request : * const C4DocPutRequest , outCommonAncestorIndex : * mut usize , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " Convenience function to create a new document. This just a wrapper around \\ref c4coll_putDoc.\nIf the document already exists, it will fail with the error `kC4ErrorConflict`.\n@note  You must call \\ref c4doc_release when finished with the document.\n@param collection  The collection to create the document in\n@param docID  Document ID to create; if null, a UUID will be generated\n@param body  Body of the document\n@param revisionFlags  The flags of the new revision\n@param error Information about any error that occurred\n@return  On success, a new C4Document with the new revision selected; else NULL."] pub fn c4coll_createDoc (collection : * mut C4Collection , docID : C4String , body : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " Moves a document to another collection, possibly with a different docID.\n@param collection  The document's original collection.\n@param docID  The ID of the document to move.\n@param toCollection  The collection to move to.\n@param newDocID  The docID in the new collection, or a NULL slice to keep the original ID.\n@param error Information about any error that occurred\n@return  True on success, false on failure."] pub fn c4coll_moveDoc (collection : * mut C4Collection , docID : C4String , toCollection : * mut C4Collection , newDocID : C4String , error : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Removes all trace of a document and its revisions from the collection."] pub fn c4coll_purgeDoc (collection : * mut C4Collection , docID : C4String , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Sets an expiration date on a document.  After this time the\ndocument will be purged from the database.\n@param collection The collection to set the expiration date in\n@param docID The ID of the document to set the expiration date for\n@param timestamp The timestamp of the expiration date, in milliseconds since 1/1/1970.\nA value of 0 indicates that the expiration should be cancelled.\n@param outError Information about any error that occurred\n@return true on sucess, false on failure"] pub fn c4coll_setDocExpiration (collection : * mut C4Collection , docID : C4String , timestamp : C4Timestamp , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Returns the expiration time of a document, if one has been set, else 0.\n@param collection  The collection to set the expiration date in\n@param docID  The ID of the document to check\n@param outError Information about any error that occurred\n@return The timestamp of the expiration date, in milliseconds since 1/1/1970,\nor 0 if the document does not expire,\nor -1 if an error occurred."] pub fn c4coll_getDocExpiration (collection : * mut C4Collection , docID : C4String , outError : * mut C4Error ,) -> C4Timestamp ; }
+extern "C" { # [doc = " Returns the time at which the next document expiration in this collection should take place,\nor 0 if there are no documents with expiration times."] pub fn c4coll_nextDocExpiration (arg1 : * mut C4Collection) -> C4Timestamp ; }
+extern "C" { # [doc = " Purges all documents that have expired.\n@return  The number of documents purged, or -1 on error."] pub fn c4coll_purgeExpiredDocs (arg1 : * mut C4Collection , arg2 : * mut C4Error) -> i64 ; }
+extern "C" { # [doc = " Creates a collection index, of the values of specific expressions across all documents.\nThe name is used to identify the index for later updating or deletion; if an index with the\nsame name already exists, it will be replaced unless it has the exact same expressions.\n\n@param collection  The collection to index.\n@param name  The name of the index. Any existing index with the same name will be replaced,\nunless it has the identical expressions (in which case this is a no-op.)\n@param indexSpec  The definition of the index in JSON or N1QL form. (See above.)\n@param queryLanguage  The language of `indexSpec`, either JSON or N1QL.\n@param indexType  The type of index (value or full-text.)\n@param indexOptions  Options for the index. If NULL, each option will get a default value.\n@param outError  On failure, will be set to the error status.\n@return  True on success, false on failure."] pub fn c4coll_createIndex (collection : * mut C4Collection , name : C4String , indexSpec : C4String , queryLanguage : C4QueryLanguage , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Deletes an index that was created by `c4coll_createIndex`.\n@param collection  The collection to index.\n@param name The name of the index to delete\n@param outError  On failure, will be set to the error status.\n@return  True on success, false on failure."] pub fn c4coll_deleteIndex (collection : * mut C4Collection , name : C4String , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Returns information about all indexes in the collection.\nThe result is a Fleece-encoded array of dictionaries, one per index.\nEach dictionary has keys `\"name\"`, `\"type\"` (a `C4IndexType`), and `\"expr\"` (the source expression).\n@param collection  The collection to check\n@param outError  On failure, will be set to the error status.\n@return  A Fleece-encoded array of dictionaries, or NULL on failure."] pub fn c4coll_getIndexesInfo (collection : * mut C4Collection , outError : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { # [doc = " Stores a password into a C4EncryptionKey, by using the key-derivation algorithm PBKDF2\nto securely convert the password into a raw binary key.\n@param encryptionKey  The raw key will be stored here.\n@param password  The password string.\n@param alg  The encryption algorithm to use. Must not be kC4EncryptionNone.\n@return  True on success, false on failure"] pub fn c4key_setPassword (encryptionKey : * mut C4EncryptionKey , password : C4String , alg : C4EncryptionAlgorithm ,) -> bool ; }
+extern "C" { # [doc = " Stores a password into a C4EncryptionKey, by using the key-derivation algorithm PBKDF2\nto securely convert the password into a raw binary key. Uses SHA1 for the hashing function\nas employed by PBKDF2.\n@param encryptionKey  The raw key will be stored here.\n@param password  The password string.\n@param alg  The encryption algorithm to use. Must not be kC4EncryptionNone.\n@return  True on success, false on failure"] pub fn c4key_setPasswordSHA1 (encryptionKey : * mut C4EncryptionKey , password : C4String , alg : C4EncryptionAlgorithm ,) -> bool ; }
+extern "C" { # [doc = " Returns true if a database with the given name exists in the directory."] pub fn c4db_exists (name : C4String , inDirectory : C4String) -> bool ; }
+extern "C" { # [doc = " Opens a database given its name (without the \".cblite2\" extension) and directory."] pub fn c4db_openNamed (name : C4String , config : * const C4DatabaseConfig2 , outError : * mut C4Error ,) -> * mut C4Database ; }
+extern "C" { # [doc = " Opens a new handle to the same database file as `db`.\nThe new connection is completely independent and can be used on another thread."] pub fn c4db_openAgain (db : * mut C4Database , outError : * mut C4Error) -> * mut C4Database ; }
+extern "C" { # [doc = " Copies a prebuilt database from the given source path and places it in the destination\ndirectory, with the given name. If a database already exists there, it will be overwritten.\nHowever if there is a failure, the original database will be restored as if nothing\nhappened.\n@param sourcePath  The path to the database to be copied.\n@param destinationName  The name (without filename extension) of the database to create.\n@param config  Database configuration (including destination directory.)\n@param error  On failure, error info will be written here.\n@return  True on success, false on failure."] pub fn c4db_copyNamed (sourcePath : C4String , destinationName : C4String , config : * const C4DatabaseConfig2 , error : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Closes the database. Does not free the handle, although any operation other than\nc4db_release() will fail with an error."] pub fn c4db_close (database : * mut C4Database , outError : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Closes the database and deletes the file/bundle. Does not free the handle, although any\noperation other than c4db_release() will fail with an error."] pub fn c4db_delete (database : * mut C4Database , outError : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Deletes the file(s) for the database with the given name in the given directory.\nAll C4Databases at that path must be closed first or an error will result.\nReturns false, with no error, if the database doesn't exist."] pub fn c4db_deleteNamed (dbName : C4String , inDirectory : C4String , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Changes a database's encryption key (removing encryption if it's NULL.)"] pub fn c4db_rekey (database : * mut C4Database , newKey : * const C4EncryptionKey , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Closes down the storage engines. Must close all databases first.\nYou don't generally need to do this, but it can be useful in tests."] pub fn c4_shutdown (outError : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Returns the name of the database, as given to `c4db_openNamed`.\nThis is the filename _without_ the \".cblite2\" extension."] pub fn c4db_getName (arg1 : * mut C4Database) -> C4String ; }
+extern "C" { # [doc = " Returns the path of the database."] pub fn c4db_getPath (arg1 : * mut C4Database) -> C4StringResult ; }
+extern "C" { # [doc = " Returns the configuration the database was opened with."] pub fn c4db_getConfig2 (database : * mut C4Database) -> * const C4DatabaseConfig2 ; }
+extern "C" { # [doc = " Returns the number of (undeleted) documents in the database."] pub fn c4db_getDocumentCount (database : * mut C4Database) -> u64 ; }
+extern "C" { # [doc = " Returns the latest sequence number allocated to a revision."] pub fn c4db_getLastSequence (database : * mut C4Database) -> C4SequenceNumber ; }
+extern "C" { # [doc = " Returns the timestamp at which the next document expiration should take place,\nor 0 if there are no documents with expiration times."] pub fn c4db_nextDocExpiration (database : * mut C4Database) -> C4Timestamp ; }
+extern "C" { # [doc = " Purges all documents that have expired.\n\\warning This is generally unnecessary, since the background housekeeping task will do it.\nYou might want to call this if you require the purge to happen synchronously, just before\ncopying the database file or something like that.)\n@return  The number of documents purged, or -1 on error."] pub fn c4db_purgeExpiredDocs (db : * mut C4Database , arg1 : * mut C4Error) -> i64 ; }
+extern "C" { # [doc = " Returns the database's public and/or private UUIDs. (Pass NULL for ones you don't want.)"] pub fn c4db_getUUIDs (database : * mut C4Database , publicUUID : * mut C4UUID , privateUUID : * mut C4UUID , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Associates an arbitrary pointer with this database instance, for client use.\nFor example, this could be a reference to the higher-level object wrapping the database.\n\nThe `destructor` field of the `C4ExtraInfo` can be used to provide a function that will be\ncalled when the C4Database is freed, so it can free any resources associated with the pointer."] pub fn c4db_setExtraInfo (database : * mut C4Database , arg1 : C4ExtraInfo) ; }
+extern "C" { # [doc = " Returns the C4ExtraInfo associated with this db reference"] pub fn c4db_getExtraInfo (database : * mut C4Database) -> C4ExtraInfo ; }
+extern "C" { # [doc = " Performs database maintenance.\nFor more detail, see the descriptions of the \\ref C4MaintenanceType enum constants."] pub fn c4db_maintenance (database : * mut C4Database , type_ : C4MaintenanceType , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Begins a transaction.\nTransactions can nest; only the first call actually creates a database transaction."] pub fn c4db_beginTransaction (database : * mut C4Database , outError : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Commits or aborts a transaction. If there have been multiple calls to beginTransaction, it\ntakes the same number of calls to endTransaction to actually end the transaction; only the\nlast one commits or aborts the database transaction."] pub fn c4db_endTransaction (database : * mut C4Database , commit : bool , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Is a transaction active?"] pub fn c4db_isInTransaction (database : * mut C4Database) -> bool ; }
+extern "C" { # [doc = " Reads a raw document from the database. In Couchbase Lite the store named \"info\" is used\nfor per-database key/value pairs, and the store \"_local\" is used for local documents."] pub fn c4raw_get (database : * mut C4Database , storeName : C4String , docID : C4String , outError : * mut C4Error ,) -> * mut C4RawDocument ; }
+extern "C" { # [doc = " Writes a raw document to the database, or deletes it if both meta and body are NULL."] pub fn c4raw_put (database : * mut C4Database , storeName : C4String , key : C4String , meta : C4String , body : C4String , outError : * mut C4Error ,) -> bool ; }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Document { pub _internal1 : * mut :: std :: os :: raw :: c_void , pub _internal2 : * mut :: std :: os :: raw :: c_void , # [doc = "< Document flags"] pub flags : C4DocumentFlags , # [doc = "< Document ID"] pub docID : C4HeapString , # [doc = "< Revision ID of current revision"] pub revID : C4HeapString , # [doc = "< Sequence at which doc was last updated"] pub sequence : C4SequenceNumber , # [doc = "< Describes the currently-selected revision"] pub selectedRev : C4Revision , # [doc = "< For client use"] pub extraInfo : C4ExtraInfo , }
+extern "C" { # [doc = " Generates a random 23-byte C string suitable for use as a unique new document ID.\n@param buffer  Where to write the string.\n@param bufferSize  Size of the buffer (must be at least kC4GeneratedIDLength + 1)\n@return  A pointer to the string in the buffer, or NULL if the buffer is too small."] pub fn c4doc_generateID (buffer : * mut :: std :: os :: raw :: c_char , bufferSize : usize ,) -> * mut :: std :: os :: raw :: c_char ; }
+extern "C" { # [doc = " Gets a document from the database given its ID.\nThe current revision is selected (if the document exists.)\nYou must call `c4doc_release()` when finished with the document.\n@param database  The database to read from.\n@param docID  The document's ID.\n@param mustExist  Governs behavior if no document with that ID exists. If true, the call fails\nwith error kC4NotFound. If false, a C4Document with no contents is returned.\n@param content  How much content to retrieve: metadata only, current revision, or all revisions.\n@param outError  On failure, error information is stored here.\n@return  A new C4Document instance (which must be released), or NULL."] pub fn c4db_getDoc (database : * mut C4Database , docID : C4String , mustExist : bool , content : C4DocContentLevel , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " Gets a document from the database given its ID (semi-deprecated).\nThis is the same as \\ref c4db_getDoc with `content` equal to `kDocGetCurrentRev`."] pub fn c4doc_get (database : * mut C4Database , docID : C4String , mustExist : bool , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " Gets a document from the database given its sequence number.\nYou must call `c4doc_release()` when finished with the document."] pub fn c4doc_getBySequence (database : * mut C4Database , arg1 : C4SequenceNumber , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " Saves changes to a C4Document.\nMust be called within a transaction.\nThe revision history will be pruned to the maximum depth given."] pub fn c4doc_save (doc : * mut C4Document , maxRevTreeDepth : u32 , outError : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Returns whether the selected revision has been rejected by the remote"] pub fn c4doc_isRevRejected (doc : * mut C4Document) -> bool ; }
+extern "C" { # [doc = " Selects a specific revision of a document (or no revision, if revID is NULL.)"] pub fn c4doc_selectRevision (doc : * mut C4Document , revID : C4String , withBody : bool , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Selects the current revision of a document.\n(This is the first revision, in the order they appear in the document.)"] pub fn c4doc_selectCurrentRevision (doc : * mut C4Document) -> bool ; }
+extern "C" { # [doc = " Populates the body field of a doc's selected revision,\nif it was initially loaded without its body."] pub fn c4doc_loadRevisionBody (doc : * mut C4Document , outError : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Returns true if the body of the selected revision is available,\ni.e. if c4doc_loadRevisionBody() would succeed."] pub fn c4doc_hasRevisionBody (doc : * mut C4Document) -> bool ; }
+extern "C" { # [doc = " Returns the body (encoded Fleece data) of the selected revision, if available.\n\\warning  In a version-vector document, and if this is not the current revision,\nthe returned slice is invalidated the next time this function is called."] pub fn c4doc_getRevisionBody (doc : * mut C4Document) -> C4Slice ; }
+extern "C" { # [doc = " Returns a string encoding the selected revision's history, as comma-separate revision/version IDs\nin reverse chronological order.\nIn a version-vector database this is of course the revision's version vector. It will be in\nglobal form (real peerID instead of \"*\") unless the `maxRevs` parameter is 0.\n@param doc  The document.\n@param maxRevs  The maximum number of revisions to include in the result; or 0 for unlimited.\n@param backToRevs  An array of revision IDs: the history should stop when it gets to any of\nthese, and _must_ go back to one of these if possible, even if it means\nskipping some revisions.\n@param backToRevsCount  The number of revisions in the `backToRevs` array.\n@return  A string of comma-separate revision/version IDs in reverse chronological order."] pub fn c4doc_getRevisionHistory (doc : * mut C4Document , maxRevs : :: std :: os :: raw :: c_uint , backToRevs : * const C4String , backToRevsCount : :: std :: os :: raw :: c_uint ,) -> C4SliceResult ; }
+extern "C" { # [doc = " Returns the selected revision's ID in a form that will make sense to another peer/server.\n(This doesn't affect tree-based revIDs. In vector-based version IDs it uses the database's actual\npeer ID instead of the shorthand \"*\" character.)"] pub fn c4doc_getSelectedRevIDGlobalForm (doc : * mut C4Document) -> C4SliceResult ; }
+extern "C" { # [doc = " Selects the parent of the selected revision, if it's known, else returns NULL."] pub fn c4doc_selectParentRevision (doc : * mut C4Document) -> bool ; }
+extern "C" { # [doc = " Selects the next revision in priority order.\nThis can be used to iterate over all revisions, starting from the current revision."] pub fn c4doc_selectNextRevision (doc : * mut C4Document) -> bool ; }
+extern "C" { # [doc = " Selects the next leaf revision; like selectNextRevision but skips over non-leaves.\nTo distinguish between the end of the iteration and a failure, check the value of\noutError after the function returns false: if there's no error (code==0) it's normal."] pub fn c4doc_selectNextLeafRevision (doc : * mut C4Document , includeDeleted : bool , withBody : bool , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Selects the common ancestor of two revisions. Returns false if none is found."] pub fn c4doc_selectCommonAncestorRevision (doc : * mut C4Document , rev1ID : C4String , rev2ID : C4String ,) -> bool ; }
+extern "C" { # [doc = " Looks up or creates a numeric ID identifying a remote database, for use with\nc4doc_getRemoteAncestor() and c4doc_setRemoteAncestor().\n@param db  The database.\n@param remoteAddress  The replication URL of the remote db, or its other unique identifier.\n@param canCreate  If true, a new identifier will be created if one doesn't exist.\n@param outError  Error information is stored here.\n@return  The ID, or 0 on error."] pub fn c4db_getRemoteDBID (db : * mut C4Database , remoteAddress : C4String , canCreate : bool , outError : * mut C4Error ,) -> C4RemoteID ; }
+extern "C" { # [doc = " Given a remote database ID, returns its replication URL / unique identifier.\n@param db  The database.\n@param remoteID  The ID assigned to the remote database.\n@return  The URL/identifier, or a null slice if not found."] pub fn c4db_getRemoteDBAddress (db : * mut C4Database , remoteID : C4RemoteID) -> C4SliceResult ; }
+extern "C" { # [doc = " Returns the revision ID that has been marked as current for the given remote database."] pub fn c4doc_getRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID ,) -> C4SliceResult ; }
+extern "C" { # [doc = " Marks a revision as current for the given remote database."] pub fn c4doc_setRemoteAncestor (doc : * mut C4Document , remoteDatabase : C4RemoteID , revID : C4String , error : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Given a revision ID, returns its generation number (the decimal number before\nthe hyphen), or zero if it's unparseable."] pub fn c4rev_getGeneration (revID : C4String) -> :: std :: os :: raw :: c_uint ; }
+extern "C" { # [doc = " Returns true if two revision IDs are equivalent.\n- Digest-based IDs are equivalent only if byte-for-byte equal.\n- Version-vector based IDs are equivalent if their initial versions are equal."] pub fn c4rev_equal (rev1 : C4Slice , rev2 : C4Slice) -> bool ; }
+extern "C" { # [doc = " Removes a branch from a document's history. The revID must correspond to a leaf\nrevision; that revision and its ancestors will be removed, except for ancestors that are\nshared with another branch.\nIf the document has only one branch (no conflicts), or if the input revID is null, the\npurge will remove every revision, and saving the document will purge it (remove it\ncompletely from the database.)\nMust be called within a transaction. Remember to save the document afterwards.\n@param doc  The document.\n@param revID  The ID of the revision to purge. If null, all revisions are purged.\n@param outError  Error information is stored here.\n@return  The total number of revisions purged (including ancestors), or -1 on error."] pub fn c4doc_purgeRevision (doc : * mut C4Document , revID : C4String , outError : * mut C4Error ,) -> i32 ; }
+extern "C" { # [doc = " Resolves a conflict between two leaf revisions, by deleting one of them and optionally\nadding a new merged revision as a child of the other.\nMust be called within a transaction. Remember to save the document afterwards.\n@param doc  The document.\n@param winningRevID  The conflicting revision to be kept (and optionally updated.)\n@param losingRevID  The conflicting revision to be deleted.\n@param mergedBody  The body of the merged revision, or NULL if none.\n@param mergedFlags  Flags for the merged revision.\n@param error  Error information is stored here.\n@return  True on success, false on failure."] pub fn c4doc_resolveConflict (doc : * mut C4Document , winningRevID : C4String , losingRevID : C4String , mergedBody : C4Slice , mergedFlags : C4RevisionFlags , error : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Removes all trace of a document and its revisions from the database."] pub fn c4db_purgeDoc (database : * mut C4Database , docID : C4String , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Sets an expiration date on a document.  After this time the\ndocument will be purged from the database.\n@param db The database to set the expiration date in\n@param docID The ID of the document to set the expiration date for\n@param timestamp The timestamp of the expiration date, in milliseconds since 1/1/1970.\nA value of 0 indicates that the expiration should be cancelled.\n@param outError Information about any error that occurred\n@return true on sucess, false on failure"] pub fn c4doc_setExpiration (db : * mut C4Database , docID : C4String , timestamp : C4Timestamp , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Returns the expiration time of a document, if one has been set, else 0.\n@param db  The database to set the expiration date in\n@param docID  The ID of the document to check\n@param outError Information about any error that occurred\n@return The timestamp of the expiration date, in milliseconds since 1/1/1970,\nor 0 if the document does not expire,\nor -1 if an error occurred."] pub fn c4doc_getExpiration (db : * mut C4Database , docID : C4String , outError : * mut C4Error ,) -> C4Timestamp ; }
+extern "C" { # [doc = " A high-level Put operation, to insert a new or downloaded revision.\n If request->existingRevision is true, then request->history must contain the revision's\nhistory, with the revision's ID as the first item.\n Otherwise, a new revision will be created and assigned a revID. The parent revision ID,\nif any, should be given as the single item of request->history.\nEither way, on success the document is returned with the inserted revision selected.\nNote that actually saving the document back to the database is optional -- it only happens\nif request->save is true. You can set this to false if you want to review the changes\nbefore saving, e.g. to run them through a validation function."] pub fn c4doc_put (database : * mut C4Database , request : * const C4DocPutRequest , outCommonAncestorIndex : * mut usize , outError : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " Convenience function to create a new document. This just a wrapper around c4doc_put.\nIf the document already exists, it will fail with the error kC4ErrorConflict.\n@param db  The database to create the document in\n@param docID  Document ID to create; if null, a UUID will be generated\n@param body  Body of the document\n@param revisionFlags  The flags of the new revision\n@param error Information about any error that occurred\n@return  On success, a new C4Document with the new revision selected; else NULL."] pub fn c4doc_create (db : * mut C4Database , docID : C4String , body : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " Adds a revision to a document already in memory as a C4Document. This is more efficient\nthan c4doc_put because it doesn't have to read from the database before writing; but if\nthe C4Document doesn't have the current state of the document, it will fail with the error\nkC4ErrorConflict -- then you'll need to get the current document and try again.\nThe new revision is added as a child of the currently selected revision.\n@param doc  The document to update\n@param revisionBody  The body of the new revision\n@param revisionFlags  The flags of the new revision\n@param error Information about any error that occurred\n@return  On success, a new C4Document with the new revision selected; else NULL."] pub fn c4doc_update (doc : * mut C4Document , revisionBody : C4Slice , revisionFlags : C4RevisionFlags , error : * mut C4Error ,) -> * mut C4Document ; }
+extern "C" { # [doc = " Returns the properties of the selected revision, i.e. the root Fleece Dict."] pub fn c4doc_getProperties (arg1 : * mut C4Document) -> FLDict ; }
+extern "C" { # [doc = " Returns a Fleece document reference created from the selected revision.\nCaller must release the reference!"] pub fn c4doc_createFleeceDoc (arg1 : * mut C4Document) -> FLDoc ; }
+extern "C" { # [doc = " Resolves a conflict between two leaf revisions.\nIdentical to `c4doc_resolveConflict` except that it takes the merged body as a Fleece Dict,\ninstead of pre-encoded Fleece data."] pub fn c4doc_resolveConflict2 (doc : * mut C4Document , winningRevID : C4String , losingRevID : C4String , mergedProperties : FLDict , mergedFlags : C4RevisionFlags , error : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Returns the C4Document, if any, that contains the given Fleece value."] pub fn c4doc_containingValue (value : FLValue) -> * mut C4Document ; }
+extern "C" { # [doc = " Returns true if this is the name of a 1.x metadata property (\"_id\", \"_rev\", \"_deleted\".)\nDoes NOT return true for \"_attachments\" because that property isn't obsolete."] pub fn c4doc_isOldMetaProperty (prop : C4String) -> bool ; }
+extern "C" { # [doc = " Returns true if the document contains 1.x metadata properties at top level.\nDoes NOT return true for \"_attachments\" because that property isn't obsolete."] pub fn c4doc_hasOldMetaProperties (doc : FLDict) -> bool ; }
+extern "C" { # [doc = " Re-encodes to Fleece, without any 1.x metadata properties. Old-style attachments that\n_don't_ refer to blobs will be removed; others are kept."] pub fn c4doc_encodeStrippingOldMetaProperties (doc : FLDict , sk : FLSharedKeys , outError : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { # [doc = " Decodes the dict's \"digest\" property to a C4BlobKey.\nReturns false if there is no such property or it's not a valid blob key."] pub fn c4doc_getDictBlobKey (dict : FLDict , outKey : * mut C4BlobKey) -> bool ; }
+extern "C" { # [doc = " Returns true if the given dictionary is a [reference to a] blob; if so, gets its key.\n(This function cannot recognize child dictionaries of \"_attachments\", because it's not\npossible to look at the parent of a Fleece value.)"] pub fn c4doc_dictIsBlob (dict : FLDict , outKey : * mut C4BlobKey) -> bool ; }
 extern "C" { pub fn c4doc_dictContainsBlobs (dict : FLDict) -> bool ; }
-extern "C" { pub fn c4doc_getBlobData (dict : FLDict , blobStore : * mut C4BlobStore , outError : * mut C4Error ,) -> C4SliceResult ; }
-extern "C" { pub fn c4doc_blobIsCompressible (blobDict : FLDict) -> bool ; }
-extern "C" { pub fn c4doc_bodyAsJSON (doc : * mut C4Document , canonical : bool , outError : * mut C4Error ,) -> C4StringResult ; }
-extern "C" { pub fn c4db_createFleeceEncoder (db : * mut C4Database) -> FLEncoder ; }
-extern "C" { pub fn c4db_getSharedFleeceEncoder (db : * mut C4Database) -> FLEncoder ; }
-extern "C" { pub fn c4db_encodeJSON (arg1 : * mut C4Database , jsonData : C4String , outError : * mut C4Error ,) -> C4SliceResult ; }
-extern "C" { pub fn c4db_getFLSharedKeys (db : * mut C4Database) -> FLSharedKeys ; }
+extern "C" { # [doc = " Returns the contents of a blob dictionary, whether they're inline in the \"data\" property,\nor indirectly referenced via the \"digest\" property.\n@note  You can omit the C4BlobStore, but if the blob has no inline data the function will\ngive up and return a null slice (and clear the error, since this isn't a failure.)\n@param dict  A blob dictionary.\n@param blobStore  The database's BlobStore, or NULL to suppress loading blobs from disk.\n@param outError  On failure, the error will be written here.\n@return  The blob data, or null on failure."] pub fn c4doc_getBlobData (dict : FLDict , blobStore : * mut C4BlobStore , outError : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { # [doc = " Given a dictionary that's a reference to a blob, determines whether it's worth trying to\ncompress the blob's data. This is done by examining the \"encoding\" and \"content_type\"\nproperties and using heuristics to detect types that are already compressed, like gzip\nor JPEG. If no warning flags are found it will return true."] pub fn c4doc_blobIsCompressible (blobDict : FLDict) -> bool ; }
+extern "C" { # [doc = " Translates the body of the selected revision from Fleece to JSON."] pub fn c4doc_bodyAsJSON (doc : * mut C4Document , canonical : bool , outError : * mut C4Error ,) -> C4StringResult ; }
+extern "C" { # [doc = " Creates a Fleece encoder for creating documents for a given database."] pub fn c4db_createFleeceEncoder (db : * mut C4Database) -> FLEncoder ; }
+extern "C" { # [doc = " Returns a shared Fleece encoder for creating documents for a given database.\nDO NOT FREE THIS ENCODER. Instead, call FLEncoder_Reset() when finished."] pub fn c4db_getSharedFleeceEncoder (db : * mut C4Database) -> FLEncoder ; }
+extern "C" { # [doc = " Encodes JSON data to Fleece, to store into a document."] pub fn c4db_encodeJSON (arg1 : * mut C4Database , jsonData : C4String , outError : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { # [doc = " Returns the FLSharedKeys object used by the given database."] pub fn c4db_getFLSharedKeys (db : * mut C4Database) -> FLSharedKeys ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -934,21 +824,21 @@ impl std::ops::BitAnd for C4EnumeratorFlags {
             Self(self.0 | other.0)
         }
     }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4EnumeratorOptions { pub flags : C4EnumeratorFlags , }
-extern "C" { pub static kC4DefaultEnumeratorOptions : C4EnumeratorOptions ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentInfo { pub flags : C4DocumentFlags , pub docID : C4HeapString , pub revID : C4HeapString , pub sequence : C4SequenceNumber , pub bodySize : u64 , pub metaSize : u64 , pub expiration : C4Timestamp , }
-extern "C" { pub fn c4enum_close (e : * mut C4DocEnumerator) ; }
-extern "C" { pub fn c4db_enumerateChanges (database : * mut C4Database , since : C4SequenceNumber , options : * const C4EnumeratorOptions , outError : * mut C4Error ,) -> * mut C4DocEnumerator ; }
-extern "C" { pub fn c4db_enumerateAllDocs (database : * mut C4Database , options : * const C4EnumeratorOptions , outError : * mut C4Error ,) -> * mut C4DocEnumerator ; }
-extern "C" { pub fn c4coll_enumerateChanges (collection : * mut C4Collection , since : C4SequenceNumber , options : * const C4EnumeratorOptions , outError : * mut C4Error ,) -> * mut C4DocEnumerator ; }
-extern "C" { pub fn c4coll_enumerateAllDocs (collection : * mut C4Collection , options : * const C4EnumeratorOptions , outError : * mut C4Error ,) -> * mut C4DocEnumerator ; }
-extern "C" { pub fn c4enum_next (e : * mut C4DocEnumerator , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4enum_getDocument (e : * mut C4DocEnumerator , outError : * mut C4Error) -> * mut C4Document ; }
-extern "C" { pub fn c4enum_getDocumentInfo (e : * mut C4DocEnumerator , outInfo : * mut C4DocumentInfo) -> bool ; }
-extern "C" { pub fn c4db_createIndex (database : * mut C4Database , name : C4String , indexSpecJSON : C4String , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_createIndex2 (database : * mut C4Database , name : C4String , indexSpec : C4String , queryLanguage : C4QueryLanguage , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_deleteIndex (database : * mut C4Database , name : C4String , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_getIndexesInfo (database : * mut C4Database , outError : * mut C4Error) -> C4SliceResult ; }
+# [doc = " Options for enumerating over all documents."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4EnumeratorOptions { # [doc = "< Option flags */"] pub flags : C4EnumeratorFlags , }
+extern "C" { # [doc = " Default all-docs enumeration options. (Equal to kC4IncludeNonConflicted | kC4IncludeBodies)"] pub static kC4DefaultEnumeratorOptions : C4EnumeratorOptions ; }
+# [doc = " Metadata about a document (actually about its current revision.)"] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentInfo { # [doc = "< Document flags"] pub flags : C4DocumentFlags , # [doc = "< Document ID"] pub docID : C4HeapString , # [doc = "< RevID of current revision"] pub revID : C4HeapString , # [doc = "< Sequence at which doc was last updated"] pub sequence : C4SequenceNumber , # [doc = "< Size in bytes of current revision body (as Fleece not JSON)"] pub bodySize : u64 , # [doc = "< Size in bytes of extra metadata"] pub metaSize : u64 , # [doc = "< Expiration time, or 0 if none"] pub expiration : C4Timestamp , }
+extern "C" { # [doc = " Closes an enumeration. This is optional, but can be used to free up resources if the\nenumeration has not reached its end, but will not be freed for a while."] pub fn c4enum_close (e : * mut C4DocEnumerator) ; }
+extern "C" { # [doc = " Creates an enumerator ordered by sequence.\nCaller is responsible for freeing the enumerator when finished with it.\n@param database  The database.\n@param since  The sequence number to start _after_. Pass 0 to start from the beginning.\n@param options  Enumeration options (NULL for defaults).\n@param outError  Error will be stored here on failure.\n@return  A new enumerator, or NULL on failure."] pub fn c4db_enumerateChanges (database : * mut C4Database , since : C4SequenceNumber , options : * const C4EnumeratorOptions , outError : * mut C4Error ,) -> * mut C4DocEnumerator ; }
+extern "C" { # [doc = " Creates an enumerator ordered by docID.\nOptions have the same meanings as in Couchbase Lite.\nThere's no 'limit' option; just stop enumerating when you're done.\nCaller is responsible for freeing the enumerator when finished with it.\n@param database  The database.\n@param options  Enumeration options (NULL for defaults).\n@param outError  Error will be stored here on failure.\n@return  A new enumerator, or NULL on failure."] pub fn c4db_enumerateAllDocs (database : * mut C4Database , options : * const C4EnumeratorOptions , outError : * mut C4Error ,) -> * mut C4DocEnumerator ; }
+extern "C" { # [doc = " Creates an enumerator ordered by sequence.\nCaller is responsible for freeing the enumerator when finished with it.\n@param collection  The collection.\n@param since  The sequence number to start _after_. Pass 0 to start from the beginning.\n@param options  Enumeration options (NULL for defaults).\n@param outError  Error will be stored here on failure.\n@return  A new enumerator, or NULL on failure."] pub fn c4coll_enumerateChanges (collection : * mut C4Collection , since : C4SequenceNumber , options : * const C4EnumeratorOptions , outError : * mut C4Error ,) -> * mut C4DocEnumerator ; }
+extern "C" { # [doc = " Creates an enumerator ordered by docID.\nOptions have the same meanings as in Couchbase Lite.\nThere's no 'limit' option; just stop enumerating when you're done.\nCaller is responsible for freeing the enumerator when finished with it.\n@param collection  The collection.\n@param options  Enumeration options (NULL for defaults).\n@param outError  Error will be stored here on failure.\n@return  A new enumerator, or NULL on failure."] pub fn c4coll_enumerateAllDocs (collection : * mut C4Collection , options : * const C4EnumeratorOptions , outError : * mut C4Error ,) -> * mut C4DocEnumerator ; }
+extern "C" { # [doc = " Advances the enumerator to the next document.\nReturns false at the end, or on error; look at the C4Error to determine which occurred,\nand don't forget to free the enumerator."] pub fn c4enum_next (e : * mut C4DocEnumerator , outError : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Returns the current document, if any, from an enumerator.\n@param e  The enumerator.\n@param outError  Error will be stored here on failure.\n@return  The document, or NULL if there is none or if an error occurred reading its body.\nCaller is responsible for calling c4document_free when done with it."] pub fn c4enum_getDocument (e : * mut C4DocEnumerator , outError : * mut C4Error) -> * mut C4Document ; }
+extern "C" { # [doc = " Stores the metadata of the enumerator's current document into the supplied\nC4DocumentInfo struct. Unlike c4enum_getDocument(), this allocates no memory.\n@param e  The enumerator.\n@param outInfo  A pointer to a C4DocumentInfo struct that will be filled in if a document\nis found.\n@return  True if the info was stored, false if there is no current document."] pub fn c4enum_getDocumentInfo (e : * mut C4DocEnumerator , outInfo : * mut C4DocumentInfo) -> bool ; }
+extern "C" { # [doc = " Creates a database index, of the values of specific expressions across all documents.\nThe name is used to identify the index for later updating or deletion; if an index with the\nsame name already exists, it will be replaced unless it has the exact same expressions.\n\nCurrently four types of indexes are supported:\n\n Value indexes speed up queries by making it possible to look up property (or expression)\nvalues without scanning every document. They're just like regular indexes in SQL or N1QL.\nMultiple expressions are supported; the first is the primary key, second is secondary.\nExpressions must evaluate to scalar types (boolean, number, string).\n Full-Text Search (FTS) indexes enable fast search of natural-language words or phrases\nby using the `MATCH` operator in a query. A FTS index is **required** for full-text\nsearch: a query with a `MATCH` operator will fail to compile unless there is already a\nFTS index for the property/expression being matched. Only a single expression is\ncurrently allowed, and it must evaluate to a string.\n Array indexes optimize UNNEST queries, by materializing an unnested array property\n(across all documents) as a table in the SQLite database, and creating a SQL index on it.\n Predictive indexes optimize queries that use the PREDICTION() function, by materializing\nthe function's results as a table and creating a SQL index on a result property.\n\nNote: If some documents are missing the values to be indexed,\nthose documents will just be omitted from the index. It's not an error.\n\nIn an array index, the first expression must evaluate to an array to be unnested; it's\nusually a property path but could be some other expression type. If the array items are\nnonscalar (dictionaries or arrays), you should add a second expression defining the sub-\nproperty (or computed value) to index, relative to the array item.\n\nIn a predictive index, the expression is a PREDICTION() call in JSON query syntax,\nincluding the optional 3rd parameter that gives the result property to extract (and index.)\n\n`indexSpecJSON` specifies the index as a JSON object, with properties:\n `WHAT`: An array of expressions in the JSON query syntax. (Note that each\nexpression is already an array, so there are two levels of nesting.)\n `WHERE`: An optional expression. Including this creates a _partial index_: documents\nfor which this expression returns `false` or `null` will be skipped.\n\nFor backwards compatibility, `indexSpecJSON` may be an array; this is treated as if it were\na dictionary with a `WHAT` key mapping to that array.\n\nExpressions are defined in JSON, as in a query, and wrapped in a JSON array. For example,\n`[[\".name.first\"]]` will index on the first-name property. Note the two levels of brackets,\nsince an expression is already an array.\n\n@param database  The database to index.\n@param name  The name of the index. Any existing index with the same name will be replaced,\nunless it has the identical expressions (in which case this is a no-op.)\n@param indexSpecJSON  The definition of the index in JSON form. (See above.)\n@param indexType  The type of index (value or full-text.)\n@param indexOptions  Options for the index. If NULL, each option will get a default value.\n@param outError  On failure, will be set to the error status.\n@return  True on success, false on failure."] pub fn c4db_createIndex (database : * mut C4Database , name : C4String , indexSpecJSON : C4String , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " @param database  The database to index.\n@param name  The name of the index. Any existing index with the same name will be replaced,\nunless it has the identical expressions (in which case this is a no-op.)\n@param indexSpec  The definition of the index in JSON or N1QL form. (See above.)\n@param queryLanguage The query language (JSON or N1QL) of `indexSpec` is expressed.\n@param indexType  The type of index (value or full-text.)\n@param indexOptions  Options for the index. If NULL, each option will get a default value.\n@param outError  On failure, will be set to the error status.\n@return  True on success, false on failure."] pub fn c4db_createIndex2 (database : * mut C4Database , name : C4String , indexSpec : C4String , queryLanguage : C4QueryLanguage , indexType : C4IndexType , indexOptions : * const C4IndexOptions , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Deletes an index that was created by `c4db_createIndex`.\n@param database  The database to index.\n@param name The name of the index to delete\n@param outError  On failure, will be set to the error status.\n@return  True on success, false on failure."] pub fn c4db_deleteIndex (database : * mut C4Database , name : C4String , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Returns information about all indexes in the database.\nThe result is a Fleece-encoded array of dictionaries, one per index.\nEach dictionary has keys `\"name\"`, `\"type\"` (a `C4IndexType`), and `\"expr\"` (the source expression).\n@param database  The database to check\n@param outError  On failure, will be set to the error status.\n@return  A Fleece-encoded array of dictionaries, or NULL on failure."] pub fn c4db_getIndexesInfo (database : * mut C4Database , outError : * mut C4Error) -> C4SliceResult ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -982,42 +872,42 @@ impl C4PrivateKeyRepresentation {
     pub const kC4PrivateKeyFromCert: C4PrivateKeyRepresentation = C4PrivateKeyRepresentation(0);
     pub const kC4PrivateKeyFromKey: C4PrivateKeyRepresentation = C4PrivateKeyRepresentation(1);
 }
-pub type C4ListenerCertAuthCallback = :: std :: option :: Option < unsafe extern "C" fn (listener : * mut C4Listener , clientCertData : C4Slice , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
-pub type C4ListenerHTTPAuthCallback = :: std :: option :: Option < unsafe extern "C" fn (listener : * mut C4Listener , authHeader : C4Slice , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4TLSConfig { pub privateKeyRepresentation : C4PrivateKeyRepresentation , pub key : * mut C4KeyPair , pub certificate : * mut C4Cert , pub requireClientCerts : bool , pub rootClientCerts : * mut C4Cert , pub certAuthCallback : C4ListenerCertAuthCallback , pub tlsCallbackContext : * mut :: std :: os :: raw :: c_void , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ListenerConfig { pub port : u16 , pub networkInterface : C4String , pub apis : C4ListenerAPIs , pub tlsConfig : * mut C4TLSConfig , pub httpAuthCallback : C4ListenerHTTPAuthCallback , pub callbackContext : * mut :: std :: os :: raw :: c_void , pub directory : C4String , pub allowCreateDBs : bool , pub allowDeleteDBs : bool , pub allowCreateCollections : bool , pub allowDeleteCollections : bool , pub allowPush : bool , pub allowPull : bool , pub enableDeltaSync : bool , }
-extern "C" { pub fn c4listener_availableAPIs () -> C4ListenerAPIs ; }
-extern "C" { pub fn c4listener_start (config : * const C4ListenerConfig , error : * mut C4Error ,) -> * mut C4Listener ; }
-extern "C" { pub fn c4listener_shareDB (listener : * mut C4Listener , name : C4String , db : * mut C4Database , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4listener_unshareDB (listener : * mut C4Listener , db : * mut C4Database , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4listener_shareCollection (listener : * mut C4Listener , name : C4String , collection : * mut C4Collection , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4listener_unshareCollection (listener : * mut C4Listener , name : C4String , collection : * mut C4Collection , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4listener_getURLs (listener : * const C4Listener , db : * mut C4Database , api : C4ListenerAPIs , err : * mut C4Error ,) -> FLMutableArray ; }
-extern "C" { pub fn c4listener_getPort (listener : * const C4Listener) -> u16 ; }
-extern "C" { pub fn c4listener_getConnectionStatus (listener : * const C4Listener , connectionCount : * mut :: std :: os :: raw :: c_uint , activeConnectionCount : * mut :: std :: os :: raw :: c_uint ,) ; }
-extern "C" { pub fn c4db_URINameFromPath (path : C4String) -> C4StringResult ; }
-pub type C4CollectionObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4CollectionObserver , context : * mut :: std :: os :: raw :: c_void) , > ;
-extern "C" { pub fn c4dbobs_createOnCollection (collection : * mut C4Collection , callback : C4CollectionObserverCallback , context : * mut :: std :: os :: raw :: c_void , error : * mut C4Error ,) -> * mut C4CollectionObserver ; }
-extern "C" { pub fn c4dbobs_getChanges (observer : * mut C4CollectionObserver , outChanges : * mut C4CollectionChange , maxChanges : u32 ,) -> C4CollectionObservation ; }
-extern "C" { pub fn c4dbobs_releaseChanges (changes : * mut C4CollectionChange , numChanges : u32) ; }
-pub type C4DocumentObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4DocumentObserver , collection : * mut C4Collection , docID : C4String , sequence : C4SequenceNumber , context : * mut :: std :: os :: raw :: c_void ,) , > ;
-extern "C" { pub fn c4docobs_createWithCollection (collection : * mut C4Collection , docID : C4String , callback : C4DocumentObserverCallback , context : * mut :: std :: os :: raw :: c_void , error : * mut C4Error ,) -> * mut C4DocumentObserver ; }
-pub type C4QueryObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4QueryObserver , query : * mut C4Query , context : * mut :: std :: os :: raw :: c_void ,) , > ;
-extern "C" { pub fn c4queryobs_create (query : * mut C4Query , callback : C4QueryObserverCallback , context : * mut :: std :: os :: raw :: c_void ,) -> * mut C4QueryObserver ; }
-extern "C" { pub fn c4queryobs_setEnabled (obs : * mut C4QueryObserver , enabled : bool) ; }
-extern "C" { pub fn c4queryobs_getEnumerator (obs : * mut C4QueryObserver , forget : bool , error : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
-extern "C" { pub fn c4query_new2 (database : * mut C4Database , language : C4QueryLanguage , expression : C4String , outErrorPos : * mut :: std :: os :: raw :: c_int , error : * mut C4Error ,) -> * mut C4Query ; }
-extern "C" { pub fn c4query_explain (arg1 : * mut C4Query) -> C4StringResult ; }
-extern "C" { pub fn c4query_columnCount (arg1 : * mut C4Query) -> :: std :: os :: raw :: c_uint ; }
-extern "C" { pub fn c4query_columnTitle (arg1 : * mut C4Query , column : :: std :: os :: raw :: c_uint) -> FLString ; }
-extern "C" { pub fn c4query_setParameters (query : * mut C4Query , encodedParameters : C4String) ; }
-extern "C" { pub fn c4query_run (query : * mut C4Query , options : * const C4QueryOptions , encodedParameters : C4String , outError : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
-extern "C" { pub fn c4query_fullTextMatched (query : * mut C4Query , term : * const C4FullTextMatch , outError : * mut C4Error ,) -> C4StringResult ; }
-extern "C" { pub fn c4queryenum_next (e : * mut C4QueryEnumerator , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4queryenum_getRowCount (e : * mut C4QueryEnumerator , outError : * mut C4Error) -> i64 ; }
-extern "C" { pub fn c4queryenum_seek (e : * mut C4QueryEnumerator , rowIndex : i64 , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4queryenum_refresh (e : * mut C4QueryEnumerator , outError : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
-extern "C" { pub fn c4queryenum_close (arg1 : * mut C4QueryEnumerator) ; }
+# [doc = " Called when a client connects, during the TLS handshake, if a client certificate is received.\n@param listener  The C4Listener handling the connection.\n@param clientCertData  The client's X.509 certificate in DER encoding.\n@param context  The `tlsCallbackContext` from the `C4TLSConfig`.\n@return  True to allow the connection, false to refuse it."] pub type C4ListenerCertAuthCallback = :: std :: option :: Option < unsafe extern "C" fn (listener : * mut C4Listener , clientCertData : C4Slice , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
+# [doc = " Called when a client connects, after the TLS handshake (if any), when the initial HTTP request is\nreceived.\n@param listener  The C4Listener handling the connection.\n@param authHeader  The \"Authorization\" header value from the client's HTTP request, or null.\n@param context  The `callbackContext` from the listener config.\n@return  True to allow the connection, false to refuse it."] pub type C4ListenerHTTPAuthCallback = :: std :: option :: Option < unsafe extern "C" fn (listener : * mut C4Listener , authHeader : C4Slice , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
+# [doc = " TLS configuration for C4Listener."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4TLSConfig { # [doc = "< Interpretation of `privateKey`"] pub privateKeyRepresentation : C4PrivateKeyRepresentation , # [doc = "< A key pair that contains the private key"] pub key : * mut C4KeyPair , # [doc = "< X.509 certificate data"] pub certificate : * mut C4Cert , # [doc = "< True to require clients to authenticate with a cert"] pub requireClientCerts : bool , # [doc = "< Root CA certs to trust when verifying client cert"] pub rootClientCerts : * mut C4Cert , # [doc = "< Callback for X.509 cert auth"] pub certAuthCallback : C4ListenerCertAuthCallback , pub tlsCallbackContext : * mut :: std :: os :: raw :: c_void , }
+# [doc = " Configuration for a C4Listener."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ListenerConfig { # [doc = "< TCP port to listen on"] pub port : u16 , # [doc = "< name or address of interface to listen on; else all"] pub networkInterface : C4String , # [doc = "< Which API(s) to enable"] pub apis : C4ListenerAPIs , # [doc = "< TLS configuration, or NULL for no TLS"] pub tlsConfig : * mut C4TLSConfig , # [doc = "< Callback for HTTP auth"] pub httpAuthCallback : C4ListenerHTTPAuthCallback , # [doc = "< Client value passed to HTTP auth callback"] pub callbackContext : * mut :: std :: os :: raw :: c_void , # [doc = "< Directory where newly-PUT databases will be created"] pub directory : C4String , # [doc = "< If true, \"PUT /db\" is allowed"] pub allowCreateDBs : bool , # [doc = "< If true, \"DELETE /db\" is allowed"] pub allowDeleteDBs : bool , # [doc = "< If true, \"PUT /db.scope.coll\" is allowed"] pub allowCreateCollections : bool , # [doc = "< If true, \"DELETE /db.scope.coll\" is allowed"] pub allowDeleteCollections : bool , # [doc = "< Allow peers to push changes to local db"] pub allowPush : bool , # [doc = "< Allow peers to pull changes from local db"] pub allowPull : bool , # [doc = "< Enable document-deltas optimization"] pub enableDeltaSync : bool , }
+extern "C" { # [doc = " Returns flags for the available APIs in this build (REST, sync, or both.)"] pub fn c4listener_availableAPIs () -> C4ListenerAPIs ; }
+extern "C" { # [doc = " Starts a new listener."] pub fn c4listener_start (config : * const C4ListenerConfig , error : * mut C4Error ,) -> * mut C4Listener ; }
+extern "C" { # [doc = " Makes a database available from the network.\n@param listener  The listener that should share the database.\n@param name  The URI name to share it under, i.e. the path component in the URL.\nIf this is left null, a name will be chosen based as though you had called\n\\ref c4db_URINameFromPath.\n@param db  The database to share.\n@param outError On failure, the error info is stored here if non-NULL.\n@return  True on success, false if the name is invalid as a URI component."] pub fn c4listener_shareDB (listener : * mut C4Listener , name : C4String , db : * mut C4Database , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Makes a previously-shared database unavailable."] pub fn c4listener_unshareDB (listener : * mut C4Listener , db : * mut C4Database , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Specifies a collection to be used in a P2P listener context.  NOTE: A database\nmust have been previously shared under the same name, or this operation will fail.\n@param listener  The listener that should share the collection.\n@param name  The URI name to share it under, this must match the name of an already\nshared DB.\n@param collection  The collection to share.\n@param outError On failure, the error info is stored here if non-NULL."] pub fn c4listener_shareCollection (listener : * mut C4Listener , name : C4String , collection : * mut C4Collection , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Makes a previously-shared collection unavailable."] pub fn c4listener_unshareCollection (listener : * mut C4Listener , name : C4String , collection : * mut C4Collection , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Returns the URL(s) of a database being shared, or of the root, separated by \"\\n\" bytes.\nThe URLs will differ only in their hostname -- there will be one for each IP address or known\nhostname of the computer, or of the network interface.\n\nWARNING: Link-local IPv6 addresses are included in this list.  However, due to IPv6 specification\nrules, a scope ID is also required to connect to these addresses.  So if the address starts with fe80::\nyou will need to take care on the other side to also incorporate the scope of of the client network interface\ninto the URL when connecting (in short, it's probably best to avoid these but they are there if\nyou would like to try)\n@param listener  The active listener.\n@param db  A database being shared, or NULL to get the listener's root URL(s).\n@param api The API variant for which the URLs should be retrieved.  If the listener is not running in the given mode,\nor more than one mode is given, an error is returned\n@param err The error information, if any\n@return  Fleece array of or more URL strings, or null if an error occurred.\nCaller is responsible for releasing the result."] pub fn c4listener_getURLs (listener : * const C4Listener , db : * mut C4Database , api : C4ListenerAPIs , err : * mut C4Error ,) -> FLMutableArray ; }
+extern "C" { # [doc = " Returns the port number the listener is accepting connections on.\nThis is useful if you didn't specify a port in the config (`port`=0), so you can find out which\nport the kernel picked."] pub fn c4listener_getPort (listener : * const C4Listener) -> u16 ; }
+extern "C" { # [doc = " Returns the number of client connections, and how many of those are currently active.\nEither parameter can be NULL if you don't care about it."] pub fn c4listener_getConnectionStatus (listener : * const C4Listener , connectionCount : * mut :: std :: os :: raw :: c_uint , activeConnectionCount : * mut :: std :: os :: raw :: c_uint ,) ; }
+extern "C" { # [doc = " A convenience that, given a filesystem path to a database, returns the database name\nfor use in an HTTP URI path.\n- The directory portion of the path and the \".cblite2\" extension are removed.\n- Any leading \"_\" is replaced with a \"-\".\n- Any control characters or slashes are replaced with \"-\".\n@param path  The filesystem path of a database.\n@return  A name that can be used as a URI path component, or NULL if the path is not a valid\ndatabase path (does not end with \".cblite2\".)"] pub fn c4db_URINameFromPath (path : C4String) -> C4StringResult ; }
+# [doc = " Callback invoked by a collection/database observer.\n\nCAUTION: This callback is called when a transaction is committed, even one made by a\ndifferent connection (C4Database instance) on the same file. This means that, if your\napplication is multithreaded, the callback may be running on a different thread than the\none this database instance uses. It is your responsibility to ensure thread safety.\n\nIn general, it is best to make _no_ LiteCore calls from within this callback. Instead,\nuse your platform event-handling API to schedule a later call from which you can read the\nchanges. Since this callback may be invoked many times in succession, make sure you\nschedule only one call at a time.\n\n@param observer  The observer that initiated the callback.\n@param context  user-defined parameter given when registering the callback."] pub type C4CollectionObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4CollectionObserver , context : * mut :: std :: os :: raw :: c_void) , > ;
+extern "C" { # [doc = " Creates a new collection observer, with a callback that will be invoked after one or more\ndocuments in the collection have changed.\nThis is exactly like \\ref c4dbobs_create, except that it acts on any collection.\n@param collection  The collection to observe.\n@param callback  The function to call after the collection changes.\n@param context  An arbitrary value that will be passed to the callback.\n@return  The new observer reference."] pub fn c4dbobs_createOnCollection (collection : * mut C4Collection , callback : C4CollectionObserverCallback , context : * mut :: std :: os :: raw :: c_void , error : * mut C4Error ,) -> * mut C4CollectionObserver ; }
+extern "C" { # [doc = " Identifies which documents have changed in the collection since the last time this function\nwas called, or since the observer was created. This function effectively \"reads\" changes\nfrom a stream, in whatever quantity the caller desires. Once all of the changes have been\nread, the observer is reset and ready to notify again.\n\nThis function is usually called in response to your `C4CollectionObserverCallback` being\ncalled, but it doesn't have to be; it can be called at any time (subject to thread-safety\nrequirements, of course.)\n\n\\warning After calling this function, you must call \\ref c4dbobs_releaseChanges to release\nmemory that's being referenced by the `C4CollectionChange`s.\n\n@param observer  The observer.\n@param outChanges  A caller-provided buffer of structs into which changes will be\nwritten.\n@param maxChanges  The maximum number of changes to return, i.e. the size of the caller's\noutChanges buffer.\n@return  Common information about the changes contained in outChanges (number of changes,\nexternal vs non-external, and the relevant collection)"] pub fn c4dbobs_getChanges (observer : * mut C4CollectionObserver , outChanges : * mut C4CollectionChange , maxChanges : u32 ,) -> C4CollectionObservation ; }
+extern "C" { # [doc = " Releases the memory used by the `C4CollectionChange` structs (to hold the docID and revID\nstrings.) This must be called after \\ref c4dbobs_getChanges().\n@param changes  The same array of changes that was passed to \\ref c4dbobs_getChanges.\n@param numChanges  The number of changes returned by \\ref c4dbobs_getChanges, i.e. the number\nof valid items in `changes`."] pub fn c4dbobs_releaseChanges (changes : * mut C4CollectionChange , numChanges : u32) ; }
+# [doc = " Callback invoked by a document observer.\n@param observer  The observer that initiated the callback.\n@param docID  The ID of the document that changed.\n@param sequence  The sequence number of the change.\n@param context  user-defined parameter given when registering the callback."] pub type C4DocumentObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4DocumentObserver , collection : * mut C4Collection , docID : C4String , sequence : C4SequenceNumber , context : * mut :: std :: os :: raw :: c_void ,) , > ;
+extern "C" { # [doc = " Creates a new document observer, with a callback that will be invoked when the document\nchanges.\n\\note This is exactly like \\ref c4docobs_create, except that it works on any collection.\n@param collection  The collection containing the document to observe.\n@param docID  The ID of the document to observe.\n@param callback  The function to call after the database changes.\n@param context  An arbitrary value that will be passed to the callback.\n@return  The new observer reference."] pub fn c4docobs_createWithCollection (collection : * mut C4Collection , docID : C4String , callback : C4DocumentObserverCallback , context : * mut :: std :: os :: raw :: c_void , error : * mut C4Error ,) -> * mut C4DocumentObserver ; }
+# [doc = " Callback invoked by a query observer, notifying that the query results have changed.\nThe actual enumerator is not passed to the callback, but can be retrieved by calling\n\\ref c4queryobs_getEnumerator.\n@warning  This function is called on a random background thread! Be careful of thread\nsafety. Do not spend too long in this callback or other observers may be delayed.\nIt's best to do nothing except schedule a call on your preferred thread/queue.\n@param observer  The observer triggering the callback.\n@param query  The C4Query that the observer belongs to.\n@param context  The `context` parameter you passed to \\ref c4queryobs_create."] pub type C4QueryObserverCallback = :: std :: option :: Option < unsafe extern "C" fn (observer : * mut C4QueryObserver , query : * mut C4Query , context : * mut :: std :: os :: raw :: c_void ,) , > ;
+extern "C" { # [doc = " Creates a new query observer, with a callback that will be invoked when the query\nresults change, with an enumerator containing the new results.\n\\note The callback isn't invoked immediately after a change, and won't be invoked after\nevery change, to avoid performance problems. Instead, there's a brief delay so multiple\nchanges can be coalesced.\n\\note The new observer needs to be enabled by calling \\ref c4queryobs_setEnabled."] pub fn c4queryobs_create (query : * mut C4Query , callback : C4QueryObserverCallback , context : * mut :: std :: os :: raw :: c_void ,) -> * mut C4QueryObserver ; }
+extern "C" { # [doc = " Enables a query observer so its callback can be called, or disables it to stop callbacks.\n\nWhen a query observer is enabled, its callback will be called with the current results.\nIf this is the first observer, the query has to run first (on a background thread) so\nthe callback will take a little while; if there are already enabled observers, the\ncallback will be pretty much instantaneous."] pub fn c4queryobs_setEnabled (obs : * mut C4QueryObserver , enabled : bool) ; }
+extern "C" { # [doc = " Returns the current query results, if any.\nWhen the observer is created, the results are initially NULL until the query finishes\nrunning in the background.\nOnce the observer callback is called, the results are available.\n\\note  You are responsible for releasing the returned reference.\n@param obs  The query observer.\n@param forget  If true, the observer will not hold onto the enumerator, and subsequent calls\nwill return NULL until the next time the observer notifies you. This can help\nconserve memory, since the query result data will be freed as soon as you\nrelease the enumerator.\n@param error  If the last evaluation of the query failed, the error will be stored here.\n@return  The current query results, or NULL if the query hasn't run or has failed."] pub fn c4queryobs_getEnumerator (obs : * mut C4QueryObserver , forget : bool , error : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
+extern "C" { # [doc = " Compiles a query from an expression given as JSON.\nThe expression is a predicate that describes which documents should be returned.\nA separate, optional sort expression describes the ordering of the results.\n@param database  The database to be queried.\n@param language  The language (syntax) of the query expression.\n@param expression  The query expression, either JSON or N1QL.\n@param outErrorPos  If non-NULL, then on a parse error the approximate byte offset in the\ninput expression will be stored here (or -1 if not known/applicable.)\n@param error  Error will be written here if the function fails.\n@result  A new C4Query, or NULL on failure."] pub fn c4query_new2 (database : * mut C4Database , language : C4QueryLanguage , expression : C4String , outErrorPos : * mut :: std :: os :: raw :: c_int , error : * mut C4Error ,) -> * mut C4Query ; }
+extern "C" { # [doc = " Returns a string describing the implementation of the compiled query.\nThis is intended to be read by a developer for purposes of optimizing the query, especially\nto add database indexes."] pub fn c4query_explain (arg1 : * mut C4Query) -> C4StringResult ; }
+extern "C" { # [doc = " Returns the number of columns (the values specified in the WHAT clause) in each row."] pub fn c4query_columnCount (arg1 : * mut C4Query) -> :: std :: os :: raw :: c_uint ; }
+extern "C" { # [doc = " Returns a suggested title for a column, which may be:\n An alias specified in an 'AS' modifier in the column definition\n A property name\n A function/operator that computes the column value, e.g. 'MAX()' or '+'\nEach column's title is unique. If multiple columns would have the same title, the\nlater ones (in numeric order) will have \" #2\", \"#3\", etc. appended."] pub fn c4query_columnTitle (arg1 : * mut C4Query , column : :: std :: os :: raw :: c_uint) -> FLString ; }
+extern "C" { # [doc = " Sets the parameter values to use when running the query, if no parameters are given to\n\\ref c4query_run.\n@param query  The compiled query to run.\n@param encodedParameters  JSON- or Fleece-encoded dictionary whose keys correspond\nto the named parameters in the query expression, and values correspond to the\nvalues to bind. Any unbound parameters will be `null`."] pub fn c4query_setParameters (query : * mut C4Query , encodedParameters : C4String) ; }
+extern "C" { # [doc = " Runs a compiled query.\nNOTE: Queries will run much faster if the appropriate properties are indexed.\nIndexes must be created explicitly by calling `c4db_createIndex`.\n@param query  The compiled query to run.\n@param options  Query options; currently unused, just pass NULL.\n@param encodedParameters  Options parameter values; if this parameter is not NULL,\nit overrides the parameters assigned by \\ref c4query_setParameters.\n@param outError  On failure, will be set to the error status.\n@return  An enumerator for reading the rows, or NULL on error."] pub fn c4query_run (query : * mut C4Query , options : * const C4QueryOptions , encodedParameters : C4String , outError : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
+extern "C" { # [doc = " Given a C4FullTextMatch from the enumerator, returns the entire text of the property that\nwas matched. (The result depends only on the term's `dataSource` and `property` fields,\nso if you get multiple matches of the same property in the same document, you can skip\nredundant calls with the same values.)\nTo find the actual word that was matched, use the term's `start` and `length` fields\nto get a substring of the returned (UTF-8) string."] pub fn c4query_fullTextMatched (query : * mut C4Query , term : * const C4FullTextMatch , outError : * mut C4Error ,) -> C4StringResult ; }
+extern "C" { # [doc = " Advances a query enumerator to the next row, populating its fields.\nReturns true on success, false at the end of enumeration or on error."] pub fn c4queryenum_next (e : * mut C4QueryEnumerator , outError : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Returns the total number of rows in the query, if known.\nNot all query enumerators may support this (but the current implementation does.)\n@param e  The query enumerator\n@param outError  On failure, an error will be stored here (probably kC4ErrorUnsupported.)\n@return  The number of rows, or -1 on failure."] pub fn c4queryenum_getRowCount (e : * mut C4QueryEnumerator , outError : * mut C4Error) -> i64 ; }
+extern "C" { # [doc = " Jumps to a specific row. Not all query enumerators may support this (but the current\nimplementation does.)\n@param e  The query enumerator\n@param rowIndex  The number of the row, starting at 0, or -1 to restart before first row\n@param outError  On failure, an error will be stored here (probably kC4ErrorUnsupported.)\n@return  True on success, false on failure."] pub fn c4queryenum_seek (e : * mut C4QueryEnumerator , rowIndex : i64 , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Checks whether the query results have changed since this enumerator was created;\nif so, returns a new enumerator. Otherwise returns NULL."] pub fn c4queryenum_refresh (e : * mut C4QueryEnumerator , outError : * mut C4Error ,) -> * mut C4QueryEnumerator ; }
+extern "C" { # [doc = " Closes an enumerator without freeing it. This is optional, but can be used to free up\nresources if the enumeration has not reached its end, but will not be freed for a while."] pub fn c4queryenum_close (arg1 : * mut C4QueryEnumerator) ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -1039,9 +929,9 @@ impl C4ReplicatorMode {
     kC4Busy = 4,
     kC4Stopping = 5,
 }
-extern "C" { pub static kC4ReplicatorActivityLevelNames : [* const :: std :: os :: raw :: c_char ; 6usize] ; }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Address { pub scheme : C4String , pub hostname : C4String , pub port : u16 , pub path : C4String , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Progress { pub unitsCompleted : u64 , pub unitsTotal : u64 , pub documentCount : u64 , }
+extern "C" { # [doc = " For convenience, an array of C strings naming the C4ReplicatorActivityLevel values."] pub static kC4ReplicatorActivityLevelNames : [* const :: std :: os :: raw :: c_char ; 6usize] ; }
+# [doc = " A simple parsed-URL type."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Address { pub scheme : C4String , pub hostname : C4String , pub port : u16 , pub path : C4String , }
+# [doc = " Represents the current progress of a replicator.\nThe `units` fields should not be used directly, but divided (`unitsCompleted`/`unitsTotal`)\nto give a _very_ approximate progress fraction."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4Progress { # [doc = "< Abstract number of work units completed so far"] pub unitsCompleted : u64 , # [doc = "< Total number of work units (a very rough approximation)"] pub unitsTotal : u64 , # [doc = "< Number of documents transferred so far"] pub documentCount : u64 , }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -1077,37 +967,37 @@ impl C4ReplicatorProgressLevel {
     pub const kC4ReplProgressPerDocument: C4ReplicatorProgressLevel = C4ReplicatorProgressLevel(1);
     pub const kC4ReplProgressPerAttachment: C4ReplicatorProgressLevel = C4ReplicatorProgressLevel(2);
 }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicatorStatus { pub level : C4ReplicatorActivityLevel , pub progress : C4Progress , pub error : C4Error , pub flags : C4ReplicatorStatusFlags , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentEnded { pub collectionSpec : C4CollectionSpec , pub docID : C4HeapString , pub revID : C4HeapString , pub flags : C4RevisionFlags , pub sequence : C4SequenceNumber , pub error : C4Error , pub errorIsTransient : bool , pub collectionContext : * mut :: std :: os :: raw :: c_void , }
-pub type C4ReplicatorStatusChangedCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , arg2 : C4ReplicatorStatus , context : * mut :: std :: os :: raw :: c_void ,) , > ;
-pub type C4ReplicatorDocumentsEndedCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , pushing : bool , numDocs : usize , docs : * mut * const C4DocumentEnded , context : * mut :: std :: os :: raw :: c_void ,) , > ;
-pub type C4ReplicatorBlobProgressCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , pushing : bool , collectionSpec : C4CollectionSpec , docID : C4String , docProperty : C4String , blobKey : C4BlobKey , bytesComplete : u64 , bytesTotal : u64 , error : C4Error , context : * mut :: std :: os :: raw :: c_void ,) , > ;
-pub type C4ReplicatorValidationFunction = :: std :: option :: Option < unsafe extern "C" fn (collectionSpec : C4CollectionSpec , docID : C4String , revID : C4String , arg1 : C4RevisionFlags , body : FLDict , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
+# [doc = " Current status of replication. Passed to `C4ReplicatorStatusChangedCallback`."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicatorStatus { pub level : C4ReplicatorActivityLevel , pub progress : C4Progress , pub error : C4Error , pub flags : C4ReplicatorStatusFlags , }
+# [doc = " Information about a document that's been pushed or pulled."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4DocumentEnded { pub collectionSpec : C4CollectionSpec , pub docID : C4HeapString , pub revID : C4HeapString , pub flags : C4RevisionFlags , pub sequence : C4SequenceNumber , pub error : C4Error , pub errorIsTransient : bool , pub collectionContext : * mut :: std :: os :: raw :: c_void , }
+# [doc = " Callback a client can register, to get progress information.\nThis will be called on arbitrary background threads, and should not block."] pub type C4ReplicatorStatusChangedCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , arg2 : C4ReplicatorStatus , context : * mut :: std :: os :: raw :: c_void ,) , > ;
+# [doc = " Callback a client can register, to hear about the replication status of documents.\nBy default, only errors will be reported via this callback.\nTo also receive callbacks for successfully completed documents, set the\nkC4ReplicatorOptionProgressLevel option to a value greater than zero."] pub type C4ReplicatorDocumentsEndedCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , pushing : bool , numDocs : usize , docs : * mut * const C4DocumentEnded , context : * mut :: std :: os :: raw :: c_void ,) , > ;
+# [doc = " Callback a client can register, to hear about the status of blobs."] pub type C4ReplicatorBlobProgressCallback = :: std :: option :: Option < unsafe extern "C" fn (arg1 : * mut C4Replicator , pushing : bool , collectionSpec : C4CollectionSpec , docID : C4String , docProperty : C4String , blobKey : C4BlobKey , bytesComplete : u64 , bytesTotal : u64 , error : C4Error , context : * mut :: std :: os :: raw :: c_void ,) , > ;
+# [doc = " Callback that can choose to reject an incoming pulled revision, or stop a local\nrevision from being pushed, by returning false.\n(Note: In the case of an incoming revision, no flags other than 'deletion' and\n'hasAttachments' will be set.)"] pub type C4ReplicatorValidationFunction = :: std :: option :: Option < unsafe extern "C" fn (collectionSpec : C4CollectionSpec , docID : C4String , revID : C4String , arg1 : C4RevisionFlags , body : FLDict , context : * mut :: std :: os :: raw :: c_void ,) -> bool , > ;
 pub type C4ReplicatorPropertyEncryptionCallback = * mut :: std :: os :: raw :: c_void ;
 pub type C4ReplicatorPropertyDecryptionCallback = * mut :: std :: os :: raw :: c_void ;
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicationCollection { pub collection : C4CollectionSpec , pub push : C4ReplicatorMode , pub pull : C4ReplicatorMode , pub optionsDictFleece : C4Slice , pub pushFilter : C4ReplicatorValidationFunction , pub pullFilter : C4ReplicatorValidationFunction , pub callbackContext : * mut :: std :: os :: raw :: c_void , }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicatorParameters { pub optionsDictFleece : C4Slice , pub onStatusChanged : C4ReplicatorStatusChangedCallback , pub onDocumentsEnded : C4ReplicatorDocumentsEndedCallback , pub onBlobProgress : C4ReplicatorBlobProgressCallback , pub propertyEncryptor : C4ReplicatorPropertyEncryptionCallback , pub propertyDecryptor : C4ReplicatorPropertyDecryptionCallback , pub callbackContext : * mut :: std :: os :: raw :: c_void , pub socketFactory : * const C4SocketFactory , pub collections : * mut C4ReplicationCollection , pub collectionCount : usize , }
-extern "C" { pub fn c4repl_isValidDatabaseName (dbName : C4String) -> bool ; }
-extern "C" { pub fn c4repl_isValidRemote (remoteAddress : C4Address , remoteDatabaseName : C4String , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4address_fromURL (url : C4String , address : * mut C4Address , dbName : * mut C4String) -> bool ; }
-extern "C" { pub fn c4address_toURL (address : C4Address) -> C4StringResult ; }
-extern "C" { pub fn c4repl_new (db : * mut C4Database , remoteAddress : C4Address , remoteDatabaseName : C4String , params : C4ReplicatorParameters , outError : * mut C4Error ,) -> * mut C4Replicator ; }
-extern "C" { pub fn c4repl_newWithSocket (db : * mut C4Database , openSocket : * mut C4Socket , params : C4ReplicatorParameters , outError : * mut C4Error ,) -> * mut C4Replicator ; }
-extern "C" { pub fn c4repl_start (repl : * mut C4Replicator , reset : bool) ; }
-extern "C" { pub fn c4repl_stop (repl : * mut C4Replicator) ; }
-extern "C" { pub fn c4repl_retry (repl : * mut C4Replicator , outError : * mut C4Error) -> bool ; }
-extern "C" { pub fn c4repl_setHostReachable (repl : * mut C4Replicator , reachable : bool) ; }
-extern "C" { pub fn c4repl_setSuspended (repl : * mut C4Replicator , suspended : bool) ; }
-extern "C" { pub fn c4repl_setOptions (repl : * mut C4Replicator , optionsDictFleece : C4Slice) ; }
-extern "C" { pub fn c4repl_getStatus (repl : * mut C4Replicator) -> C4ReplicatorStatus ; }
-extern "C" { pub fn c4repl_getResponseHeaders (repl : * mut C4Replicator) -> C4Slice ; }
-extern "C" { pub fn c4repl_getPendingDocIDs (repl : * mut C4Replicator , spec : C4CollectionSpec , outErr : * mut C4Error ,) -> C4SliceResult ; }
-extern "C" { pub fn c4repl_isDocumentPending (repl : * mut C4Replicator , docID : C4String , spec : C4CollectionSpec , outErr : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4repl_getPeerTLSCertificate (repl : * mut C4Replicator , outErr : * mut C4Error ,) -> * mut C4Cert ; }
-extern "C" { pub fn c4repl_setProgressLevel (repl : * mut C4Replicator , level : C4ReplicatorProgressLevel , outErr : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_setCookie (db : * mut C4Database , setCookieHeader : C4String , fromHost : C4String , fromPath : C4String , acceptParentDomain : bool , outError : * mut C4Error ,) -> bool ; }
-extern "C" { pub fn c4db_getCookies (db : * mut C4Database , request : C4Address , error : * mut C4Error ,) -> C4StringResult ; }
-extern "C" { pub fn c4db_clearCookies (db : * mut C4Database) ; }
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicationCollection { pub collection : C4CollectionSpec , # [doc = "< Push mode (from db to remote/other db)"] pub push : C4ReplicatorMode , # [doc = "< Pull mode (from db to remote/other db)."] pub pull : C4ReplicatorMode , pub optionsDictFleece : C4Slice , # [doc = "< Callback that can reject outgoing revisions"] pub pushFilter : C4ReplicatorValidationFunction , # [doc = "< Callback that can reject outgoing revisions"] pub pullFilter : C4ReplicatorValidationFunction , # [doc = "< Value to be passed to the callbacks."] pub callbackContext : * mut :: std :: os :: raw :: c_void , }
+# [doc = " Parameters describing a replication, used when creating a C4Replicator."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4ReplicatorParameters { # [doc = "< Optional Fleece-encoded dictionary of optional parameters."] pub optionsDictFleece : C4Slice , # [doc = "< Callback to be invoked when replicator's status changes."] pub onStatusChanged : C4ReplicatorStatusChangedCallback , # [doc = "< Callback notifying status of individual documents"] pub onDocumentsEnded : C4ReplicatorDocumentsEndedCallback , # [doc = "< Callback notifying blob progress"] pub onBlobProgress : C4ReplicatorBlobProgressCallback , pub propertyEncryptor : C4ReplicatorPropertyEncryptionCallback , pub propertyDecryptor : C4ReplicatorPropertyDecryptionCallback , # [doc = "< Value to be passed to the callbacks."] pub callbackContext : * mut :: std :: os :: raw :: c_void , # [doc = "< Custom C4SocketFactory, if not NULL"] pub socketFactory : * const C4SocketFactory , pub collections : * mut C4ReplicationCollection , pub collectionCount : usize , }
+extern "C" { # [doc = " Checks whether a database name is valid, for purposes of appearing in a replication URL"] pub fn c4repl_isValidDatabaseName (dbName : C4String) -> bool ; }
+extern "C" { # [doc = " Checks whether the destination of a replication is valid.\n(c4repl_new makes the same checks; this function is exposed so CBL can fail sooner.)"] pub fn c4repl_isValidRemote (remoteAddress : C4Address , remoteDatabaseName : C4String , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " A simple URL parser that populates a C4Address from a URL string.\nThe fields of the address will point inside the url string.\n@param url  The URL to be parsed.\n@param address  On sucess, the fields of the struct this points to will be populated with\nthe address components. This that are slices will point into the\nappropriate substrings of `url`.\n@param dbName  If non-NULL, then on success this slice will point to the last path\ncomponent of `url`; `address->path` will not include this component.\n@return  True on success, false on failure."] pub fn c4address_fromURL (url : C4String , address : * mut C4Address , dbName : * mut C4String) -> bool ; }
+extern "C" { # [doc = " Converts a C4Address to a URL."] pub fn c4address_toURL (address : C4Address) -> C4StringResult ; }
+extern "C" { # [doc = " Creates a new networked replicator.\n@param db  The local database.\n@param remoteAddress  The address of the remote server.\n@param remoteDatabaseName  The name of the database at the remote address.\n@param params Replication parameters (see above.)\n@param outError  Error, if replication can't be created.\n@return  The newly created replicator, or NULL on error."] pub fn c4repl_new (db : * mut C4Database , remoteAddress : C4Address , remoteDatabaseName : C4String , params : C4ReplicatorParameters , outError : * mut C4Error ,) -> * mut C4Replicator ; }
+extern "C" { # [doc = " Creates a new replicator from an already-open C4Socket. This is for use by listeners\nthat accept incoming connections, wrap them by calling `c4socket_fromNative()`, then\nstart a passive replication to service them.\n@param db  The local database.\n@param openSocket  An already-created C4Socket.\n@param params  Replication parameters. Will usually use kC4Passive modes.\n@param outError  Error, if replication can't be created.\n@return  The newly created replicator, or NULL on error."] pub fn c4repl_newWithSocket (db : * mut C4Database , openSocket : * mut C4Socket , params : C4ReplicatorParameters , outError : * mut C4Error ,) -> * mut C4Replicator ; }
+extern "C" { # [doc = " Tells a replicator to start. Ignored if it's not in the Stopped state.\n\\note This function is thread-safe.\n@param repl  The C4Replicator instance.\n@param reset If true, the replicator will reset its checkpoint and start replication from the beginning"] pub fn c4repl_start (repl : * mut C4Replicator , reset : bool) ; }
+extern "C" { # [doc = " Tells a replicator to stop. Ignored if in the Stopped state.\nThis function is thread-safe."] pub fn c4repl_stop (repl : * mut C4Replicator) ; }
+extern "C" { # [doc = " Tells a replicator that's in the offline state to reconnect immediately.\n\\note This function is thread-safe.\n@param repl  The replicator.\n@param outError  On failure, error information is stored here.\n@return  True if the replicator will reconnect, false if it won't."] pub fn c4repl_retry (repl : * mut C4Replicator , outError : * mut C4Error) -> bool ; }
+extern "C" { # [doc = " Informs the replicator whether it's considered possible to reach the remote host with\nthe current network configuration. The default value is true. This only affects the\nreplicator's behavior while it's in the Offline state:\n Setting it to false will cancel any pending retry and prevent future automatic retries.\n Setting it back to true will initiate an immediate retry.\n\\note This function is thread-safe."] pub fn c4repl_setHostReachable (repl : * mut C4Replicator , reachable : bool) ; }
+extern "C" { # [doc = " Puts the replicator in or out of \"suspended\" state.\n Setting suspended=true causes the replicator to disconnect and enter Offline state;\nit will not attempt to reconnect while it's suspended.\n Setting suspended=false causes the replicator to attempt to reconnect, _if_ it was\nconnected when suspended, and is still in Offline state.\n\\note This function is thread-safe."] pub fn c4repl_setSuspended (repl : * mut C4Replicator , suspended : bool) ; }
+extern "C" { # [doc = " Sets the replicator's options dictionary.\nThe changes will take effect next time the replicator connects.\n\\note This function is thread-safe."] pub fn c4repl_setOptions (repl : * mut C4Replicator , optionsDictFleece : C4Slice) ; }
+extern "C" { # [doc = " Returns the current state of a replicator.\nThis function is thread-safe."] pub fn c4repl_getStatus (repl : * mut C4Replicator) -> C4ReplicatorStatus ; }
+extern "C" { # [doc = " Returns the HTTP response headers as a Fleece-encoded dictionary.\n\\note This function is thread-safe."] pub fn c4repl_getResponseHeaders (repl : * mut C4Replicator) -> C4Slice ; }
+extern "C" { # [doc = " Gets a fleece encoded list of IDs of documents who have revisions pending push.  This\n  API is a snapshot and results may change between the time the call was made and the time\n  the call returns.\n\n  @param repl  The C4Replicator instance.\n  @param spec  The collection spec\n  @param outErr On failure, error information will be written here if non-NULL.\n  @return A fleece encoded array of document IDs, each of which has one or more pending\n  revisions.  If none are pending, nullslice is returned (note that an error\n condition will return nullslice with the outErr code set to non-zero)"] pub fn c4repl_getPendingDocIDs (repl : * mut C4Replicator , spec : C4CollectionSpec , outErr : * mut C4Error ,) -> C4SliceResult ; }
+extern "C" { # [doc = " Checks if the document with the given ID has revisions pending push.  This\n  API is a snapshot and results may change between the time the call was made and the time\n  the call returns.\n\n  @param repl  The C4Replicator instance.\n  @param docID The ID of the document to check\n  @param spec The collection the docID belongs to.\n  @param outErr On failure, error information will be written here if non-NULL.\n  @return true if the document has one or more revisions pending, false otherwise (note that an error\n  condition will return false with the outErr code set to non-zero)"] pub fn c4repl_isDocumentPending (repl : * mut C4Replicator , docID : C4String , spec : C4CollectionSpec , outErr : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Gets the TLS certificate, if any, that was sent from the remote server (NOTE: Only functions when using BuiltInWebSocket)"] pub fn c4repl_getPeerTLSCertificate (repl : * mut C4Replicator , outErr : * mut C4Error ,) -> * mut C4Cert ; }
+extern "C" { # [doc = " Sets the progress level of the replicator, indicating what information should be provided via\n  callback.\n\n  @param repl  The C4Replicator instance.\n  @param level The progress level to set on the replicator\n  @param outErr Records error information, if any.\n  @return true if the progress level was set, false if there was an error."] pub fn c4repl_setProgressLevel (repl : * mut C4Replicator , level : C4ReplicatorProgressLevel , outErr : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Takes the value of a \"Set-Cookie:\" header, received from the given host, from an HTTP\n  request with the given path, and saves the cookie into the database's cookie store.\n  (Persistent cookies are saved as metadata in the database file until they expire.\n  Session cookies are kept in memory, until the last C4Database handle to the given database\n  is closed.)\n\n  @param db  The C4Databaser instance.\n  @param setCookieHeader The \"Set-Cookie\" header.\n  @param fromHost The host address of the request.\n  @param fromPath The path of the request.\n  @param acceptParentDomain Whether to allow the \"Domain\" property of the cookie to be a parent domain of the host address. It should match the option, kC4ReplicatorOptionAcceptParentDomainCookies, in C4ReplicatorParameters.\n  @param outError Records error information, if any.\n  @return true if the cookie is successfully saved.."] pub fn c4db_setCookie (db : * mut C4Database , setCookieHeader : C4String , fromHost : C4String , fromPath : C4String , acceptParentDomain : bool , outError : * mut C4Error ,) -> bool ; }
+extern "C" { # [doc = " Locates any saved HTTP cookies relevant to the given request, and returns them as a string\nthat can be used as the value of a \"Cookie:\" header."] pub fn c4db_getCookies (db : * mut C4Database , request : C4Address , error : * mut C4Error ,) -> C4StringResult ; }
+extern "C" { # [doc = " Removes all cookies from the database's cookie store."] pub fn c4db_clearCookies (db : * mut C4Database) ; }
 
     #[repr(transparent)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -1138,15 +1028,16 @@ impl C4SocketFraming {
     pub const kC4NoFraming: C4SocketFraming = C4SocketFraming(1);
     pub const kC4WebSocketServerFraming: C4SocketFraming = C4SocketFraming(2);
 }
-# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4SocketFactory { pub framing : C4SocketFraming , pub context : * mut :: std :: os :: raw :: c_void , pub open : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket , addr : * const C4Address , options : C4Slice , context : * mut :: std :: os :: raw :: c_void ,) , > , pub write : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket , allocatedData : C4SliceResult) , > , pub completedReceive : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket , byteCount : usize) > , pub close : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket) > , pub requestClose : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket , status : :: std :: os :: raw :: c_int , message : C4String ,) , > , pub dispose : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket) > , }
-extern "C" { pub fn c4socket_registerFactory (factory : C4SocketFactory) ; }
-extern "C" { pub fn c4Socket_setNativeHandle (arg1 : * mut C4Socket , arg2 : * mut :: std :: os :: raw :: c_void) ; }
-extern "C" { pub fn c4Socket_getNativeHandle (arg1 : * mut C4Socket) -> * mut :: std :: os :: raw :: c_void ; }
-extern "C" { pub fn c4socket_gotHTTPResponse (socket : * mut C4Socket , httpStatus : :: std :: os :: raw :: c_int , responseHeadersFleece : C4Slice ,) ; }
-extern "C" { pub fn c4socket_opened (socket : * mut C4Socket) ; }
-extern "C" { pub fn c4socket_closed (socket : * mut C4Socket , errorIfAny : C4Error) ; }
-extern "C" { pub fn c4socket_closeRequested (socket : * mut C4Socket , status : :: std :: os :: raw :: c_int , message : C4String ,) ; }
-extern "C" { pub fn c4socket_completedWrite (socket : * mut C4Socket , byteCount : usize) ; }
-extern "C" { pub fn c4socket_received (socket : * mut C4Socket , data : C4Slice) ; }
-extern "C" { pub fn c4socket_fromNative (factory : C4SocketFactory , nativeHandle : * mut :: std :: os :: raw :: c_void , address : * const C4Address ,) -> * mut C4Socket ; }
-pub type __builtin_va_list = * mut :: std :: os :: raw :: c_char ;
+# [doc = " A group of callbacks that define the implementation of sockets; the client must fill this\nout and pass it to c4socket_registerFactory() before using any socket-based API.\nThese callbacks will be invoked on arbitrary background threads owned by LiteCore.\nThey should return quickly, and perform the operation asynchronously without blocking."] # [repr (C)] # [derive (Debug , Copy , Clone)] pub struct C4SocketFactory { # [doc = " This should be set to `kC4NoFraming` if the socket factory acts as a stream of messages,\n`kC4WebSocketClientFraming` or `kC4WebSocketServerFraming` if it's a byte stream."] pub framing : C4SocketFraming , # [doc = " An arbitrary value that will be passed to the `open` callback."] pub context : * mut :: std :: os :: raw :: c_void , # [doc = " Called to open a socket to a destination address.\nThis function should operate asynchronously, returning immediately.\nWhen the socket opens, call \\ref c4socket_opened, or if it fails to open, call\n\\ref c4socket_closed with an appropriate error.\n\n@param socket  A new C4Socket instance to be opened. Its `nativeHandle` will be NULL;\nthe implementation of this function will probably store a native socket\nreference there.\n@param addr  The address (URL) to connect to.\n@param options  A Fleece-encoded dictionary containing additional parameters, such as\n`kC4SocketOptionWSProtocols`, which provides the WebSocket protocol names\nto include in the HTTP request header.\n@param context  The value of the `C4SocketFactory`'s `context` field."] pub open : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket , addr : * const C4Address , options : C4Slice , context : * mut :: std :: os :: raw :: c_void ,) , > , # [doc = " Called to write to the socket. If `framing` equals `kC4NoFraming`, the data is a complete\nmessage, and your socket implementation is responsible for framing it;\notherwise, it's just raw bytes to write to the stream, including the necessary WebSocket\nframing.\n\nAfter data has been written, you must call \\ref c4socket_completedWrite. (You can call this\nonce after all the data is written, or multiple times with smaller numbers, as long as the\ntotal byte count equals the size of the `allocatedData`.)\n\n@param socket  The socket to write to.\n@param allocatedData  The data/message to send. As this is a `C4SliceResult`, your\nimplementation of this function is responsible for releasing it when done."] pub write : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket , allocatedData : C4SliceResult) , > , # [doc = " Called to inform the socket that LiteCore has finished processing the data from a\n\\ref c4socket_received call.\n\nThis can be used for flow control: you should keep track of\nthe number of bytes you've sent to LiteCore, incrementing the number when you call\n\\ref c4socket_received, and decrementing it when `completedReceived` is called.\nIf the number goes above some threshold, you should take measures to stop receiving more\ndata, e.g. by not reading more bytes from the socket. Otherwise memory usage can balloon as\nmore and more data arrives and must be buffered in memory.\n\n@param socket  The socket that whose incoming data was processed.\n@param byteCount  The number of bytes of data processed (the size of the `data`\nslice passed to a `c4socket_received()` call.)"] pub completedReceive : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket , byteCount : usize) > , # [doc = " Called to close the socket.  This is only called if `framing` doesn't equal `kC4NoFraming`, i.e.\nthe socket operates at the byte level. Otherwise it may be left NULL.\nNo more write calls will be made; you should process any remaining incoming bytes\nby calling \\ref c4socket_received, then call \\ref c4socket_closed when the socket closes.\n\\warning You MUST call \\ref c4socket_closed, or the replicator will wait forever!\n\n@param socket  The socket to close."] pub close : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket) > , # [doc = " Called to close the socket.  This is only called if `framing` equals to `kC4NoFraming`, i.e.\nthe socket operates at the message level.  Otherwise it may be left NULL.\n\nYour implementation should:\n1. send a message that tells the remote peer that it's closing the connection;\n2. wait for acknowledgement;\n3. while waiting, handle any further incoming messages by calling \\ref c4socket_received;\n4. after 5 seconds of waiting, give up and go to step 5;\n5. upon acknowledgement or timeout, close its connection and call \\ref c4socket_closed.\n\nThis call can also occur _before_ the socket has opened, if the replicator decides to time\nout. In this situation -- i.e. if you have not yet called \\ref c4socket_opened --\nyou should tear down your connection and call \\ref c4socket_closed.\n\n\\warning You MUST call \\ref c4socket_closed, or the replicator will wait forever!\n\n@param socket  The `C4Socket` to close.\n@param status  The WebSocket status code to send in the CLOSE message.\n@param message  The text to send in the CLOSE message."] pub requestClose : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket , status : :: std :: os :: raw :: c_int , message : C4String ,) , > , # [doc = " Called to tell the client that a `C4Socket` object is being disposed/freed after it's\nclosed. The implementation of this function can then dispose any state associated with\nthe `nativeHandle`.\n\nSet this to NULL if you don't need the call.\n\n@param socket  The socket being disposed."] pub dispose : :: std :: option :: Option < unsafe extern "C" fn (socket : * mut C4Socket) > , }
+extern "C" { # [doc = " One-time registration of default socket callbacks. If used, must be called before using any socket-based\nAPI including the replicator. Do not call multiple times."] pub fn c4socket_registerFactory (factory : C4SocketFactory) ; }
+extern "C" { # [doc = " Associates an opaque \"native handle\" with this object. You can use this to store whatever\nyou need to represent the socket's implementation, like a file descriptor."] pub fn c4Socket_setNativeHandle (arg1 : * mut C4Socket , arg2 : * mut :: std :: os :: raw :: c_void) ; }
+extern "C" { # [doc = " Returns the opaque \"native handle\" associated with this object."] pub fn c4Socket_getNativeHandle (arg1 : * mut C4Socket) -> * mut :: std :: os :: raw :: c_void ; }
+extern "C" { # [doc = " Notification that a socket has received an HTTP response, with the given headers (encoded\nas a Fleece dictionary.) This should be called just before c4socket_opened or\nc4socket_closed.\n@param socket  The socket being opened.\n@param httpStatus  The HTTP/WebSocket status code from the peer; expected to be 200 if the\nconnection is successful, else an HTTP status >= 300 or WebSocket status >= 1000.\n@param responseHeadersFleece  The HTTP response headers, encoded as a Fleece dictionary\nwhose keys are the header names (with normalized case) and values are header values\nas strings."] pub fn c4socket_gotHTTPResponse (socket : * mut C4Socket , httpStatus : :: std :: os :: raw :: c_int , responseHeadersFleece : C4Slice ,) ; }
+extern "C" { # [doc = " Notifies LiteCore that a socket has opened, i.e. a C4SocketFactory.open request has completed\nsuccessfully.\n@param socket  The socket."] pub fn c4socket_opened (socket : * mut C4Socket) ; }
+extern "C" { # [doc = " Notifies LiteCore that a socket has finished closing, or disconnected, or failed to open.\n- If this is a normal close in response to a C4SocketFactory.close request, the error\nparameter should have a code of 0.\n- If it's a socket-level error, set the C4Error appropriately.\n- If it's a WebSocket-level close (when the factory's `framing` equals to `kC4NoFraming`),\nset the error domain to WebSocketDomain and the code to the WebSocket status code.\n@param socket  The socket.\n@param errorIfAny  the status of the close; see description above."] pub fn c4socket_closed (socket : * mut C4Socket , errorIfAny : C4Error) ; }
+extern "C" { # [doc = " Notifies LiteCore that the peer has requested to close the socket using the WebSocket protocol.\n(Should only be called by sockets whose factory's `framing` equals to `kC4NoFraming`.)\nLiteCore will call the factory's requestClose callback in response when it's ready to\nacknowledge the close.\n@param socket  The socket.\n@param  status  The WebSocket status sent by the peer, typically 1000.\n@param  message  An optional human-readable message sent by the peer."] pub fn c4socket_closeRequested (socket : * mut C4Socket , status : :: std :: os :: raw :: c_int , message : C4String ,) ; }
+extern "C" { # [doc = " Notifies LiteCore that a C4SocketFactory.write request has been completed, i.e. the bytes\nhave been written to the socket.\n@param socket  The socket.\n@param byteCount  The number of bytes that were written."] pub fn c4socket_completedWrite (socket : * mut C4Socket , byteCount : usize) ; }
+extern "C" { # [doc = " Notifies LiteCore that data was received from the socket. If the factory's\n`framing` equals to `kC4NoFraming`, the data must be a single complete message; otherwise it's\nraw bytes that will be un-framed by LiteCore.\nLiteCore will acknowledge when it's received and processed the data, by calling\nC4SocketFactory.completedReceive. For flow-control purposes, the client should keep track\nof the number of unacknowledged bytes, and stop reading from the underlying stream if that\ngrows too large.\n@param socket  The socket.\n@param data  The data received, either a message or raw bytes."] pub fn c4socket_received (socket : * mut C4Socket , data : C4Slice) ; }
+extern "C" { # [doc = " Constructs a C4Socket from a \"native handle\", whose interpretation is up to the\nC4SocketFactory.  This is used by listeners to handle an incoming replication connection.\n@warning  You MUST immediately call `c4socket_retain` on this pointer (and the usual\n`c4socket_release` when done.) This is inconsistent with the general ref-counting\nconvention, but fixing this function to return a retained value would cause all\nexisting platforms to leak C4Sockets, so we're leaving it alone.\n@param factory  The C4SocketFactory that will manage the socket.\n@param nativeHandle  A value known to the factory that represents the underlying socket,\nsuch as a file descriptor or a native object pointer.\n@param address  The address of the remote peer making the connection.\n@return  A new C4Socket initialized with the `nativeHandle`."] pub fn c4socket_fromNative (factory : C4SocketFactory , nativeHandle : * mut :: std :: os :: raw :: c_void , address : * const C4Address ,) -> * mut C4Socket ; }
+pub type __builtin_va_list = [__va_list_tag ; 1usize] ;
+# [repr (C)] # [derive (Debug , Copy , Clone)] pub struct __va_list_tag { pub gp_offset : :: std :: os :: raw :: c_uint , pub fp_offset : :: std :: os :: raw :: c_uint , pub overflow_arg_area : * mut :: std :: os :: raw :: c_void , pub reg_save_area : * mut :: std :: os :: raw :: c_void , }

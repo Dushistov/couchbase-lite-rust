@@ -642,6 +642,9 @@ fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> Vec<PathBuf> {
     cmake_config.build_arg("LiteCoreStatic");
     cmake_config.build_arg("FleeceStatic");
     cmake_config.build_arg("BLIPStatic");
+    if cfg!(feature = "use-couchbase-lite-websocket") {
+        cmake_config.build_arg("LiteCoreWebSocket");
+    }
     let cmake_profile = cmake_config.get_profile().to_string();
     let dst = cmake_config.build().join("build");
 

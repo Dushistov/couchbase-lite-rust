@@ -37,12 +37,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sync_url = env::args()
         .nth(2)
         .unwrap_or_else(|| "ws://192.168.1.32:4984/demo/".to_string());
-    let token: Option<String> = env::args().nth(3);
 
-    let auth = if let Some(token) = token {
-        ReplicatorAuthentication::SessionToken(token)
-    } else {
-        ReplicatorAuthentication::None
+    let auth = match (env::args().nth(3), env::args().nth(4)) {
+        (None, None) => ReplicatorAuthentication::None,
+        (None, Some(_)) => unreachable!(),
+        (Some(token), None) => ReplicatorAuthentication::SessionToken(token),
+        (Some(username), Some(password)) => ReplicatorAuthentication::Basic { username, password },
     };
 
     let (db_thread, db_exec) = run_db_thread(db_path, sync_url, auth);

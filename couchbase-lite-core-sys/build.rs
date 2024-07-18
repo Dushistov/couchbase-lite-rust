@@ -308,8 +308,8 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     bindings = bindings
         .rust_target(RustTarget::Stable_1_47)
         .opaque_type("timex")//to big reserved part for Debug
-        .blocklist_type("max_align_t")//long double not supported yet,
-                                      // see https://github.com/servo/rust-bindgen/issues/550
+        .blocklist_type("max_align_t")//long double not supported,
+                                      // see https://github.com/rust-lang/rust-bindgen/issues/550
         ;
     bindings = if target.contains("windows") {
         //see https://github.com/servo/rust-bindgen/issues/578
@@ -318,17 +318,16 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         bindings
     };
 
-    bindings =
-        c_headers[1..]
-            .iter()
-            .fold(Ok(bindings), |acc: Result<Builder, String>, header| {
-                let c_file_path = search_file_in_directory(include_dirs, header)
-                    .map_err(|_| format!("Can not find {header}"))?;
-                let c_file_str = c_file_path
-                    .to_str()
-                    .ok_or_else(|| format!("Invalid unicode in path to {header}"))?;
-                Ok(acc.unwrap().clang_arg("-include").clang_arg(c_file_str))
-            })?;
+    bindings = c_headers[1..]
+        .iter()
+        .try_fold(bindings, |acc: Builder, header| {
+            let c_file_path = search_file_in_directory(include_dirs, header)
+                .map_err(|_| format!("Can not find {header}"))?;
+            let c_file_str = c_file_path
+                .to_str()
+                .ok_or_else(|| format!("Invalid unicode in path to {header}"))?;
+            Ok::<_, String>(acc.clang_arg("-include").clang_arg(c_file_str))
+        })?;
     let generated_bindings = bindings
         .generate()
         .map_err(|_| "Failed to generate bindings".to_string())?;
@@ -400,7 +399,7 @@ fn handle_c4_enum_option(code: &str, couchbase_includes: &[String]) -> Result<Ve
                 }
 
                 let mut ty_name: Option<String> = None;
-                while let Some(item) = it.next() {
+                for item in it.by_ref() {
                     match item {
                         syn::Item::Const(syn::ItemConst {
                             vis: syn::Visibility::Public(..),
@@ -582,7 +581,7 @@ fn extract_name_from_c4_macro(
         return Err(format!("Expect '(' after {keyword}: '{line}'"));
     }
     let mut found_comma = false;
-    while let Some(ch) = it.next() {
+    for ch in it.by_ref() {
         if ch == ',' {
             found_comma = true;
             break;
@@ -592,7 +591,7 @@ fn extract_name_from_c4_macro(
         return Err(format!("No ',' after '(' in {line}"));
     }
     let mut ret = String::new();
-    while let Some(ch) = it.next() {
+    for ch in it.by_ref() {
         if !ch.is_whitespace() {
             ret.push(ch);
             break;
@@ -602,7 +601,7 @@ fn extract_name_from_c4_macro(
         return Err(format!("No not whitespaces after ',' in {line}"));
     }
     let mut found_close_bracket = false;
-    while let Some(ch) = it.next() {
+    for ch in it {
         if ch != ')' {
             ret.push(ch);
         } else {

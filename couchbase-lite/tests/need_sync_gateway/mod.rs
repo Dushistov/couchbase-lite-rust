@@ -3,15 +3,18 @@
 
 use couchbase_lite::*;
 use serde::{Deserialize, Serialize};
-use std::{path::Path, str};
+use std::{env, path::Path, str, thread, time::Duration};
 use tempfile::{tempdir, TempDir};
 use tokio::runtime;
 
-// See https://github.com/Dushistov/couchbase-lite-rust/issues/54
-#[test]
+/// See https://github.com/Dushistov/couchbase-lite-rust/issues/54
 #[ignore]
+#[test]
 fn test_double_replicator_restart() {
-    let (url, auth, tmp_dir) = init_env();
+    let Some((url, auth, tmp_dir)) = init_test_env() else {
+        println!("SKIPING test_double_replicator_restart, env variables not setted");
+        return;
+    };
 
     let runtime = runtime::Builder::new_current_thread()
         .enable_io()
@@ -66,7 +69,7 @@ fn test_double_replicator_restart() {
                     println!("pushing {pushing}, docs {docs:?}");
                 },
             );
-        let mut repl = Replicator::new(&db, url, params).unwrap();
+        let mut repl = Replicator::new(&db, &url, params).unwrap();
         repl.start(false).unwrap();
         repl
     };
@@ -74,40 +77,43 @@ fn test_double_replicator_restart() {
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
 
     let thread_join_handle = {
-        std::thread::spawn(move || {
+        thread::spawn(move || {
             runtime.block_on(async {
                 rx.recv().await.unwrap();
                 println!("got async event that replicator was idle");
                 rx.recv().await.unwrap();
                 let _: () = stop_rx.await.unwrap();
                 println!("get value from stop_rx, waiting last messages processing");
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                tokio::time::sleep(Duration::from_secs(1)).await;
             });
         })
     };
     sync_rx.recv().unwrap();
     println!("got SYNC event that replicator was idle");
     for _ in 0..10 {
-        repl = repl.restart(&db, url, &auth, false).unwrap();
+        repl = repl.restart(&db, &url, &auth, false).unwrap();
     }
     println!("multi restart done");
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(3));
     repl.stop();
     stop_tx.send(()).unwrap();
     thread_join_handle.join().unwrap();
-
     println!("tokio done");
 }
 
-// See https://github.com/Dushistov/couchbase-lite-rust/issues/94
+/// See https://github.com/Dushistov/couchbase-lite-rust/issues/94
 #[ignore]
 #[test]
 fn test_wrong_sync_packets_order() {
-    let (url, auth, tmp_dir) = init_env();
+    let Some((url, auth, tmp_dir)) = init_test_env() else {
+        println!("SKIPING test_wrong_sync_packets_order, env variables not setted");
+        return;
+    };
+
     let runtime = runtime::Runtime::new().unwrap();
     Database::init_socket_impl(runtime.handle().clone());
 
-    start_repl_and_save_documents(tmp_dir.path(), "a", 10_000, url, auth).unwrap();
+    start_repl_and_save_documents(tmp_dir.path(), "a", 10_000, &url, auth).unwrap();
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -201,16 +207,35 @@ fn start_repl_and_save_documents(
             ReplicatorState::Busy(_) => was_busy = true,
         }
     }
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(2));
     repl.stop();
     Ok(())
 }
 
-fn init_env() -> (&'static str, ReplicatorAuthentication, TempDir) {
+fn get_env_var(name: &str) -> Result<String, String> {
+    match env::var(name) {
+        Err(err) => Err(format!("Can not get {name}: {err}")),
+        Ok(val) if val.trim().is_empty() => Err(format!("{name} is setted but empty")),
+        Ok(val) => Ok(val),
+    }
+}
+
+fn init_test_env() -> Option<(String, ReplicatorAuthentication, TempDir)> {
     let _ = env_logger::try_init();
     let tmp_dir = tempdir().expect("Can not create tmp directory");
     println!("we create tempdir at {:?}", tmp_dir.path());
-    let url = "ws://127.0.0.1:4984/demo/";
-    let auth = ReplicatorAuthentication::None;
-    (url, auth, tmp_dir)
+    let Ok(url) = get_env_var("SG_URL") else {
+        return None;
+    };
+    let auth = if env::var("SG_USER").is_ok() {
+        let username = get_env_var("SG_USER").unwrap();
+        let password = get_env_var("SG_PASS").unwrap();
+        ReplicatorAuthentication::Basic { username, password }
+    } else if env::var("SG_TOKEN").is_ok() {
+        let token = get_env_var("SG_TOKEN").unwrap();
+        ReplicatorAuthentication::SessionToken(token)
+    } else {
+        ReplicatorAuthentication::None
+    };
+    Some((url, auth, tmp_dir))
 }

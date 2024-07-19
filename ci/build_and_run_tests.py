@@ -3,7 +3,7 @@
 
 import os, time, sys
 from pathlib import Path
-from subprocess import check_call
+from subprocess import check_call, Popen
 from multiprocessing import cpu_count
 from typing import List
 
@@ -77,9 +77,13 @@ def build_and_test_rust_part_for_ios(src_root: str) -> None:
 
 @show_timing
 def run_tests_that_require_server(src_root: str) -> None:
+    my_env = os.environ.copy()
+    my_env["SG_PASS"] = "password"
+    my_env["SG_USER"] = "sguser"
+    my_env["SG_URL"]  = 'ws://localhost:4884/scratch-30/'
     for test_name in ["test_double_replicator_restart", "test_wrong_sync_packets_order"]:
         check_call(["cargo", "test", "--release", "-p", "couchbase-lite",
-                    "-vv", test_name, "--", "--ignored"], cwd = src_root)
+                    "-vv", test_name, "--", "--ignored"], cwd = src_root, env = my_env)
 
 @show_timing
 def main() -> None:
@@ -113,6 +117,7 @@ def main() -> None:
         build_and_test_rust_part_for_ios(src_root)
     if WITH_SERVER_TESTS in tests:
         run_tests_that_require_server(src_root)
+
 
 if __name__ == "__main__":
     main()

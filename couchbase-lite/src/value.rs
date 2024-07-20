@@ -65,12 +65,10 @@ impl ValueRef<'_> {
                     ValueRef::UnsignedInt(FLValue_AsUnsigned(value))
                 } else if FLValue_IsInteger(value) {
                     ValueRef::SignedInt(FLValue_AsInt(value))
+                } else if FLValue_IsDouble(value) {
+                    ValueRef::Double(FLValue_AsDouble(value))
                 } else {
-                    if FLValue_IsDouble(value) {
-                        ValueRef::Double(FLValue_AsDouble(value))
-                    } else {
-                        ValueRef::Float(FLValue_AsFloat(value))
-                    }
+                    ValueRef::Float(FLValue_AsFloat(value))
                 }
             }
             kFLString => {

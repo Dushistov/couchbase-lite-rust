@@ -27,14 +27,15 @@ fn main() {
     let bdirs = cmake_build_src_dir(&sdir, is_msvc);
     println!("build directory: {bdirs:?}\nsource directory {sdir:?}");
 
-    if bdirs.is_empty() {
+    let native_libs_search_paths = if bdirs.is_empty() {
         panic!("You didn't specify build directory for couchbase-lite-core");
     } else if bdirs.len() == 1 {
-        specify_library_search_dirs_for_std_layout(&bdirs[0]);
+        specify_library_search_dirs_for_std_layout(&bdirs[0])
     } else {
-        for d in &bdirs {
-            println!("cargo:rustc-link-search=native={}", d.display());
-        }
+        bdirs
+    };
+    for path in &native_libs_search_paths {
+        println!("cargo:rustc-link-search=native={}", path.display());
     }
 
     if cfg!(feature = "use-couchbase-lite-sqlite") {
@@ -43,13 +44,25 @@ fn main() {
     if cfg!(feature = "use-couchbase-lite-websocket") {
         println!("cargo:rustc-link-lib=static=LiteCoreWebSocket");
     }
-    println!("cargo:rustc-link-lib=static=LiteCoreStatic");
-    println!("cargo:rustc-link-lib=static=FleeceStatic");
-    println!("cargo:rustc-link-lib=static=SQLite3_UnicodeSN");
-    println!("cargo:rustc-link-lib=static=BLIPStatic");
-    println!("cargo:rustc-link-lib=static=mbedcrypto");
-    println!("cargo:rustc-link-lib=static=mbedtls");
-    println!("cargo:rustc-link-lib=static=mbedx509");
+    for lib in [
+        "LiteCoreStatic",
+        "FleeceStatic",
+        "SQLite3_UnicodeSN",
+        "BLIPStatic",
+        "mbedcrypto",
+        "mbedtls",
+        "mbedx509",
+    ] {
+        println!("cargo:rustc-link-lib=static={lib}");
+        match find_full_library_path(&native_libs_search_paths, lib) {
+            Ok(full_path) => {
+                println!("cargo:rerun-if-changed={}", full_path.display());
+            }
+            Err(err) => {
+                panic!("{err}");
+            }
+        }
+    }
 
     if let Ok(icu_lib_path) = env::var("ICU_LIB_DIR") {
         println!("cargo:rustc-link-search=native={icu_lib_path}");
@@ -113,35 +126,35 @@ fn main() {
     .expect("bindgen failed");
 }
 
-fn specify_library_search_dirs_for_std_layout(bdir: &Path) {
-    println!("cargo:rustc-link-search=native={}", bdir.display());
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor").join("fleece").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("Networking").join("BLIP").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor").join("sqlite3-unicodesn").display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
+fn find_full_library_path(
+    native_libs_search_paths: &[PathBuf],
+    lib: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let static_lib_ext = if win_target() { "lib" } else { "a" };
+    let prefix = "lib";
+    let file_name = format!("{prefix}{lib}.{static_lib_ext}");
+
+    for path in native_libs_search_paths {
+        let full_path = path.join(&file_name);
+        if full_path.exists() {
+            return Ok(full_path);
+        }
+    }
+    Err(format!("Can no find {file_name} in {native_libs_search_paths:?}").into())
+}
+
+fn specify_library_search_dirs_for_std_layout(bdir: &Path) -> Vec<PathBuf> {
+    vec![
+        bdir.to_path_buf(),
+        bdir.join("vendor").join("fleece"),
+        bdir.join("Networking").join("BLIP"),
+        bdir.join("vendor").join("sqlite3-unicodesn"),
         bdir.join("vendor")
             .join("mbedtls")
             .join("crypto")
-            .join("library")
-            .display()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        bdir.join("vendor")
-            .join("mbedtls")
-            .join("library")
-            .display()
-    );
+            .join("library"),
+        bdir.join("vendor").join("mbedtls").join("library"),
+    ]
 }
 
 #[cfg(feature = "git-download")]
@@ -150,7 +163,7 @@ fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::erro
     use which::which;
 
     const URL: &str = "https://github.com/Dushistov/couchbase-lite-core";
-    const COMMIT_SHA1: &str = "aecd4740aafb180c24f25de6c4188f39eb530c46";
+    const COMMIT_SHA1: &str = "b963be478a9b97fd149326dc69581f6733b23c23";
 
     let git_path = which("git")?;
     let cur_dir = env::current_dir()?;
@@ -267,7 +280,8 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     let couchbase_includes = collect_includes.0.clone();
     let mut bindings: Builder = bindgen::builder()
         .header(c_file_path.to_str().unwrap())
-        .generate_comments(false)
+        .generate_comments(true)
+        .generate_cstr(true)
         .prepend_enum_name(true)
         .size_t_is_usize(true)
         .allowlist_type("C4.*")
@@ -293,10 +307,10 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     });
 
     bindings = bindings
-        .rust_target(RustTarget::Stable_1_47)
+        .rust_target(RustTarget::Stable_1_73)
         .opaque_type("timex")//to big reserved part for Debug
-        .blocklist_type("max_align_t")//long double not supported yet,
-                                      // see https://github.com/servo/rust-bindgen/issues/550
+        .blocklist_type("max_align_t")//long double not supported,
+                                      // see https://github.com/rust-lang/rust-bindgen/issues/550
         ;
     bindings = if target.contains("windows") {
         //see https://github.com/servo/rust-bindgen/issues/578
@@ -305,17 +319,16 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
         bindings
     };
 
-    bindings =
-        c_headers[1..]
-            .iter()
-            .fold(Ok(bindings), |acc: Result<Builder, String>, header| {
-                let c_file_path = search_file_in_directory(include_dirs, header)
-                    .map_err(|_| format!("Can not find {header}"))?;
-                let c_file_str = c_file_path
-                    .to_str()
-                    .ok_or_else(|| format!("Invalid unicode in path to {header}"))?;
-                Ok(acc.unwrap().clang_arg("-include").clang_arg(c_file_str))
-            })?;
+    bindings = c_headers[1..]
+        .iter()
+        .try_fold(bindings, |acc: Builder, header| {
+            let c_file_path = search_file_in_directory(include_dirs, header)
+                .map_err(|_| format!("Can not find {header}"))?;
+            let c_file_str = c_file_path
+                .to_str()
+                .ok_or_else(|| format!("Invalid unicode in path to {header}"))?;
+            Ok::<_, String>(acc.clang_arg("-include").clang_arg(c_file_str))
+        })?;
     let generated_bindings = bindings
         .generate()
         .map_err(|_| "Failed to generate bindings".to_string())?;
@@ -387,7 +400,7 @@ fn handle_c4_enum_option(code: &str, couchbase_includes: &[String]) -> Result<Ve
                 }
 
                 let mut ty_name: Option<String> = None;
-                while let Some(item) = it.next() {
+                for item in it.by_ref() {
                     match item {
                         syn::Item::Const(syn::ItemConst {
                             vis: syn::Visibility::Public(..),
@@ -569,7 +582,7 @@ fn extract_name_from_c4_macro(
         return Err(format!("Expect '(' after {keyword}: '{line}'"));
     }
     let mut found_comma = false;
-    while let Some(ch) = it.next() {
+    for ch in it.by_ref() {
         if ch == ',' {
             found_comma = true;
             break;
@@ -579,7 +592,7 @@ fn extract_name_from_c4_macro(
         return Err(format!("No ',' after '(' in {line}"));
     }
     let mut ret = String::new();
-    while let Some(ch) = it.next() {
+    for ch in it.by_ref() {
         if !ch.is_whitespace() {
             ret.push(ch);
             break;
@@ -589,7 +602,7 @@ fn extract_name_from_c4_macro(
         return Err(format!("No not whitespaces after ',' in {line}"));
     }
     let mut found_close_bracket = false;
-    while let Some(ch) = it.next() {
+    for ch in it {
         if ch != ')' {
             ret.push(ch);
         } else {
@@ -629,6 +642,9 @@ fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> Vec<PathBuf> {
     cmake_config.build_arg("LiteCoreStatic");
     cmake_config.build_arg("FleeceStatic");
     cmake_config.build_arg("BLIPStatic");
+    if cfg!(feature = "use-couchbase-lite-websocket") {
+        cmake_config.build_arg("LiteCoreWebSocket");
+    }
     let cmake_profile = cmake_config.get_profile().to_string();
     let dst = cmake_config.build().join("build");
 
@@ -816,4 +832,14 @@ impl ParseCallbacks for CollectIncludes {
         println!("cargo:rerun-if-changed={}", filename);
         self.0.lock().unwrap().push(filename.into());
     }
+}
+
+/// Tells whether we're building for Windows. This is more suitable than a plain
+/// `cfg!(windows)`, since the latter does not properly handle cross-compilation
+///
+/// Note that there is no way to know at compile-time which system we'll be
+/// targeting, and this test must be made at run-time (of the build script) See
+/// https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
+fn win_target() -> bool {
+    env::var("CARGO_CFG_WINDOWS").is_ok()
 }

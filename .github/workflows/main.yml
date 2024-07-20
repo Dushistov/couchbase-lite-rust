@@ -11,7 +11,7 @@ on:
     - cron: '00 02 */4 * *'
 env:
   RUST_BACKTRACE: 1
-  CLC_STABLE_HASH: "aecd4740aafb180c24f25de6c4188f39eb530c46"
+  CLC_STABLE_HASH: "b963be478a9b97fd149326dc69581f6733b23c23"
 jobs:
   rust-tests:
     name: Rust tests
@@ -96,6 +96,13 @@ jobs:
           cargo install cargo-valgrind
           python ci/build_and_run_tests.py --rust-only-with-valigrind
         shell: bash
+      - name: Run tests that requires SG up and running
+        if: matrix.os == 'ubuntu-20.04' && matrix.rust == 'stable'
+        run: |
+          set -e
+          python ci/docker-up-down.py up
+          python ci/build_and_run_tests.py --with-server-only
+          python ci/docker-up-down.py down
   ios-tests:
     name: Check work with iOS
     runs-on: macos-13
@@ -219,9 +226,4 @@ jobs:
           RUSTFLAGS: -Zsanitizer=address -Cdebuginfo=0
           RUSTDOCFLAGS: -Zsanitizer=address
           ASAN_OPTIONS: "detect_stack_use_after_return=1:detect_leaks=0"
-          # Work around https://github.com/rust-lang/rust/issues/59125 by
-          # disabling backtraces. In an ideal world we'd probably suppress the
-          # leak sanitization, but we don't care about backtraces here, so long
-          # as the other tests have them.
-          RUST_BACKTRACE: "0"
         run: cargo -Z build-std test --no-default-features --features="build-cpp,use-couchbase-lite-sqlite,use-tokio-websocket,use-native-tls,with-asan" --target x86_64-unknown-linux-gnu

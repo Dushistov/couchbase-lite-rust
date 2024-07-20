@@ -37,12 +37,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sync_url = env::args()
         .nth(2)
         .unwrap_or_else(|| "ws://192.168.1.32:4984/demo/".to_string());
-    let token: Option<String> = env::args().nth(3);
 
-    let auth = if let Some(token) = token {
-        ReplicatorAuthentication::SessionToken(token)
-    } else {
-        ReplicatorAuthentication::None
+    let auth = match (env::args().nth(3), env::args().nth(4)) {
+        (None, None) => ReplicatorAuthentication::None,
+        (None, Some(_)) => unreachable!(),
+        (Some(token), None) => ReplicatorAuthentication::SessionToken(token),
+        (Some(username), Some(password)) => ReplicatorAuthentication::Basic { username, password },
     };
 
     let (db_thread, db_exec) = run_db_thread(db_path, sync_url, auth);
@@ -92,7 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 } else if msg.starts_with("!list") {
                     db_exec_repl.spawn(move |db| {
                         if let Some(db) = db.as_mut() {
-                            print_all_messages(&mut db.db).expect("read from db failed");
+                            print_all_messages(&db.db).expect("read from db failed");
                         }
                     });
                 } else {
@@ -103,7 +103,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let edit_id = edit_id.take();
                         db_exec_repl.spawn(move |db| {
                             if let Some(db) = db.as_mut() {
-                                save_msg(&mut db.db, &msg, edit_id.as_ref().map(String::as_str))
+                                save_msg(&mut db.db, &msg, edit_id.as_deref())
                                     .expect("save to db failed");
                             } else {
                                 eprintln!("db is NOT open");
@@ -150,7 +150,7 @@ fn fix_conflicts(db: &mut Database) -> Result<(), Box<dyn std::error::Error>> {
     println!("There are {} conflicts in database", conflicts.len());
 
     for doc_id in &conflicts {
-        resolve_conflict(db, &doc_id)?;
+        resolve_conflict(db, doc_id)?;
     }
     if !conflicts.is_empty() {
         println!("All conflicts was resolved");
@@ -316,7 +316,7 @@ fn print_all_messages(db: &Database) -> Result<(), Box<dyn std::error::Error>> {
 fn print_external_changes(mdb: &mut Option<MyDb>) -> Result<(), Box<dyn std::error::Error>> {
     let mdb = mdb
         .as_mut()
-        .ok_or_else(|| format!("print_external_changes: db not OPEN"))?;
+        .ok_or_else(|| "print_external_changes: db not OPEN")?;
     let mut doc_ids = HashSet::<String>::new();
     let db = &mut mdb.db;
     for change in db.observed_changes() {

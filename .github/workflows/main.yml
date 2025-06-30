@@ -54,7 +54,7 @@ jobs:
           override: true
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.8.2'
+          python-version: '3.8.12'
       - uses: jwlawson/actions-setup-cmake@v1.14
         with:
           cmake-version: '3.21.x'
@@ -134,7 +134,7 @@ jobs:
           target: "aarch64-apple-ios"
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.8.2'
+          python-version: '3.8.12'
       - uses: jwlawson/actions-setup-cmake@v1.14
         with:
           cmake-version: '3.21.x'
@@ -176,7 +176,7 @@ jobs:
           echo "CORE_SRC=$GITHUB_WORKSPACE/couchbase-lite-core" >> $GITHUB_ENV
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.8.2'
+          python-version: '3.8.12'
       - uses: jwlawson/actions-setup-cmake@v1.14
         with:
           cmake-version: '3.21.x'

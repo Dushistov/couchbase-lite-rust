@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# For simplify migration between different CI
+# To simplify migration between different CI
 
 import os, time, sys
 from pathlib import Path

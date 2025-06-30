@@ -93,7 +93,8 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y libc6-dbg
           valgrind --version
-          cargo install cargo-valgrind
+          # see https://github.com/jfrimmel/cargo-valgrind/pull/127
+          cargo install cargo-valgrind --git https://github.com/Dushistov/cargo-valgrind
           python ci/build_and_run_tests.py --rust-only-with-valigrind
         shell: bash
       - name: Run tests that requires SG up and running

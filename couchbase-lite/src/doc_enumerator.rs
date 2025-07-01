@@ -62,7 +62,7 @@ impl<'a> DocEnumerator<'a> {
     }
 
     #[inline]
-    pub fn get_doc_info(&self) -> Result<Option<DocumentInfo>> {
+    pub fn get_doc_info<'b>(&'b self) -> Result<Option<DocumentInfo<'a, 'b>>> {
         let mut di = MaybeUninit::<C4DocumentInfo>::uninit();
         if !unsafe { c4enum_getDocumentInfo(self.inner.as_ptr(), di.as_mut_ptr()) } {
             return Ok(None);

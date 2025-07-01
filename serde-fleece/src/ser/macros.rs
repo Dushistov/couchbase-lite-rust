@@ -11,8 +11,8 @@ pub trait EncodeValue: private::Sealed {
     fn encode(&self, enc: NonNull<_FLEncoder>) -> bool;
 }
 
-impl<'a> private::Sealed for &'a str {}
-impl<'a> EncodeValue for &'a str {
+impl private::Sealed for &str {}
+impl EncodeValue for &str {
     #[inline]
     fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
         unsafe { FLEncoder_WriteString(enc.as_ptr(), (*self).into()) }

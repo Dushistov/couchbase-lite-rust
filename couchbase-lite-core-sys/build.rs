@@ -54,13 +54,8 @@ fn main() {
         "mbedx509",
     ] {
         println!("cargo:rustc-link-lib=static={lib}");
-        match find_full_library_path(&native_libs_search_paths, lib) {
-            Ok(full_path) => {
-                println!("cargo:rerun-if-changed={}", full_path.display());
-            }
-            Err(err) => {
-                panic!("{err}");
-            }
+        if let Ok(full_path) = find_full_library_path(&native_libs_search_paths, lib) {
+            println!("cargo:rerun-if-changed={}", full_path.display());
         }
     }
 

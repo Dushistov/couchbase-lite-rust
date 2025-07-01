@@ -64,7 +64,9 @@ pub use crate::{
     error::Error,
     fallible_streaming_iterator::FallibleStreamingIterator,
     index::IndexType,
+    query::Query,
     replicator::{Replicator, ReplicatorAuthentication, ReplicatorParameters, ReplicatorState},
+    transaction::Transaction,
     value::{ValueRef, ValueRefArray},
 };
 pub use couchbase_lite_core_sys as ffi;

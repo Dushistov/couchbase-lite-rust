@@ -44,7 +44,7 @@ impl<'a> From<&'a [u8]> for FLSlice {
     }
 }
 
-impl<'a> From<FLSlice> for &'a [u8] {
+impl From<FLSlice> for &[u8] {
     #[inline]
     fn from(s: FLSlice) -> Self {
         if s.size != 0 {
@@ -91,7 +91,7 @@ impl FLSliceResult {
         }
     }
     #[inline]
-    pub fn as_utf8_lossy(&self) -> Cow<str> {
+    pub fn as_utf8_lossy(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(self.as_bytes())
     }
     #[inline]

@@ -492,7 +492,6 @@ impl Replicator {
 /// Represents the current progress of a replicator.
 /// The `units` fields should not be used directly, but divided (`unitsCompleted`/`unitsTotal`)
 /// to give a _very_ approximate progress fraction.
-
 pub type ReplicatorProgress = C4Progress;
 
 /// The possible states of a replicator

@@ -81,7 +81,7 @@ impl DatabaseObserver {
     pub(crate) fn match_obs_ptr(&self, obs_ptr: usize) -> bool {
         self.inner.as_ptr() as usize == obs_ptr
     }
-    pub(crate) fn changes_iter(&self) -> DbChangesIter {
+    pub(crate) fn changes_iter<'a>(&'a self) -> DbChangesIter<'a> {
         DbChangesIter { obs: self }
     }
 }

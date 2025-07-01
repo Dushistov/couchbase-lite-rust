@@ -141,7 +141,7 @@ impl Database {
     /// when it is dropped. If you want the transaction to commit,
     /// you must call `Transaction::commit`
     #[inline]
-    pub fn transaction(&mut self) -> Result<Transaction> {
+    pub fn transaction<'a>(&'a mut self) -> Result<Transaction<'a>> {
         Transaction::new(self)
     }
     /// Returns the number of (undeleted) documents in the database
@@ -159,17 +159,20 @@ impl Database {
     /// The expression is a predicate that describes which documents should be returned.
     /// A separate, optional sort expression describes the ordering of the results.
     #[inline]
-    pub fn query(&self, query_json: &str) -> Result<Query> {
+    pub fn query<'a>(&'a self, query_json: &str) -> Result<Query<'a>> {
         Query::new(self, QueryLanguage::kC4JSONQuery, query_json)
     }
     /// Compiles a query from an expression given as N1QL.
     #[inline]
-    pub fn n1ql_query(&self, query: &str) -> Result<Query> {
+    pub fn n1ql_query<'a>(&'a self, query: &str) -> Result<Query<'a>> {
         Query::new(self, QueryLanguage::kC4N1QLQuery, query)
     }
     /// Creates an enumerator ordered by docID.
     #[inline]
-    pub fn enumerate_all_docs(&self, flags: DocEnumeratorFlags) -> Result<DocEnumerator> {
+    pub fn enumerate_all_docs<'a>(
+        &'a self,
+        flags: DocEnumeratorFlags,
+    ) -> Result<DocEnumerator<'a>> {
         DocEnumerator::enumerate_all_docs(self, flags)
     }
 
@@ -209,7 +212,7 @@ impl Database {
 
     /// Get observed changes for this database
     #[inline]
-    pub fn observed_changes(&mut self) -> ObserverdChangesIter {
+    pub fn observed_changes<'a>(&'a mut self) -> ObserverdChangesIter<'a> {
         ObserverdChangesIter {
             db: self,
             obs_it: None,

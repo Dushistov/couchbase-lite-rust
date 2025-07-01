@@ -40,7 +40,7 @@ impl<'de, 'a> de::EnumAccess<'de> for EnumAccess<'a> {
             if n != 1 {
                 FLDictIterator_End(&mut it);
                 return Err(Error::InvalidFormat(
-                    format!("enum should be dict with len 1, got {}", n).into(),
+                    format!("enum should be dict with len 1, got {n}").into(),
                 ));
             }
             let key: &str = FLDictIterator_GetKeyString(&it).try_into()?;

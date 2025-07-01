@@ -38,9 +38,9 @@ impl fmt::Display for Error {
                 )
             }
             Error::InvalidUtf8 => fmt.write_str("Utf8 encoding error"),
-            Error::LogicError(msg) => write!(fmt, "logic error: {}", msg),
-            Error::SerdeFleece(err) => write!(fmt, "serde+flecce error: {}", err),
-            Error::NulError(err) => write!(fmt, "argument contains null character: {}", err),
+            Error::LogicError(msg) => write!(fmt, "logic error: {msg}"),
+            Error::SerdeFleece(err) => write!(fmt, "serde+flecce error: {err}"),
+            Error::NulError(err) => write!(fmt, "argument contains null character: {err}"),
             Error::InvalidQuery {
                 pos,
                 query_expr,
@@ -74,9 +74,9 @@ impl fmt::Debug for Error {
                 )
             }
             Error::InvalidUtf8 => write!(fmt, "Invalid UTF-8 error"),
-            Error::LogicError(msg) => write!(fmt, "LogicError: {}", msg),
-            Error::SerdeFleece(err) => write!(fmt, "SerdeFleece error: {}", err),
-            Error::NulError(err) => write!(fmt, "NulError: {:?}", err),
+            Error::LogicError(msg) => write!(fmt, "LogicError: {msg}"),
+            Error::SerdeFleece(err) => write!(fmt, "SerdeFleece error: {err}"),
+            Error::NulError(err) => write!(fmt, "NulError: {err:?}"),
             Error::InvalidQuery {
                 pos,
                 query_expr,

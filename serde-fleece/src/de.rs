@@ -146,7 +146,7 @@ pub fn from_fl_value<'a, T: de::Deserialize<'a>>(
     T::deserialize(&mut deserializer)
 }
 
-impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
+impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -290,7 +290,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             visitor.visit_char(ch)
         } else {
             Err(Error::InvalidFormat(
-                format!("string({}) should contain exactly one char", s).into(),
+                format!("string({s}) should contain exactly one char").into(),
             ))
         }
     }
@@ -382,7 +382,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
                 .ok_or_else(|| Error::InvalidFormat("array is not array type".into()))?;
             let n = unsafe { FLArray_Count(arr.as_ptr()) };
             let n: usize = n.try_into().map_err(|err| {
-                Error::InvalidFormat(format!("Can not convert {} to usize: {}", n, err).into())
+                Error::InvalidFormat(format!("Can not convert {n} to usize: {err}").into())
             })?;
             visitor.visit_seq(ArrayAccess::new(arr, n))
         } else {
@@ -418,7 +418,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let ftype = unsafe { FLValue_GetType(self.value.as_ptr()) };
         if ftype != FLValueType::kFLDict {
             return Err(Error::InvalidFormat(
-                format!("map has {:?} type, should be kFLDict", ftype).into(),
+                format!("map has {ftype:?} type, should be kFLDict").into(),
             ));
         }
 
@@ -427,7 +427,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             .ok_or_else(|| Error::InvalidFormat("map: value to dict return null".into()))?;
         let n = unsafe { FLDict_Count(dict.as_ptr()) };
         let n: usize = n.try_into().map_err(|err| {
-            Error::InvalidFormat(format!("Can not convert {} to usize: {}", n, err).into())
+            Error::InvalidFormat(format!("Can not convert {n} to usize: {err}").into())
         })?;
         visitor.visit_map(DictAccess::new(dict, n))
     }
@@ -444,21 +444,18 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let fv_type = unsafe { FLValue_GetType(self.value.as_ptr()) };
         if fv_type != FLValueType::kFLDict {
             return Err(Error::InvalidFormat(
-                format!(
-                    "For struct {} fleece data should be dict type, but got: {:?}",
-                    name, fv_type
-                )
-                .into(),
+                format!("For struct {name} fleece data should be dict type, but got: {fv_type:?}")
+                    .into(),
             ));
         }
 
         let dict = unsafe { FLValue_AsDict(self.value.as_ptr()) };
         let dict = NonNullConst::new(dict).ok_or_else(|| {
-            Error::InvalidFormat(format!("struct {} has not dict type (null)", name).into())
+            Error::InvalidFormat(format!("struct {name} has not dict type (null)").into())
         })?;
         let dict_size = unsafe { FLDict_Count(dict.as_ptr()) };
         let dict_size: usize = dict_size.try_into().map_err(|err| {
-            Error::InvalidFormat(format!("Can not convert {} to usize: {}", dict_size, err).into())
+            Error::InvalidFormat(format!("Can not convert {dict_size} to usize: {err}").into())
         })?;
 
         visitor.visit_map(DictAccess::new(dict, dict_size))
@@ -482,12 +479,12 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             FLValueType::kFLDict => {
                 let dict = unsafe { FLValue_AsDict(self.value.as_ptr()) };
                 let dict = NonNullConst::new(dict).ok_or_else(|| {
-                    Error::InvalidFormat(format!("enum {} has not dict type (null)", name).into())
+                    Error::InvalidFormat(format!("enum {name} has not dict type (null)").into())
                 })?;
                 visitor.visit_enum(EnumAccess::new(dict))
             }
             _ => Err(Error::InvalidFormat(
-                format!("Invalid type {:?} for enum {}", ftype, name).into(),
+                format!("Invalid type {ftype:?} for enum {name}").into(),
             )),
         }
     }

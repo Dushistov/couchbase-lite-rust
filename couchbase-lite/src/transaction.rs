@@ -21,7 +21,7 @@ pub struct Transaction<'db> {
 }
 
 impl Transaction<'_> {
-    pub(crate) fn new(db: &mut Database) -> Result<Transaction> {
+    pub(crate) fn new<'a>(db: &'a mut Database) -> Result<Transaction<'a>> {
         let mut c4err = c4error_init();
         if unsafe { c4db_beginTransaction(db.inner.0.as_ptr(), &mut c4err) } {
             Ok(Transaction {

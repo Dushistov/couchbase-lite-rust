@@ -29,25 +29,25 @@ impl From<Utf8Error> for Error {
 
 impl From<ParseBoolError> for Error {
     fn from(err: ParseBoolError) -> Self {
-        Error::InvalidFormat(format!("parsing of bool failed: {}", err).into())
+        Error::InvalidFormat(format!("parsing of bool failed: {err}").into())
     }
 }
 
 impl From<ParseCharError> for Error {
     fn from(err: ParseCharError) -> Self {
-        Error::InvalidFormat(format!("parsing of char failed: {}", err).into())
+        Error::InvalidFormat(format!("parsing of char failed: {err}").into())
     }
 }
 
 impl From<ParseIntError> for Error {
     fn from(err: ParseIntError) -> Self {
-        Error::InvalidFormat(format!("parsing of integer failed: {}", err).into())
+        Error::InvalidFormat(format!("parsing of integer failed: {err}").into())
     }
 }
 
 impl From<ParseFloatError> for Error {
     fn from(err: ParseFloatError) -> Self {
-        Error::InvalidFormat(format!("parsing of float failed: {}", err).into())
+        Error::InvalidFormat(format!("parsing of float failed: {err}").into())
     }
 }
 
@@ -76,11 +76,11 @@ impl Display for Error {
                     FLError::kFLUnsupported => "Operation is unsupported",
                     _ => "Unknown fleece error",
                 };
-                write!(f, "FLeece error: {}", msg)
+                write!(f, "FLeece error: {msg}")
             }
-            Error::Custom(msg) => write!(f, "Custom error: {}", msg),
-            Error::Unsupported(msg) => write!(f, "Unsupported operation: {}", msg),
-            Error::InvalidFormat(msg) => write!(f, "invalid fleece data: {}", msg),
+            Error::Custom(msg) => write!(f, "Custom error: {msg}"),
+            Error::Unsupported(msg) => write!(f, "Unsupported operation: {msg}"),
+            Error::InvalidFormat(msg) => write!(f, "invalid fleece data: {msg}"),
         }
     }
 }

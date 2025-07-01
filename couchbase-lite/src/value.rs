@@ -99,7 +99,7 @@ impl ValueRefArray {
         FLArray_Get(self.0, idx)
     }
     #[inline]
-    pub fn get(&self, idx: u32) -> ValueRef {
+    pub fn get<'a>(&'a self, idx: u32) -> ValueRef<'a> {
         unsafe { ValueRef::new(self.get_raw(idx)) }
     }
 }
@@ -121,7 +121,7 @@ impl ValueRefDict {
         FLDict_Get(self.0, key)
     }
     #[inline]
-    pub fn get(&self, key: FLSlice) -> ValueRef {
+    pub fn get<'a>(&'a self, key: FLSlice) -> ValueRef<'a> {
         unsafe { ValueRef::new(self.get_raw(key)) }
     }
 }

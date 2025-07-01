@@ -71,7 +71,7 @@ impl Query<'_> {
         Ok(())
     }
 
-    pub fn run(&self) -> Result<Enumerator> {
+    pub fn run<'a>(&'a self) -> Result<Enumerator<'a>> {
         let mut c4err = c4error_init();
         let it = unsafe {
             c4query_run(

@@ -87,10 +87,13 @@ impl Transaction<'_> {
         loop {
             if !retrying {
                 if deletion && !doc.exists() {
-                    return Err(Error::LogicError(format!(
-                        "Cannot delete a document that has not yet been saved, doc_id {}",
-                        doc.id()
-                    )));
+                    return Err(Error::LogicError(
+                        format!(
+                            "Cannot delete a document that has not yet been saved, doc_id {}",
+                            doc.id()
+                        )
+                        .into(),
+                    ));
                 }
                 saving_doc = doc.inner.take();
             }

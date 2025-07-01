@@ -10,7 +10,7 @@ use std::{
 #[derive(Debug)]
 pub enum Error {
     Fleece(FLError),
-    Custom(String),
+    Custom(Box<str>),
     Unsupported(&'static str),
     InvalidFormat(Cow<'static, str>),
 }
@@ -92,7 +92,7 @@ impl serde::ser::Error for Error {
     where
         T: std::fmt::Display,
     {
-        Self::Custom(msg.to_string())
+        Self::Custom(msg.to_string().into())
     }
 }
 
@@ -101,6 +101,6 @@ impl serde::de::Error for Error {
     where
         T: Display,
     {
-        Self::Custom(msg.to_string())
+        Self::Custom(msg.to_string().into())
     }
 }

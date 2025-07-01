@@ -404,7 +404,7 @@ impl Replicator {
         let mut remote_addr = MaybeUninit::<C4Address>::uninit();
         let mut db_name = C4String::default();
         if !unsafe { c4address_fromURL(url.into(), remote_addr.as_mut_ptr(), &mut db_name) } {
-            return Err(Error::LogicError(format!("Can not parse URL {url}")));
+            return Err(Error::LogicError(format!("Can not parse URL {url}").into()));
         }
         let remote_addr = unsafe { remote_addr.assume_init() };
 

@@ -138,10 +138,9 @@ impl<'a> Enumerator<'a> {
     fn do_get_raw_checked(&self, i: u32) -> Result<FLValue> {
         let n = unsafe { FLArrayIterator_GetCount(&self.inner.as_ref().columns) };
         if i >= n {
-            return Err(Error::LogicError(format!(
-                "Enumerator::get_raw_checked: Index out of bounds {} / {}",
-                i, n
-            )));
+            return Err(Error::LogicError(
+                format!("Enumerator::get_raw_checked: Index out of bounds {i} / {n}").into(),
+            ));
         }
 
         Ok(unsafe { FLArrayIterator_GetValueAt(&self.inner.as_ref().columns, i) })
@@ -168,7 +167,7 @@ impl<'a> Enumerator<'a> {
     pub fn get_checked_serde<'de, T: serde::de::Deserialize<'de>>(&'de self, i: u32) -> Result<T> {
         let value = self.do_get_raw_checked(i)?;
         let value = NonNullConst::new(value).ok_or_else(|| {
-            Error::LogicError(format!("Query parameter {i} is null, can not deserialize"))
+            Error::LogicError(format!("Query parameter {i} is null, can not deserialize").into())
         })?;
         serde_fleece::from_fl_value(value).map_err(Error::from)
     }

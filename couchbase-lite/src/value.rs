@@ -136,9 +136,9 @@ impl<'a> FromValueRef<'a> for bool {
         if let ValueRef::Bool(x) = val {
             Ok(x)
         } else {
-            Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect Bool, got {val:?}"
-            )))
+            Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect Bool, got {val:?}").into(),
+            ))
         }
     }
 }
@@ -149,9 +149,9 @@ impl<'a> FromValueRef<'a> for &'a str {
         if let ValueRef::String(x) = val {
             Ok(x)
         } else {
-            Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect String, got {val:?}"
-            )))
+            Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect String, got {val:?}").into(),
+            ))
         }
     }
 }
@@ -160,18 +160,19 @@ impl<'a> FromValueRef<'a> for u16 {
     fn column_result(val: ValueRef<'a>) -> Result<Self> {
         match val {
             ValueRef::SignedInt(x) => u16::try_from(x).map_err(|err| {
-                Error::LogicError(format!(
-                    "ValueRef(Signed) {x} to u16 conversation error: {err}"
-                ))
+                Error::LogicError(
+                    format!("ValueRef(Signed) {x} to u16 conversation error: {err}").into(),
+                )
             }),
             ValueRef::UnsignedInt(x) => u16::try_from(x).map_err(|err| {
-                Error::LogicError(format!(
-                    "ValueRef(Unsigned) {x} to u16 conversation error: {err}"
-                ))
+                Error::LogicError(
+                    format!("ValueRef(Unsigned) {x} to u16 conversation error: {err}").into(),
+                )
             }),
-            _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (u16) got {val:?}"
-            ))),
+            _ => Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect SignedInt|UnsignedInt (u16) got {val:?}")
+                    .into(),
+            )),
         }
     }
 }
@@ -179,13 +180,16 @@ impl<'a> FromValueRef<'a> for u16 {
 impl<'a> FromValueRef<'a> for i32 {
     fn column_result(val: ValueRef<'a>) -> Result<Self> {
         match val {
-            ValueRef::SignedInt(val) => i32::try_from(val)
-                .map_err(|err| Error::LogicError(format!("i64->i32 conversation failure: {err}"))),
-            ValueRef::UnsignedInt(val) => i32::try_from(val)
-                .map_err(|err| Error::LogicError(format!("u64->i32 conversation failure: {err}"))),
-            _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (i32) got {val:?}"
-            ))),
+            ValueRef::SignedInt(val) => i32::try_from(val).map_err(|err| {
+                Error::LogicError(format!("i64->i32 conversation failure: {err}").into())
+            }),
+            ValueRef::UnsignedInt(val) => i32::try_from(val).map_err(|err| {
+                Error::LogicError(format!("u64->i32 conversation failure: {err}").into())
+            }),
+            _ => Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect SignedInt|UnsignedInt (i32) got {val:?}")
+                    .into(),
+            )),
         }
     }
 }
@@ -194,18 +198,19 @@ impl<'a> FromValueRef<'a> for u32 {
     fn column_result(val: ValueRef<'a>) -> Result<Self> {
         match val {
             ValueRef::SignedInt(x) => u32::try_from(x).map_err(|err| {
-                Error::LogicError(format!(
-                    "ValueRef(Signed) {x} to u32 conversation error: {err}"
-                ))
+                Error::LogicError(
+                    format!("ValueRef(Signed) {x} to u32 conversation error: {err}").into(),
+                )
             }),
             ValueRef::UnsignedInt(x) => u32::try_from(x).map_err(|err| {
-                Error::LogicError(format!(
-                    "ValueRef(Unsigned) {x} to u32 conversation error: {err}"
-                ))
+                Error::LogicError(
+                    format!("ValueRef(Unsigned) {x} to u32 conversation error: {err}").into(),
+                )
             }),
-            _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (u32) got {val:?}"
-            ))),
+            _ => Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect SignedInt|UnsignedInt (u32) got {val:?}")
+                    .into(),
+            )),
         }
     }
 }
@@ -214,14 +219,15 @@ impl<'a> FromValueRef<'a> for u64 {
     fn column_result(val: ValueRef<'a>) -> Result<Self> {
         match val {
             ValueRef::SignedInt(x) => u64::try_from(x).map_err(|err| {
-                Error::LogicError(format!(
-                    "ValueRef(Signed) {x} to u32 conversation error: {err}"
-                ))
+                Error::LogicError(
+                    format!("ValueRef(Signed) {x} to u32 conversation error: {err}").into(),
+                )
             }),
             ValueRef::UnsignedInt(x) => Ok(x),
-            _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (u64) got {val:?}"
-            ))),
+            _ => Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect SignedInt|UnsignedInt (u64) got {val:?}")
+                    .into(),
+            )),
         }
     }
 }
@@ -231,13 +237,14 @@ impl<'a> FromValueRef<'a> for i64 {
         match val {
             ValueRef::SignedInt(x) => Ok(x),
             ValueRef::UnsignedInt(x) => i64::try_from(x).map_err(|err| {
-                Error::LogicError(format!(
-                    "ValueRef (UnsignedInt) to i64 conversation failed: {err}"
-                ))
+                Error::LogicError(
+                    format!("ValueRef (UnsignedInt) to i64 conversation failed: {err}").into(),
+                )
             }),
-            _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (i64) got {val:?}"
-            ))),
+            _ => Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect SignedInt|UnsignedInt (i64) got {val:?}")
+                    .into(),
+            )),
         }
     }
 }
@@ -246,18 +253,19 @@ impl<'a> FromValueRef<'a> for usize {
     fn column_result(val: ValueRef<'a>) -> Result<Self> {
         match val {
             ValueRef::SignedInt(x) => usize::try_from(x).map_err(|err| {
-                Error::LogicError(format!(
-                    "ValueRef(Signed) {x} to usize conversation error: {err}"
-                ))
+                Error::LogicError(
+                    format!("ValueRef(Signed) {x} to usize conversation error: {err}").into(),
+                )
             }),
             ValueRef::UnsignedInt(x) => usize::try_from(x).map_err(|err| {
-                Error::LogicError(format!(
-                    "ValueRef(Unsigned) {x} to usize conversation error: {err}"
-                ))
+                Error::LogicError(
+                    format!("ValueRef(Unsigned) {x} to usize conversation error: {err}").into(),
+                )
             }),
-            _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect SignedInt|UnsignedInt (usize) got {val:?}"
-            ))),
+            _ => Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect SignedInt|UnsignedInt (usize) got {val:?}")
+                    .into(),
+            )),
         }
     }
 }
@@ -268,9 +276,9 @@ impl<'a> FromValueRef<'a> for f32 {
         if let ValueRef::Float(x) = val {
             Ok(x)
         } else {
-            Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect Float, got {val:?}"
-            )))
+            Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect Float, got {val:?}").into(),
+            ))
         }
     }
 }
@@ -281,9 +289,9 @@ impl<'a> FromValueRef<'a> for f64 {
         match val {
             ValueRef::Float(x) => Ok(f64::from(x)),
             ValueRef::Double(x) => Ok(x),
-            _ => Err(Error::LogicError(format!(
-                "Wrong ValueRef type, expect Float/Double, got {val:?}"
-            ))),
+            _ => Err(Error::LogicError(
+                format!("Wrong ValueRef type, expect Float/Double, got {val:?}").into(),
+            )),
         }
     }
 }

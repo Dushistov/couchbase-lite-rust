@@ -10,14 +10,14 @@ pub enum Error {
     /// UTF-8 decoding problem
     InvalidUtf8,
     /// some invariant was broken
-    LogicError(String),
+    LogicError(Box<str>),
     SerdeFleece(serde_fleece::Error),
     /// argument contains 0 character
     NulError(std::ffi::NulError),
     InvalidQuery {
-        pos: c_int,
-        query_expr: String,
         err: C4Error,
+        query_expr: Box<str>,
+        pos: c_int,
     },
 }
 

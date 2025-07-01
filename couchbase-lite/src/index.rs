@@ -113,13 +113,13 @@ impl TryFrom<NonNullConst<_FLDict>> for IndexInfo {
     fn try_from(dict: NonNullConst<_FLDict>) -> Result<Self> {
         fn get_str(dict: NonNullConst<_FLDict>, key: &str) -> Result<FLString> {
             let s = unsafe { FLDict_Get(dict.as_ptr(), key.into()) };
-            let s = NonNullConst::new(s)
-                .ok_or_else(|| Error::LogicError(format!("No '{}' key in index info dict", key)))?;
+            let s = NonNullConst::new(s).ok_or_else(|| {
+                Error::LogicError(format!("No '{key}' key in index info dict").into())
+            })?;
             if unsafe { FLValue_GetType(s.as_ptr()) } != FLValueType::kFLString {
-                return Err(Error::LogicError(format!(
-                    "Key '{}' in index info dict has not string type",
-                    key
-                )));
+                return Err(Error::LogicError(
+                    format!("Key '{key}' in index info dict has not string type").into(),
+                ));
             }
             let s = unsafe { FLValue_AsString(s.as_ptr()) };
             let _s_utf8: &str = s.try_into().map_err(|_| Error::InvalidUtf8)?;
@@ -138,7 +138,9 @@ impl TryFrom<NonNullConst<_FLDict>> for IndexInfo {
         }
         let t: u32 = unsafe { FLValue_AsInt(t.as_ptr()) }
             .try_into()
-            .map_err(|err| Error::LogicError(format!("Can convert index type to u32: {}", err)))?;
+            .map_err(|err| {
+                Error::LogicError(format!("Can convert index type to u32: {err}").into())
+            })?;
 
         Ok(Self {
             name: get_str(dict, "name")?,
@@ -157,10 +159,9 @@ impl FallibleStreamingIterator for DbIndexesListIterator {
             let val = unsafe { self.array.get_raw(self.next_idx) };
             let val_type = unsafe { FLValue_GetType(val) };
             if val_type != FLValueType::kFLDict {
-                return Err(Error::LogicError(format!(
-                    "Wrong index type, expect String, got {:?}",
-                    val_type
-                )));
+                return Err(Error::LogicError(
+                    format!("Wrong index type, expect String, got {val_type:?}").into(),
+                ));
             }
             let dict = unsafe { FLValue_AsDict(val) };
             let dict = NonNullConst::new(dict).ok_or_else(|| {

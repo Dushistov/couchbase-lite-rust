@@ -119,20 +119,20 @@ impl Database {
             .ok_or_else(|| error.into())
     }
     pub fn open_with_flags(path: &Path, flags: DatabaseFlags) -> Result<Self> {
-        let parent_path = path
-            .parent()
-            .ok_or_else(|| Error::LogicError(format!("path {path:?} has no parent diretory")))?;
+        let parent_path = path.parent().ok_or_else(|| {
+            Error::LogicError(format!("path {path:?} has no parent diretory").into())
+        })?;
         let cfg = DatabaseConfig::new(parent_path, flags);
         let db_name = path
             .file_name()
-            .ok_or_else(|| Error::LogicError(format!("path {path:?} has no last part")))?
+            .ok_or_else(|| Error::LogicError(format!("path {path:?} has no last part").into()))?
             .to_str()
             .ok_or(Error::InvalidUtf8)?
             .strip_suffix(".cblite2")
             .ok_or_else(|| {
-                Error::LogicError(format!(
-                    "path {path:?} should have last part with .cblite2 suffix"
-                ))
+                Error::LogicError(
+                    format!("path {path:?} should have last part with .cblite2 suffix").into(),
+                )
             })?;
 
         Database::open_named(db_name, cfg)

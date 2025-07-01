@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct Document {
-    id: String,
+    id: Box<str>,
     pub(crate) unsaved_body: Option<FLSliceResult>,
     pub(crate) inner: Option<C4DocumentOwner>,
 }
@@ -42,7 +42,7 @@ impl Document {
         Ok(Self {
             inner: None,
             unsaved_body,
-            id: Uuid::new_v4().hyphenated().to_string(),
+            id: Uuid::new_v4().hyphenated().to_string().into(),
         })
     }
     #[inline]
@@ -54,7 +54,7 @@ impl Document {
         let unsaved_body = Some(to_fl_slice_result_with_encoder(data, enc)?);
         Ok(Self {
             inner: None,
-            id: doc_id.into(),
+            id: doc_id.into().into_boxed_str(),
             unsaved_body,
         })
     }
@@ -62,7 +62,7 @@ impl Document {
     pub fn new_with_id_fleece<S: Into<String>>(doc_id: S, fleece_data: FLSliceResult) -> Self {
         Self {
             inner: None,
-            id: doc_id.into(),
+            id: doc_id.into().into_boxed_str(),
             unsaved_body: Some(fleece_data),
         }
     }
@@ -78,10 +78,7 @@ impl Document {
             return Ok(x);
         }
         let inner: &C4DocumentOwner = self.inner.as_ref().ok_or_else(|| {
-            Error::LogicError(format!(
-                "Document {} have no underlying C4Document",
-                self.id
-            ))
+            Error::LogicError(format!("Document {} have no underlying C4Document", self.id).into())
         })?;
         let body = inner.load_body()?;
         let x: T = serde_fleece::from_slice(body)?;
@@ -146,7 +143,7 @@ impl Document {
     {
         Self {
             inner: Some(inner),
-            id: doc_id.into(),
+            id: doc_id.into().into_boxed_str(),
             unsaved_body: None,
         }
     }

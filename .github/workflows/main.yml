@@ -195,6 +195,12 @@ jobs:
           cd $GITHUB_WORKSPACE
           python ci/build_and_run_tests.py --cpp-only
         shell: bash
+      - name: Test "cargo check" to reuse C++ external build
+        run: |
+          set -e
+          cd $GITHUB_WORKSPACE
+          python ci/build_and_run_tests.py --cargo-check-to-reuse-cpp-only-build
+        shell: bash
   # Detect cases where documentation links don't resolve and such.
   nightly-only-tools:
     name: Checks with rustc/nightly

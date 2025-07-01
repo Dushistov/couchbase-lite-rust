@@ -39,6 +39,17 @@ def build_and_test_cpp_part(src_root: str) -> None:
     check_call(["./CppTests", "-r", "list"], cwd = os.path.join(cmake_build_dir, "LiteCore", "tests"))
     check_call(["./C4Tests", "-r", "list"], cwd = os.path.join(cmake_build_dir, "C", "tests"))
 
+@show_timing
+def cargo_check_sys_with_external_couchbase_lite(src_root: str) -> None:
+    cmake_build_dir = os.path.join(src_root, "build-cmake")
+    cmake_src_dir = os.environ["CORE_SRC"]
+    my_env = os.environ.copy()
+    my_env["COUCHBASE_LITE_CORE_SRC_DIR"] = cmake_src_dir
+    my_env["COUCHBASE_LITE_CORE_BUILD_DIR"] = cmake_build_dir
+    syslib_src = os.path.join(src_root, "couchbase-lite-core-sys")
+    check_call(["cargo", "check", "--no-default-features", "--features=use-couchbase-lite-sqlite"],
+               cwd = syslib_src, env = my_env)
+
 def build_tests(cmd: List[str], src_root: str) -> None:
     no_run_cmd = cmd.copy()
     no_run_cmd.append("--no-run")
@@ -94,6 +105,7 @@ def main() -> None:
     RUST_IOS_TESTS = "rust-ios"
     VALGRIND_TESTS = "valgrind"
     WITH_SERVER_TESTS = "with-server"
+    REUSE_CPP_ONLY_BUILD = "reuse-cpp-only-build"
     tests = set([CPP_TESTS, RUST_TESTS])
     if len(sys.argv) >= 2:
         if sys.argv[1] == "--rust-only":
@@ -106,6 +118,8 @@ def main() -> None:
             tests = set([VALGRIND_TESTS, RUST_TESTS])
         elif sys.argv[1] == "--with-server-only":
             tests = set([WITH_SERVER_TESTS])
+        elif sys.argv[1] == "--cargo-check-to-reuse-cpp-only-build":
+            tests = set([REUSE_CPP_ONLY_BUILD])
         else:
             raise Exception("Unknown option %s" % sys.argv[1])
 
@@ -117,7 +131,8 @@ def main() -> None:
         build_and_test_rust_part_for_ios(src_root)
     if WITH_SERVER_TESTS in tests:
         run_tests_that_require_server(src_root)
-
+    if REUSE_CPP_ONLY_BUILD in tests:
+        cargo_check_sys_with_external_couchbase_lite(src_root)
 
 if __name__ == "__main__":
     main()

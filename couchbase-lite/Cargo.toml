@@ -9,6 +9,7 @@ documentation = "https://docs.rs/couchbase-lite"
 repository = "https://github.com/dushistov/couchbase-lite-rust"
 readme = "../README.md"
 keywords = ["ffi", "couchbase", "couchbase-lite-core", "database"]
+rust-version = "1.81"
 
 [features]
 default = ["build-cpp", "git-download-cpp", "use-couchbase-lite-sqlite", "use-tokio-websocket", "use-native-tls"]
@@ -26,11 +27,10 @@ couchbase-lite-core-sys = { version = "0.13.0", default-features = false }
 serde-fleece = { version = "0.9.0", default-features = false }
 log = "0.4"
 tokio = { version = "1.16.1", optional = true, default-features = false, features = ["rt", "sync", "macros", "time"] }
-tokio-tungstenite = { version = "0.23.0", optional = true, default-features = false, features = ["connect"] }
+tokio-tungstenite = { version = "0.27.0", optional = true, default-features = false, features = ["connect"] }
 futures-util = { version = "0.3", optional = true, default-features = false }
-# TODO: remove deps when https://github.com/rust-lang/rust/issues/44930
-# was merged
-va_list = "0.1.4"
+# TODO: remove deps when https://github.com/rust-lang/rust/issues/44930 was merged
+va_list = "0.2.1"
 serde = { version = "1.0", default-features = false, features = ["std"] }
 uuid = { version = "1.1.2", default-features = false, features = ["v4", "serde"] }
 bitflags = { version = "2.5.0", default-features = false }

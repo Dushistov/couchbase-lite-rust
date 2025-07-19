@@ -79,6 +79,16 @@ impl Default for FLSliceResult {
     }
 }
 
+impl AsRef<[u8]> for FLSliceResult {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+/// looks like according C++ code it is safe from other thread
+unsafe impl Send for FLSliceResult {}
+
 impl FLSliceResult {
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {

@@ -279,12 +279,7 @@ impl Replicator {
             F2: ReplicatorStatusChangedCallback,
             F: ReplicatorDocumentsEndedCallback,
         {
-            trace!(
-                "on_documents_ended: repl {:?} pushing {}, num_docs {}",
-                c4_repl,
-                pushing,
-                num_docs
-            );
+            trace!("on_documents_ended: repl {c4_repl:?} pushing {pushing}, num_docs {num_docs}");
             let r = catch_unwind(|| {
                 let ctx = ctx as *mut CallbackContext<F1, F2, F>;
                 assert!(
@@ -512,6 +507,7 @@ unsafe fn free_boxed_value<T>(p: *mut c_void) {
 }
 
 impl From<C4ReplicatorStatus> for ReplicatorState {
+    #[inline]
     fn from(status: C4ReplicatorStatus) -> Self {
         match status.level {
             C4ReplicatorActivityLevel::kC4Stopped => ReplicatorState::Stopped(status.error.into()),

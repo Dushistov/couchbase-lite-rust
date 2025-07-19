@@ -41,8 +41,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth = match (env::args().nth(3), env::args().nth(4)) {
         (None, None) => ReplicatorAuthentication::None,
         (None, Some(_)) => unreachable!(),
-        (Some(token), None) => ReplicatorAuthentication::SessionToken(token),
-        (Some(username), Some(password)) => ReplicatorAuthentication::Basic { username, password },
+        (Some(token), None) => ReplicatorAuthentication::SessionToken(token.into()),
+        (Some(u), Some(p)) => ReplicatorAuthentication::Basic {
+            username: u.into(),
+            password: p.into(),
+        },
     };
 
     let (db_thread, db_exec) = run_db_thread(db_path, sync_url, auth);
@@ -314,9 +317,7 @@ fn print_all_messages(db: &Database) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn print_external_changes(mdb: &mut Option<MyDb>) -> Result<(), Box<dyn std::error::Error>> {
-    let mdb = mdb
-        .as_mut()
-        .ok_or_else(|| "print_external_changes: db not OPEN")?;
+    let mdb = mdb.as_mut().ok_or("print_external_changes: db not OPEN")?;
     let mut doc_ids = HashSet::<String>::new();
     let db = &mut mdb.db;
     for change in db.observed_changes() {

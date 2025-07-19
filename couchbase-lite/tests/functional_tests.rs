@@ -36,14 +36,16 @@ fn test_write_read() {
     println!("we create tempdir at {}", tmp_dir.path().display());
     let db_path = tmp_dir.path().join("a.cblite2");
     let mut ids_and_data = Vec::<(String, Foo)>::new();
+    let uuids_at_start;
     {
         let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
+        uuids_at_start = db.uuids().unwrap();
         {
             let mut trans = db.transaction().unwrap();
             for i in 17..=180 {
                 let foo = Foo {
                     i: i,
-                    s: format!("Hello {}", i),
+                    s: format!("Hello {i}"),
                 };
                 let enc = trans.shared_encoder_session().unwrap();
                 let mut doc = Document::new(&foo, enc).unwrap();
@@ -58,11 +60,21 @@ fn test_write_read() {
             let loaded_foo: Foo = doc.decode_body().unwrap();
             assert_eq!(*foo, loaded_foo);
         }
+        assert_eq!(
+            uuids_at_start,
+            db.uuids().unwrap(),
+            "uuids not the same after write/read"
+        );
     }
 
     println!("Close and reopen");
     {
         let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
+        assert_eq!(
+            uuids_at_start,
+            db.uuids().unwrap(),
+            "uuids not the same after reopen"
+        );
         assert_eq!(ids_and_data.len() as u64, db.document_count());
         for (doc_id, foo) in &ids_and_data {
             let doc = db.get_existing(doc_id).unwrap();
@@ -99,6 +111,11 @@ fn test_write_read() {
     println!("Close and reopen, enumerate");
     {
         let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
+        assert_eq!(
+            uuids_at_start,
+            db.uuids().unwrap(),
+            "uuids not the same after second reopen"
+        );
         assert_eq!(ids_and_data.len() as u64, db.document_count());
         {
             let mut iter = db

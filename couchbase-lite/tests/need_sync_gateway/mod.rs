@@ -228,11 +228,11 @@ fn init_test_env() -> Option<(String, ReplicatorAuthentication, TempDir)> {
         return None;
     };
     let auth = if env::var("SG_USER").is_ok() {
-        let username = get_env_var("SG_USER").unwrap();
-        let password = get_env_var("SG_PASS").unwrap();
+        let username = get_env_var("SG_USER").unwrap().into();
+        let password = get_env_var("SG_PASS").unwrap().into();
         ReplicatorAuthentication::Basic { username, password }
     } else if env::var("SG_TOKEN").is_ok() {
-        let token = get_env_var("SG_TOKEN").unwrap();
+        let token = get_env_var("SG_TOKEN").unwrap().into();
         ReplicatorAuthentication::SessionToken(token)
     } else {
         ReplicatorAuthentication::None

@@ -48,21 +48,21 @@ impl Document {
     #[inline]
     pub fn new_with_id<S, T>(doc_id: S, data: &T, enc: FlEncoderSession) -> Result<Self>
     where
-        S: Into<String>,
+        S: Into<Box<str>>,
         T: Serialize,
     {
         let unsaved_body = Some(to_fl_slice_result_with_encoder(data, enc)?);
         Ok(Self {
             inner: None,
-            id: doc_id.into().into_boxed_str(),
+            id: doc_id.into(),
             unsaved_body,
         })
     }
     #[inline]
-    pub fn new_with_id_fleece<S: Into<String>>(doc_id: S, fleece_data: FLSliceResult) -> Self {
+    pub fn new_with_id_fleece<S: Into<Box<str>>>(doc_id: S, fleece_data: FLSliceResult) -> Self {
         Self {
             inner: None,
-            id: doc_id.into().into_boxed_str(),
+            id: doc_id.into(),
             unsaved_body: Some(fleece_data),
         }
     }
@@ -139,11 +139,11 @@ impl Document {
 
     pub(crate) fn new_internal<S>(inner: C4DocumentOwner, doc_id: S) -> Self
     where
-        S: Into<String>,
+        S: Into<Box<str>>,
     {
         Self {
             inner: Some(inner),
-            id: doc_id.into().into_boxed_str(),
+            id: doc_id.into(),
             unsaved_body: None,
         }
     }

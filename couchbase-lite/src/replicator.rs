@@ -166,8 +166,11 @@ struct CallbackContext<
 
 #[derive(Clone)]
 pub enum ReplicatorAuthentication {
-    SessionToken(String),
-    Basic { username: String, password: String },
+    SessionToken(Box<str>),
+    Basic {
+        username: Box<str>,
+        password: Box<str>,
+    },
     None,
 }
 
@@ -405,15 +408,15 @@ impl Replicator {
             ReplicatorAuthentication::SessionToken(token) => serde_fleece::fleece!({
                 kC4ReplicatorOptionAuthentication: {
                     kC4ReplicatorAuthType: kC4AuthTypeSession,
-                    kC4ReplicatorAuthToken: token.as_str(),
+                    kC4ReplicatorAuthToken: *token,
                 }
             }),
             ReplicatorAuthentication::Basic { username, password } => {
                 serde_fleece::fleece!({
                     kC4ReplicatorOptionAuthentication: {
                         kC4ReplicatorAuthType: kC4AuthTypeBasic,
-                        kC4ReplicatorAuthUserName: username.as_str(),
-                        kC4ReplicatorAuthPassword: password.as_str()
+                        kC4ReplicatorAuthUserName: *username,
+                        kC4ReplicatorAuthPassword: *password
                     }
                 })
             }

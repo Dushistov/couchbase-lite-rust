@@ -325,7 +325,7 @@ fn test_save_several_times() {
         let fleece_data =
             serde_fleece::to_fl_slice_result_with_encoder(&s, db.shared_encoder_session().unwrap())
                 .unwrap();
-        let mut doc = Document::new_with_id_fleece(&doc_id, fleece_data);
+        let mut doc = Document::new_with_id_fleece(doc_id.clone(), fleece_data);
         let mut trans = db.transaction().unwrap();
         trans.save(&mut doc).unwrap();
         trans.commit().unwrap();

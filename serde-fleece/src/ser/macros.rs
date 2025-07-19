@@ -35,6 +35,14 @@ impl EncodeValue for String {
     }
 }
 
+impl private::Sealed for Box<str> {}
+impl EncodeValue for Box<str> {
+    #[inline]
+    fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
+        (&**self).encode(enc)
+    }
+}
+
 impl private::Sealed for bool {}
 impl EncodeValue for bool {
     #[inline]

@@ -22,7 +22,7 @@ extern "C" {
     );
 }
 
-pub fn c4log_to_log_init() {
+pub(crate) fn c4log_to_log_init() {
     unsafe { c4log_writeToCallback(C4LogLevel::kC4LogDebug, Some(db_log_callback), true) };
 }
 
@@ -65,8 +65,8 @@ unsafe extern "C" fn db_log_callback(
 
     if !fmt.is_null() {
         let msg = lifetime_marker(&fmt);
-        log::log!(target: "couchbase", level, "{} {}", domain_name, msg.to_string_lossy());
+        log::log!(target: "couchbase", level, "{domain_name} {}", msg.to_string_lossy());
     } else {
-        log::log!(target: "couchbase", level, "{} <null>", domain_name);
+        log::log!(target: "couchbase", level, "{domain_name} <null>");
     }
 }

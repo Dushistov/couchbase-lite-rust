@@ -85,9 +85,7 @@ impl fmt::Debug for Error {
                 let (msg, desc) = into_msg_desc(*err);
                 write!(
                     fmt,
-                    "InvalidQuery {{ query_expr {}, pos {}, err {:?} / {}: {} }}",
-                    query_expr,
-                    pos,
+                    "InvalidQuery {{ query_expr {query_expr}, pos {pos}, err {:?} / {}: {} }}",
                     *err,
                     desc.as_utf8_lossy(),
                     msg.as_utf8_lossy()
@@ -98,18 +96,21 @@ impl fmt::Debug for Error {
 }
 
 impl From<C4Error> for Error {
+    #[inline]
     fn from(err: C4Error) -> Self {
         Error::C4Error(err)
     }
 }
 
 impl From<serde_fleece::Error> for Error {
+    #[inline]
     fn from(err: serde_fleece::Error) -> Self {
         Error::SerdeFleece(err)
     }
 }
 
 impl From<std::ffi::NulError> for Error {
+    #[inline]
     fn from(err: std::ffi::NulError) -> Self {
         Error::NulError(err)
     }

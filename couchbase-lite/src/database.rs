@@ -90,6 +90,7 @@ pub(crate) struct DbInner(pub NonNull<C4Database>);
 unsafe impl Send for DbInner {}
 
 impl Drop for DbInner {
+    #[inline]
     fn drop(&mut self) {
         trace!("release db {:?}", self.0.as_ptr());
         unsafe { c4db_release(self.0.as_ptr()) };

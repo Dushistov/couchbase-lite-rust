@@ -19,6 +19,7 @@ pub struct Query<'db> {
 }
 
 impl Drop for Query<'_> {
+    #[inline]
     fn drop(&mut self) {
         unsafe { c4query_release(self.inner.as_ptr()) };
     }

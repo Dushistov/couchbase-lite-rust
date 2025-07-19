@@ -157,6 +157,7 @@ impl Document {
 pub(crate) struct C4DocumentOwner(pub(crate) NonNull<C4Document>);
 
 impl Drop for C4DocumentOwner {
+    #[inline]
     fn drop(&mut self) {
         unsafe { c4doc_release(self.0.as_ptr()) };
     }

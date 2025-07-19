@@ -17,6 +17,7 @@ pub(crate) struct DatabaseObserver {
 }
 
 impl Drop for DatabaseObserver {
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             c4dbobs_free(self.inner.as_ptr());

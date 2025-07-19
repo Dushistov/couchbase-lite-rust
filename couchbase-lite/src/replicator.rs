@@ -321,8 +321,7 @@ impl Replicator {
     }
 
     /// starts database replication
-    /// * `reset` - If true, the replicator will reset its checkpoint
-    ///             and start replication from the beginning.
+    /// * `reset` - If true, the replicator will reset its checkpoint and start replication from the beginning.
     pub fn start(&mut self, reset: bool) -> Result<()> {
         unsafe { c4repl_start(self.inner.as_ptr(), reset) };
         let status: ReplicatorState = self.status().into();
@@ -337,8 +336,7 @@ impl Replicator {
     ///
     /// * `url`   - new url
     /// * `auth`  - new auth information
-    /// * `reset` - If true, the replicator will reset its checkpoint
-    ///             and start replication from the beginning.
+    /// * `reset` - If true, the replicator will reset its checkpoint and start replication from the beginning.
     pub fn restart(
         self,
         db: &Database,

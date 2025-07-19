@@ -235,11 +235,7 @@ unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usi
     assert!(!native.is_null());
     let socket: &SocketImpl = &*native;
     let nbytes = socket.read_push_pull.nbytes_avaible.load(Ordering::Acquire);
-    let nbytes = if nbytes >= byte_count {
-        nbytes - byte_count
-    } else {
-        0
-    };
+    let nbytes = nbytes.saturating_sub(byte_count);
     socket
         .read_push_pull
         .nbytes_avaible

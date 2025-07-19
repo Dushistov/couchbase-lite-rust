@@ -7,8 +7,7 @@ use crate::{
     },
     Database,
 };
-use log::error;
-use std::{mem::MaybeUninit, os::raw::c_void, panic::catch_unwind, process::abort, ptr::NonNull};
+use std::{mem::MaybeUninit, os::raw::c_void, ptr::NonNull};
 
 pub(crate) struct DatabaseObserver {
     inner: NonNull<C4CollectionObserver>,
@@ -37,18 +36,12 @@ impl DatabaseObserver {
         ) where
             F: FnMut(*const C4CollectionObserver) + Send,
         {
-            let r = catch_unwind(|| {
-                let boxed_f = context as *mut F;
-                assert!(
-                    !boxed_f.is_null(),
-                    "DatabaseObserver: Internal error - null function pointer"
-                );
-                (*boxed_f)(obs);
-            });
-            if r.is_err() {
-                error!("DatabaseObserver::call_boxed_closure catch panic aborting");
-                abort();
-            }
+            let boxed_f = context as *mut F;
+            assert!(
+                !boxed_f.is_null(),
+                "DatabaseObserver: Internal error - null function pointer"
+            );
+            (*boxed_f)(obs);
         }
         let boxed_f: *mut F = Box::into_raw(Box::new(callback_f));
         let mut error = c4error_init();

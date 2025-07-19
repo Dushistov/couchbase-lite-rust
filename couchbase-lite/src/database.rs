@@ -4,9 +4,9 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4db_createIndex, c4db_getDoc, c4db_getDocumentCount, c4db_getIndexesInfo, c4db_getName,
-        c4db_getSharedFleeceEncoder, c4db_openNamed, c4db_release, C4Database, C4DatabaseConfig2,
-        C4DatabaseFlags, C4DocContentLevel, C4EncryptionAlgorithm, C4EncryptionKey, C4ErrorCode,
-        C4ErrorDomain, C4IndexOptions, C4IndexType,
+        c4db_getSharedFleeceEncoder, c4db_getUUIDs, c4db_openNamed, c4db_release, C4Database,
+        C4DatabaseConfig2, C4DatabaseFlags, C4DocContentLevel, C4EncryptionAlgorithm,
+        C4EncryptionKey, C4ErrorCode, C4ErrorDomain, C4IndexOptions, C4IndexType, C4UUID,
     },
     index::{DbIndexesListIterator, IndexInfo, IndexOptions, IndexType},
     log_reroute::c4log_to_log_init,
@@ -23,10 +23,12 @@ use std::{
     collections::HashSet,
     ffi::CString,
     marker::PhantomData,
+    mem::MaybeUninit,
     path::Path,
     ptr::{self, NonNull},
     sync::{Arc, Mutex, Once},
 };
+use uuid::Uuid;
 
 /// Database configuration, used during open
 pub struct DatabaseConfig<'a> {
@@ -338,6 +340,28 @@ impl Database {
         unsafe { c4db_getName(self.inner.0.as_ptr()) }
             .try_into()
             .map_err(|_| Error::InvalidUtf8)
+    }
+
+    /// Returns the database's public and private UUIDs
+    #[inline]
+    pub fn uuids(&self) -> Result<(Uuid, Uuid)> {
+        let mut public = MaybeUninit::<C4UUID>::uninit();
+        let mut private = MaybeUninit::<C4UUID>::uninit();
+        let mut c4err = c4error_init();
+        if unsafe {
+            c4db_getUUIDs(
+                self.inner.0.as_ptr(),
+                public.as_mut_ptr(),
+                private.as_mut_ptr(),
+                &mut c4err,
+            )
+        } {
+            let public = Uuid::from_bytes(unsafe { public.assume_init() }.bytes);
+            let private = Uuid::from_bytes(unsafe { private.assume_init() }.bytes);
+            Ok((public, private))
+        } else {
+            Err(c4err.into())
+        }
     }
 
     pub(crate) fn do_internal_get(

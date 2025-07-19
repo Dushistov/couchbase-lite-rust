@@ -13,12 +13,10 @@ use crate::{
     },
     Database,
 };
-use log::{error, info, trace};
+use log::{info, trace};
 use std::{
     mem::{self, MaybeUninit},
     os::raw::c_void,
-    panic::catch_unwind,
-    process::abort,
     ptr,
     ptr::NonNull,
     slice, str,
@@ -233,18 +231,12 @@ impl Replicator {
             F2: ReplicatorStatusChangedCallback,
             F3: ReplicatorDocumentsEndedCallback,
         {
-            let r = catch_unwind(|| {
-                let ctx = ctx as *mut CallbackContext<F, F2, F3>;
-                assert!(
-                    !ctx.is_null(),
-                    "Replicator::call_validation: Internal error - null function pointer"
-                );
-                ((*ctx).validation_cb)(coll_spec, doc_id, rev_id, flags, body)
-            });
-            r.unwrap_or_else(|_| {
-                error!("Replicator::call_validation: catch panic aborting");
-                abort();
-            })
+            let ctx = ctx as *mut CallbackContext<F, F2, F3>;
+            assert!(
+                !ctx.is_null(),
+                "Replicator::call_validation: Internal error - null function pointer"
+            );
+            ((*ctx).validation_cb)(coll_spec, doc_id, rev_id, flags, body)
         }
 
         unsafe extern "C" fn call_on_status_changed<F1, F, F3>(
@@ -257,18 +249,13 @@ impl Replicator {
             F3: ReplicatorDocumentsEndedCallback,
         {
             info!("on_status_changed: repl {c4_repl:?}, status {status:?}");
-            let r = catch_unwind(|| {
-                let ctx = ctx as *mut CallbackContext<F1, F, F3>;
-                assert!(
-                    !ctx.is_null(),
-                    "Replicator::call_on_status_changed: Internal error - null function pointer"
-                );
-                ((*ctx).state_cb)(ReplicatorState::from(status));
-            });
-            if r.is_err() {
-                error!("Replicator::call_on_status_changed: catch panic aborting");
-                abort();
-            }
+
+            let ctx = ctx as *mut CallbackContext<F1, F, F3>;
+            assert!(
+                !ctx.is_null(),
+                "Replicator::call_on_status_changed: Internal error - null function pointer"
+            );
+            ((*ctx).state_cb)(ReplicatorState::from(status));
         }
 
         unsafe extern "C" fn call_on_documents_ended<F1, F2, F>(
@@ -283,20 +270,15 @@ impl Replicator {
             F: ReplicatorDocumentsEndedCallback,
         {
             trace!("on_documents_ended: repl {c4_repl:?} pushing {pushing}, num_docs {num_docs}");
-            let r = catch_unwind(|| {
-                let ctx = ctx as *mut CallbackContext<F1, F2, F>;
-                assert!(
-                    !ctx.is_null(),
-                    "Replicator::call_on_documents_ended: Internal error - null function pointer"
-                );
-                let docs: &[*const C4DocumentEnded] = slice::from_raw_parts(docs, num_docs);
-                let mut it = docs.iter().map(|x| &**x);
-                ((*ctx).docs_ended_cb)(pushing, &mut it);
-            });
-            if r.is_err() {
-                error!("Replicator::call_on_documents_ended: catch panic aborting");
-                abort();
-            }
+
+            let ctx = ctx as *mut CallbackContext<F1, F2, F>;
+            assert!(
+                !ctx.is_null(),
+                "Replicator::call_on_documents_ended: Internal error - null function pointer"
+            );
+            let docs: &[*const C4DocumentEnded] = slice::from_raw_parts(docs, num_docs);
+            let mut it = docs.iter().map(|x| &**x);
+            ((*ctx).docs_ended_cb)(pushing, &mut it);
         }
 
         let ctx = Box::new(CallbackContext {

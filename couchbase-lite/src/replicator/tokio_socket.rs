@@ -42,7 +42,7 @@ use tokio_tungstenite::{
         handshake::client::{Request, Response},
         http::{self, header::HeaderName, HeaderValue, Uri},
         protocol::{frame::coding::CloseCode, CloseFrame},
-        Message,
+        Bytes, Message,
     },
     WebSocketStream,
 };
@@ -65,8 +65,8 @@ pub fn c4socket_init(handle: Handle) {
 struct SocketImpl {
     handle: Handle,
     read_push_pull: Arc<ReadPushPull>,
-    writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Vec<u8>>)>>,
-    send_queue: mpsc::UnboundedSender<Vec<u8>>,
+    writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Bytes>)>>,
+    send_queue: mpsc::UnboundedSender<Bytes>,
     close_control: Arc<CloseControl>,
 }
 
@@ -202,9 +202,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
     assert!(!native.is_null());
     let socket: &SocketImpl = &*native;
     let writer = socket.writer.clone();
-    //TODO: change this when `Vec` allocator API was stabilized
-    // https://github.com/rust-lang/rust/issues/32838
-    let data: Vec<u8> = allocated_data.as_bytes().to_vec();
+    let data = Bytes::from_owner(allocated_data);
     socket
         .send_queue
         .send(data)
@@ -219,7 +217,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
     });
 }
 
-async fn send_binary_msg(ctx: C4SocketPtr, writer: &mut WsWriter, data: Vec<u8>) {
+async fn send_binary_msg(ctx: C4SocketPtr, writer: &mut WsWriter, data: Bytes) {
     let n = data.len();
     if let Err(err) = writer.send(Message::Binary(data)).await {
         error!("c4sock {ctx:?}: writer.send failure: {err}");
@@ -330,7 +328,10 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
             }
             trace!("c4sock {c4sock:?}: sending close message");
             if let Err(err) = writer
-                .send(Message::Close(Some(CloseFrame { code, reason })))
+                .send(Message::Close(Some(CloseFrame {
+                    code,
+                    reason: reason.to_string().into(),
+                })))
                 .await
             {
                 error!("c4sock {c4sock:?}: requestClose, writer.send failure: {err}");
@@ -524,7 +525,7 @@ async fn do_open(
     request: Result<Request, Error>,
     mut stop_rx: oneshot::Receiver<()>,
     read_push_pull: Arc<ReadPushPull>,
-    writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Vec<u8>>)>>,
+    writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Bytes>)>>,
     close_control: Arc<CloseControl>,
     handle: Handle,
 ) -> Result<(), Error> {
@@ -599,7 +600,7 @@ async fn main_read_loop(
                         let data = m.into_data();
                         read_push_pull.nbytes_avaible.store(data.len(), Ordering::Release);
                         unsafe {
-                            c4socket_received(c4sock.0, data.as_slice().into());
+                            c4socket_received(c4sock.0, data.as_ref().into());
                         }
                         read_push_pull.confirm.notified().await;
                     }
@@ -694,7 +695,7 @@ unsafe fn tungstenite_err_to_c4_err(err: tungstenite::Error) -> Error {
             C4ErrorDomain::NetworkDomain,
             C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
         ),
-        Utf8 => (
+        Utf8(_) => (
             C4ErrorDomain::WebSocketDomain,
             C4WebSocketCloseCode::kWebSocketCloseBadMessageFormat.0,
         ),

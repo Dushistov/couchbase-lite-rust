@@ -352,7 +352,7 @@ fn test_indices() {
             let mut index_name_it = db.get_indexes().unwrap();
             while let Some(value) = index_name_it.next().unwrap() {
                 let name = value.name_as_str().unwrap();
-                println!("index name: {}", name);
+                println!("index name: {name}");
                 ret.push(name.into());
             }
             ret
@@ -371,7 +371,7 @@ fn test_indices() {
             for i in 0..10_000 {
                 let foo = Foo {
                     i: i,
-                    s: format!("Hello {}", i),
+                    s: format!("Hello {i}"),
                 };
                 let enc = trans.shared_encoder_session().unwrap();
                 let mut doc = Document::new(&foo, enc).unwrap();
@@ -396,12 +396,12 @@ fn test_indices() {
             // work with item
             let id = item.get_raw_checked(0).unwrap();
             let id = id.as_str().unwrap();
-            println!("iteration id {}", id);
+            println!("iteration id {id}");
             let doc = db.get_existing(id).unwrap();
             println!("doc id {}", doc.id());
 
             let foo: Foo = doc.decode_body().unwrap();
-            println!("foo: {:?}", foo);
+            println!("foo: {foo:?}");
             assert_eq!(500, foo.i);
         }
         println!("work time: {:?}", work_time.elapsed());
@@ -421,7 +421,7 @@ fn test_like_offset_limit() {
         for i in 0..10_000 {
             let foo = Foo {
                 i: i,
-                s: format!("Hello {}", i),
+                s: format!("Hello {i}"),
             };
             let enc = trans.shared_encoder_session().unwrap();
             let mut doc = Document::new(&foo, enc).unwrap();
@@ -533,7 +533,7 @@ fn test_like_performance() {
         let mut trans = db.transaction().unwrap();
         for i in 0..N {
             let d = Data {
-                field1: format!("_common_prefix_{}", i),
+                field1: format!("_common_prefix_{i}"),
                 field2: format!("{}", i + 1),
             };
             let enc = trans.shared_encoder_session().unwrap();
@@ -548,14 +548,13 @@ fn test_like_performance() {
             .unwrap();
 
         for i in 0..N {
-            let pat = format!("{}", i);
+            let pat = format!("{i}");
             let query = db
                 .query(&format!(
                     r#"{{
 "WHAT": [["count()"]],
  "WHERE": ["OR", ["LIKE", [".field1"], "%{pat}%"],
                  ["LIKE", [".field2"], "%{pat}%"]]}}"#,
-                    pat = pat,
                 ))
                 .unwrap();
             let mut iter = query.run().unwrap();
@@ -584,7 +583,7 @@ fn test_n1ql_query() {
         for i in 0..10_000 {
             let foo = Foo {
                 i,
-                s: format!("Hello {}", i),
+                s: format!("Hello {i}"),
             };
             let enc = trans.shared_encoder_session().unwrap();
             let mut doc = Document::new(&foo, enc).unwrap();
@@ -653,7 +652,7 @@ fn test_n1ql_query_with_parameter() {
         for i in 0..10_000 {
             let foo = Foo {
                 i,
-                s: format!("Hello {}", i),
+                s: format!("Hello {i}"),
             };
             let enc = trans.shared_encoder_session().unwrap();
             let mut doc = Document::new(&foo, enc).unwrap();

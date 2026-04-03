@@ -302,7 +302,7 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     });
 
     bindings = bindings
-        .rust_target(RustTarget::Stable_1_73)
+        .rust_target(RustTarget::stable(73, 0).unwrap())
         .opaque_type("timex")//to big reserved part for Debug
         .blocklist_type("max_align_t")//long double not supported,
                                       // see https://github.com/rust-lang/rust-bindgen/issues/550

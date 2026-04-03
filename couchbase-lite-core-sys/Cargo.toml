@@ -26,7 +26,7 @@ cmake = { version = "0.1.45", optional = true }
 cc = { version = "1.0.53", default-features = false }
 # we don't need clap, because of don't use bindgen as executable
 bindgen = { version = "0.72.1", default-features = false, features = ["runtime"] }
-which = { version = "4.2.1", optional = true, default-features = false }
+which = { version = "8.0.2", optional = true, default-features = false, features = ["real-sys"] }
 env_logger = { version = "0.11.3", default-features = false }
 syn = { version = "2.0.66", default-features = false }
 quote = { version = "1.0.21", default-features = false }

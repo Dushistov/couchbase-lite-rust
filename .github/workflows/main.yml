@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-22.04, macos-13]
+        os: [ubuntu-22.04, macos-14]
         rust: [stable, beta]
     env:
       RUSTUP_MAX_RETRIES: 10
@@ -52,9 +52,9 @@ jobs:
           toolchain: ${{ matrix.rust }}
           profile: minimal
           override: true
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: '3.8.12'
+          python-version: '3.13.0'
       - uses: jwlawson/actions-setup-cmake@v1.14
         with:
           cmake-version: '3.21.x'
@@ -105,7 +105,7 @@ jobs:
           python ci/docker-up-down.py down
   ios-tests:
     name: Check work with iOS
-    runs-on: macos-13
+    runs-on: macos-14
     strategy:
       fail-fast: true
       matrix:
@@ -132,9 +132,9 @@ jobs:
           profile: minimal
           override: true
           target: "aarch64-apple-ios"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: '3.8.12'
+          python-version: '3.13.0'
       - uses: jwlawson/actions-setup-cmake@v1.14
         with:
           cmake-version: '3.21.x'
@@ -161,7 +161,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-13]
+        os: [ubuntu-22.04, macos-14]
     steps:
       - uses: actions/checkout@v4
       - name: Checkout couchbase-lite-core
@@ -174,9 +174,9 @@ jobs:
       - name: Export path to c++ library
         run: |
           echo "CORE_SRC=$GITHUB_WORKSPACE/couchbase-lite-core" >> $GITHUB_ENV
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: '3.8.12'
+          python-version: '3.13.0'
       - uses: jwlawson/actions-setup-cmake@v1.14
         with:
           cmake-version: '3.21.x'

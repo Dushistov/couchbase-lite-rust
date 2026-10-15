@@ -181,6 +181,8 @@ impl Drop for Replicator {
     fn drop(&mut self) {
         trace!("repl drop {:?}", self.inner.as_ptr());
         unsafe {
+            // c4repl_free releases our reference without stopping replication.
+            c4repl_stop(self.inner.as_ptr());
             c4repl_free(self.inner.as_ptr());
             (self.free_callback_f)(self.boxed_callback_f.as_ptr());
         }

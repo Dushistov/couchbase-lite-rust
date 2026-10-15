@@ -94,7 +94,7 @@ jobs:
           sudo apt-get install -y libc6-dbg
           valgrind --version
           cargo install cargo-valgrind
-          python ci/build_and_run_tests.py --rust-only-with-valigrind
+          python ci/build_and_run_tests.py --rust-only --with-valigrind
         shell: bash
       - name: Run tests that requires SG up and running
         if: matrix.os == 'ubuntu-22.04' && matrix.rust == 'stable'
@@ -102,6 +102,9 @@ jobs:
           set -e
           python ci/docker-up-down.py up
           python ci/build_and_run_tests.py --with-server-only
+          python ci/docker-up-down.py down
+          python ci/docker-up-down.py up
+          python ci/build_and_run_tests.py --with-server-only --with-valigrind
           python ci/docker-up-down.py down
   ios-tests:
     name: Check work with iOS

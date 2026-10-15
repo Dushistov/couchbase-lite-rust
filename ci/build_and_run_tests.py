@@ -62,11 +62,11 @@ def build_and_test_rust_part(src_root: str, use_valgrind: bool) -> None:
         cmd = ["cargo", "test", "--all", "-vv"]
         build_tests(cmd, src_root)
         check_call(cmd, cwd = src_root)
-    print("running tests in release mode")
-    cmd = ["cargo", "test", "--all", "--release", "-vv"]
+    print("running release tests{}".format(" under Valgrind" if use_valgrind else ""))
+    cmd = ["cargo", "test", "--all", "-vv", "--release"]
     build_tests(cmd, src_root)
     if use_valgrind:
-       cmd.insert(1, "valgrind")
+        cmd.insert(1, "valgrind")
     check_call(cmd, cwd = src_root)
     check_call(["cargo", "build", "-p", "chat-demo"], cwd = src_root)
 
@@ -87,14 +87,19 @@ def build_and_test_rust_part_for_ios(src_root: str) -> None:
     check_call(["cargo", "build", "-vv", "--no-default-features", "--features=use-couchbase-lite-sqlite,use-tokio-websocket", "--target=aarch64-apple-ios", "-p", "chat-demo"], cwd = src_root)
 
 @show_timing
-def run_tests_that_require_server(src_root: str) -> None:
+def run_tests_that_require_server(src_root: str, use_valgrind: bool) -> None:
     my_env = os.environ.copy()
     my_env["SG_PASS"] = "password"
     my_env["SG_USER"] = "sguser"
     my_env["SG_URL"]  = 'ws://localhost:4884/scratch-30/'
     for test_name in ["test_double_replicator_restart", "test_wrong_sync_packets_order"]:
-        check_call(["cargo", "test", "--release", "-p", "couchbase-lite",
-                    "-vv", test_name, "--", "--ignored"], cwd = src_root, env = my_env)
+        cmd = ["cargo"]
+        if use_valgrind:
+            cmd.append("valgrind")
+        cmd.extend(["test", "--release"])
+        cmd.extend(["-p", "couchbase-lite", "-vv", test_name,
+                    "--", "--ignored", "--nocapture"])
+        check_call(cmd, cwd = src_root, env = my_env)
 
 @show_timing
 def main() -> None:
@@ -108,20 +113,29 @@ def main() -> None:
     REUSE_CPP_ONLY_BUILD = "reuse-cpp-only-build"
     tests = set([CPP_TESTS, RUST_TESTS])
     if len(sys.argv) >= 2:
-        if sys.argv[1] == "--rust-only":
-            tests = set([RUST_TESTS])
-        elif sys.argv[1] == "--cpp-only":
-            tests = set([CPP_TESTS])
-        elif sys.argv[1] == "--rust-ios-only":
-            tests = set([RUST_IOS_TESTS])
-        elif sys.argv[1] == "--rust-only-with-valigrind":
-            tests = set([VALGRIND_TESTS, RUST_TESTS])
-        elif sys.argv[1] == "--with-server-only":
-            tests = set([WITH_SERVER_TESTS])
-        elif sys.argv[1] == "--cargo-check-to-reuse-cpp-only-build":
-            tests = set([REUSE_CPP_ONLY_BUILD])
-        else:
-            raise Exception("Unknown option %s" % sys.argv[1])
+        for i in range(1, len(sys.argv)):
+            if sys.argv[i] == "--rust-only":
+                tests = set([RUST_TESTS])
+            elif sys.argv[i] == "--cpp-only":
+                tests = set([CPP_TESTS])
+            elif sys.argv[i] == "--rust-ios-only":
+                tests = set([RUST_IOS_TESTS])
+            elif sys.argv[i] == "--with-valigrind":
+                tests.add(VALGRIND_TESTS)
+            elif sys.argv[i] == "--with-server-only":
+                tests = set([WITH_SERVER_TESTS])
+            elif sys.argv[i] == "--cargo-check-to-reuse-cpp-only-build":
+                tests = set([REUSE_CPP_ONLY_BUILD])
+            else:
+                raise Exception(f"Unknown option {sys.argv[i]}")
+
+    if VALGRIND_TESTS in tests:
+        os.environ["VALGRINDFLAGS"] = " ".join(filter(None, [
+            os.environ.get("VALGRINDFLAGS", ""),
+            "--leak-check=full",
+            "--show-leak-kinds=definite,possible",
+            f"--suppressions={ci_dir / 'valgrind-suppressions.supp'}",
+        ]))
 
     if CPP_TESTS in tests:
         build_and_test_cpp_part(src_root)
@@ -130,7 +144,7 @@ def main() -> None:
     if RUST_IOS_TESTS in tests:
         build_and_test_rust_part_for_ios(src_root)
     if WITH_SERVER_TESTS in tests:
-        run_tests_that_require_server(src_root)
+        run_tests_that_require_server(src_root, VALGRIND_TESTS in tests)
     if REUSE_CPP_ONLY_BUILD in tests:
         cargo_check_sys_with_external_couchbase_lite(src_root)
 

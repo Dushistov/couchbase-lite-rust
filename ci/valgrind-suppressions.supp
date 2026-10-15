@@ -1,0 +1,67 @@
+{
+   Couchbase's TimerManager leak
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create*
+   fun:__gthread_create
+   fun:_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE
+   ...
+   fun:_ZN8litecore5actor5Timer7ManagerC1Ev
+}
+{
+   Rust test harness thread-local channel context
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:*3std6thread6thread*6Thread3new*
+   fun:*3std6thread7current12init_current*
+   fun:*3std4sync4mpmc7context*7Context3new*
+   ...
+   fun:*4test7console17run_tests_console*
+}
+{
+   HTTP header insert during replicator WebSocket open
+   Memcheck:Cond
+   fun:*4http6header4name*7HdrName11from_static*
+   fun:*14couchbase_lite10replicator12tokio_socket7ws_open*
+}
+{
+   HTTP header lookup for WebSocket subprotocols
+   Memcheck:Cond
+   fun:*4http6header4name*7HdrName10from_bytes*
+   fun:*11tungstenite9handshake6client33extract_subprotocols_from_request*
+}
+{
+   HTTP header lookup during WebSocket request generation
+   Memcheck:Cond
+   fun:*4http6header4name*7HdrName10from_bytes*
+   ...
+   fun:*11tungstenite9handshake6client16generate_request*
+}
+{
+   HTTP header lookup during WebSocket response verification
+   Memcheck:Cond
+   fun:*4http6header4name*7HdrName10from_bytes*
+   ...
+   fun:*11tungstenite9handshake6client*10VerifyData15verify_response*
+}
+{
+   Couchbase's no Scheduler::stop call leak
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create*
+   fun:__gthread_create
+   fun:_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE
+   ...
+   fun:_ZN8litecore5actor9Scheduler5start*
+}

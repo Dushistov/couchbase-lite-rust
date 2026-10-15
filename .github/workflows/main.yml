@@ -11,7 +11,7 @@ on:
     - cron: '00 02 */4 * *'
 env:
   RUST_BACKTRACE: 1
-  CLC_STABLE_HASH: "2cdd3cbbeaff7db40bbe166d74dcbcfdd16113af"
+  CLC_STABLE_HASH: "37eb02aa9465fdbcd4e67e708c04f84d78069eb5"
 jobs:
   rust-tests:
     name: Rust tests

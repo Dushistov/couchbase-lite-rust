@@ -1,5 +1,11 @@
 This docker folder contains the `docker-compose.yml` file for starting and configuring Couchbase Server and Sync Gateways for running non-walrus replicator tests with Sync Gateway.
 
+Use `./ci/docker-up-down.py up` and `./ci/docker-up-down.py down` from the repository root. The default is Docker with sudo. Select any combination with `--engine docker|podman` and `--sudo` or `--no-sudo`; for example, run `./ci/docker-up-down.py up --engine podman --no-sudo` for rootless Podman. Use the same options with `down`. Run `./ci/docker-up-down.py --help` for usage. Podman requires an installed Compose provider such as `podman-compose`.
+
+Run `./ci/build_and_run_tests.py --with-server-only --with-valigrind` for the Sync Gateway tests under Valgrind. It tests the normal Cargo release build. `ci/valgrind-suppressions.supp` limits suppression of observed `http` header warnings to the WebSocket handshake paths; investigate new warning stacks before adding rules. For a quicker local check, set `SG_TEST_DOCUMENT_COUNT=100`; the ordering test uses 10,000 documents by default.
+
+The Rust native build applies `couchbase-lite-core-sys/patches/fleece-shared-buffer.patch` to the Core source checkout before compiling it. This fixes a zero-length Fleece slice allocation that Valgrind detects as an invalid write.
+
 When running `docker compose up`, there will be one Couchbase Server and two Sync Gateways started as follows:
 
 ### 1. Sync Gateway for .SyncServerCollection Tests

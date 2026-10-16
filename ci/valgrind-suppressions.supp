@@ -8,7 +8,7 @@
    fun:_dl_allocate_tls
    fun:allocate_stack
    fun:pthread_create*
-   fun:__gthread_create
+   ...
    fun:_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE
    ...
    fun:_ZN8litecore5actor5Timer7ManagerC1Ev
@@ -60,7 +60,7 @@
    fun:_dl_allocate_tls
    fun:allocate_stack
    fun:pthread_create*
-   fun:__gthread_create
+   ...
    fun:_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE
    ...
    fun:_ZN8litecore5actor9Scheduler5start*

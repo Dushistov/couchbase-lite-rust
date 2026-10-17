@@ -126,6 +126,26 @@ unsafe impl Send for C4SocketPtr {}
 #[derive(Debug)]
 struct Error(C4Error);
 
+fn network_error(code: C4NetworkErrorCode, message: &str) -> C4Error {
+    unsafe {
+        c4error_make(
+            C4ErrorDomain::NetworkDomain,
+            code.0,
+            message.as_bytes().into(),
+        )
+    }
+}
+
+fn close_error(status: c_int, reason: &str) -> C4Error {
+    unsafe {
+        c4error_make(
+            C4ErrorDomain::WebSocketDomain,
+            status,
+            reason.as_bytes().into(),
+        )
+    }
+}
+
 unsafe extern "C" fn ws_open(
     c4sock: *mut C4Socket,
     addr: *const C4Address,
@@ -315,11 +335,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
             CloseState::Server => false,
             CloseState::Client => panic!("Internal logic error: duplicate requestClose calls"),
         };
-        let err = c4error_make(
-            C4ErrorDomain::WebSocketDomain,
-            status,
-            reason.as_bytes().into(),
-        );
+        let err = close_error(status, &reason);
         let mut writer = writer.lock().await;
         let (writer, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) = &mut writer;
         if let Some(writer) = writer.as_mut() {
@@ -537,13 +553,10 @@ async fn do_open(
         }
         _ = (&mut stop_rx) => {
             trace!("c4sock {c4sock:?}: do_open interrupted");
-            return Err(Error(unsafe {
-                c4error_make(
-                    C4ErrorDomain::NetworkDomain,
-                    C4NetworkErrorCode::kC4NetErrNotConnected.0,
-                    "open was interrupted by requestClose".into(),
-                )
-            }));
+            return Err(Error(network_error(
+                C4NetworkErrorCode::kC4NetErrNotConnected,
+                "open was interrupted by requestClose",
+            )));
         }
     };
 
@@ -652,13 +665,10 @@ async fn main_read_loop(
 
             _ = (&mut stop_rx) => {
                 info!("c4sock {c4sock:?}: read from websocket was interrupted by requestClose");
-                return Err(Error(unsafe {
-                    c4error_make(
-                        C4ErrorDomain::NetworkDomain,
-                        C4NetworkErrorCode::kC4NetErrNotConnected.0,
-                        "open was interrupted by requestClose".into(),
-                    )
-                }));
+                return Err(Error(network_error(
+                    C4NetworkErrorCode::kC4NetErrNotConnected,
+                    "open was interrupted by requestClose",
+                )));
             }
 
         };

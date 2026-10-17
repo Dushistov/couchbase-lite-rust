@@ -40,7 +40,7 @@ use tokio_tungstenite::{
     tungstenite::{
         self,
         client::IntoClientRequest,
-        handshake::client::{Request, Response},
+        handshake::client::Request,
         http::{self, header::HeaderName, HeaderValue, Uri},
         protocol::{frame::coding::CloseCode, CloseFrame},
         Bytes, Message,
@@ -776,7 +776,7 @@ unsafe fn tungstenite_err_to_c4_err(err: tungstenite::Error) -> Error {
     Error(c4error_make(domain, code as c_int, msg.as_bytes().into()))
 }
 
-unsafe fn headers_to_dict(http_resp: &Response) -> Result<FLSliceResult, FLError> {
+unsafe fn headers_to_dict<T>(http_resp: &http::Response<T>) -> Result<FLSliceResult, FLError> {
     let enc = FLEncoder_New();
     let mut all_ok = true;
     all_ok &= FLEncoder_BeginDict(enc, http_resp.headers().len());

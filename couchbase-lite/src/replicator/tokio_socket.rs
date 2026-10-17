@@ -680,7 +680,8 @@ async fn main_read_loop(
 }
 
 unsafe fn tungstenite_err_to_c4_err(err: tungstenite::Error) -> Error {
-    use tungstenite::error::Error::*;
+    use std::io::ErrorKind as IoErrorKind;
+    use tungstenite::error::{CapacityError, Error::*, ProtocolError};
     let msg = err.to_string();
     let (domain, code) = match err {
         ConnectionClosed => (
@@ -691,21 +692,65 @@ unsafe fn tungstenite_err_to_c4_err(err: tungstenite::Error) -> Error {
             C4ErrorDomain::WebSocketDomain,
             C4WebSocketCloseCode::kWebSocketCloseFirstAvailable.0,
         ),
-        Io(_) => (
-            C4ErrorDomain::NetworkDomain,
-            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
+        Io(error) => {
+            let code = match error.kind() {
+                IoErrorKind::ConnectionRefused => C4NetworkErrorCode::kC4NetErrConnectionRefused,
+                IoErrorKind::ConnectionReset => C4NetworkErrorCode::kC4NetErrConnectionReset,
+                IoErrorKind::ConnectionAborted => C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                IoErrorKind::NotConnected => C4NetworkErrorCode::kC4NetErrNotConnected,
+                IoErrorKind::AddrNotAvailable => C4NetworkErrorCode::kC4NetErrAddressNotAvailable,
+                IoErrorKind::BrokenPipe => C4NetworkErrorCode::kC4NetErrBrokenPipe,
+                IoErrorKind::TimedOut => C4NetworkErrorCode::kC4NetErrTimeout,
+                _ => C4NetworkErrorCode::kC4NetErrUnknown,
+            };
+            (C4ErrorDomain::NetworkDomain, code.0)
+        }
+        Capacity(CapacityError::MessageTooLong { .. }) => (
+            C4ErrorDomain::WebSocketDomain,
+            C4WebSocketCloseCode::kWebSocketCloseMessageTooBig.0,
         ),
-        Capacity(_) | WriteBufferFull(_) => (
+        Capacity(CapacityError::TooManyHeaders) => (
+            C4ErrorDomain::WebSocketDomain,
+            http::StatusCode::REQUEST_HEADER_FIELDS_TOO_LARGE
+                .as_u16()
+                .into(),
+        ),
+        WriteBufferFull(_) => (
             C4ErrorDomain::NetworkDomain,
-            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
+            C4NetworkErrorCode::kC4NetErrUnknown.0,
+        ),
+        Protocol(ProtocolError::ResetWithoutClosingHandshake) => (
+            C4ErrorDomain::WebSocketDomain,
+            C4WebSocketCloseCode::kWebSocketCloseAbnormal.0,
+        ),
+        Protocol(ProtocolError::SendAfterClosing) => (
+            C4ErrorDomain::LiteCoreDomain,
+            C4ErrorCode::kC4ErrorUnexpectedError.0,
+        ),
+        Protocol(
+            ProtocolError::ReceivedAfterClosing
+            | ProtocolError::NonZeroReservedBits
+            | ProtocolError::UnmaskedFrameFromClient
+            | ProtocolError::MaskedFrameFromServer
+            | ProtocolError::FragmentedControlFrame
+            | ProtocolError::ControlFrameTooBig
+            | ProtocolError::UnknownControlFrameType(_)
+            | ProtocolError::UnknownDataFrameType(_)
+            | ProtocolError::UnexpectedContinueFrame
+            | ProtocolError::ExpectedFragment(_)
+            | ProtocolError::InvalidOpcode(_)
+            | ProtocolError::InvalidCloseSequence,
+        ) => (
+            C4ErrorDomain::WebSocketDomain,
+            C4WebSocketCloseCode::kWebSocketCloseProtocolError.0,
         ),
         Protocol(_) => (
-            C4ErrorDomain::WebSocketDomain,
-            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
+            C4ErrorDomain::NetworkDomain,
+            C4NetworkErrorCode::kC4NetErrUnknown.0,
         ),
         AttackAttempt => (
             C4ErrorDomain::NetworkDomain,
-            C4NetworkErrorCode::kC4NumNetErrorCodesPlus1.0,
+            C4NetworkErrorCode::kC4NetErrUnknown.0,
         ),
         Utf8(_) => (
             C4ErrorDomain::WebSocketDomain,

@@ -23,6 +23,7 @@ use std::{
     io::Write,
     mem,
     os::raw::{c_int, c_void},
+    ptr::NonNull,
     str::FromStr,
     sync::{
         atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering},
@@ -217,10 +218,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
         "c4sock {c4sock:?}: write allocated_data.size {}",
         allocated_data.size
     );
-    assert!(!c4sock.is_null());
-    let native = c4Socket_getNativeHandle(c4sock) as *mut SocketImpl;
-    assert!(!native.is_null());
-    let socket: &SocketImpl = &*native;
+    let socket = socket_impl(c4sock).as_ref();
     let writer = socket.writer.clone();
     let data = Bytes::from_owner(allocated_data);
     socket
@@ -248,10 +246,7 @@ async fn send_binary_msg(ctx: C4SocketPtr, writer: &mut WsWriter, data: Bytes) {
 
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
     trace!("c4sock {c4sock:?}: completedReceive, byte_count {byte_count}");
-    assert!(!c4sock.is_null());
-    let native = c4Socket_getNativeHandle(c4sock) as *mut SocketImpl;
-    assert!(!native.is_null());
-    let socket: &SocketImpl = &*native;
+    let socket = socket_impl(c4sock).as_ref();
     let nbytes = socket.read_push_pull.nbytes_avaible.load(Ordering::Acquire);
     let nbytes = nbytes.saturating_sub(byte_count);
     socket
@@ -309,10 +304,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
     let code: CloseCode = u16::try_from(status).unwrap_or(1).into();
     let reason: Cow<'static, str> = String::from_utf8_lossy(message.into());
 
-    assert!(!c4sock.is_null());
-    let native = c4Socket_getNativeHandle(c4sock) as *mut SocketImpl;
-    assert!(!native.is_null());
-    let socket: &SocketImpl = &*native;
+    let socket = socket_impl(c4sock).as_ref();
     let writer = socket.writer.clone();
     let close_control = socket.close_control.clone();
     let c4sock = C4SocketPtr(c4sock);
@@ -385,11 +377,19 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
 
 unsafe extern "C" fn ws_dispose(c4sock: *mut C4Socket) {
     trace!("c4sock {c4sock:?}: dispose");
-    assert!(!c4sock.is_null());
+    assert!(!c4sock.is_null(), "ws_dispose received a null socket");
     let native = c4Socket_getNativeHandle(c4sock) as *mut SocketImpl;
-    assert!(!native.is_null());
-    let sock_impl = Box::from_raw(native);
-    mem::drop(sock_impl);
+    // LiteCore can destroy a socket before calling our open callback.
+    if !native.is_null() {
+        c4Socket_setNativeHandle(c4sock, std::ptr::null_mut());
+        drop(Box::from_raw(native));
+    }
+}
+
+unsafe fn socket_impl(c4sock: *mut C4Socket) -> NonNull<SocketImpl> {
+    assert!(!c4sock.is_null(), "socket callback received a null socket");
+    let native = c4Socket_getNativeHandle(c4sock) as *mut SocketImpl;
+    NonNull::new(native).expect("socket callback received a socket without a native handle")
 }
 
 unsafe fn c4address_to_request(

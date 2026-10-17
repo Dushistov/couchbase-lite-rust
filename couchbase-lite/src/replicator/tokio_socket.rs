@@ -79,33 +79,33 @@ struct ReadPushPull {
 struct CloseControl {
     confirm: Notify,
     stop_read_loop: TokioMutex<Option<oneshot::Sender<()>>>,
-    state: AtomicCloseState,
+    state: AtomicLegacyCloseState,
     signaled: AtomicBool,
 }
 
 #[repr(u8)]
 #[derive(Debug)]
-enum CloseState {
+enum LegacyCloseState {
     None = 0,
     Server = 1,
     Client = 2,
 }
 
 #[repr(transparent)]
-struct AtomicCloseState(AtomicU8);
-impl AtomicCloseState {
-    fn new(val: CloseState) -> Self {
+struct AtomicLegacyCloseState(AtomicU8);
+impl AtomicLegacyCloseState {
+    fn new(val: LegacyCloseState) -> Self {
         Self(AtomicU8::new(val as u8))
     }
-    fn store(&self, val: CloseState, ordering: Ordering) {
+    fn store(&self, val: LegacyCloseState, ordering: Ordering) {
         self.0.store(val as u8, ordering);
     }
-    fn load(&self, ordering: Ordering) -> CloseState {
+    fn load(&self, ordering: Ordering) -> LegacyCloseState {
         let val = self.0.load(ordering);
         match val {
-            0 => CloseState::None,
-            1 => CloseState::Server,
-            2 => CloseState::Client,
+            0 => LegacyCloseState::None,
+            1 => LegacyCloseState::Server,
+            2 => LegacyCloseState::Client,
             _ => unreachable!(),
         }
     }
@@ -176,7 +176,7 @@ unsafe extern "C" fn ws_open(
         }),
         writer: Arc::new(TokioMutex::new((None, send_q_rx))),
         close_control: Arc::new(CloseControl {
-            state: AtomicCloseState::new(CloseState::None),
+            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
             confirm: Notify::new(),
             stop_read_loop: TokioMutex::new(Some(stop_tx)),
             signaled: AtomicBool::new(false),
@@ -318,14 +318,16 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
         );
         let state = close_control.state.load(Ordering::Acquire);
         let is_client_close = match state {
-            CloseState::None => {
+            LegacyCloseState::None => {
                 close_control
                     .state
-                    .store(CloseState::Client, Ordering::Release);
+                    .store(LegacyCloseState::Client, Ordering::Release);
                 true
             }
-            CloseState::Server => false,
-            CloseState::Client => panic!("Internal logic error: duplicate requestClose calls"),
+            LegacyCloseState::Server => false,
+            LegacyCloseState::Client => {
+                panic!("Internal logic error: duplicate requestClose calls")
+            }
         };
         let err = close_error(status, &reason);
         let mut writer = writer.lock().await;
@@ -628,8 +630,8 @@ async fn main_read_loop(
                             "c4sock {c4sock:?}: close frame was received, state {state:?}"
                         );
                         match state {
-                            CloseState::None => {
-                                close_control.state.store(CloseState::Server, Ordering::Release);
+                            LegacyCloseState::None => {
+                                close_control.state.store(LegacyCloseState::Server, Ordering::Release);
                                 let task = handle.spawn_blocking(move || {
                                     let c4sock: C4SocketPtr = c4sock;
                                     unsafe {
@@ -639,11 +641,11 @@ async fn main_read_loop(
                                 task.await.expect("The task being joined has panicked");
 
                             }
-                            CloseState::Server => {
+                            LegacyCloseState::Server => {
                                 warn!("c4sock {c4sock:?} duplicate close message from server: {code} {reason}");
                                 continue 'read_loop;
                             }
-                            CloseState::Client => {
+                            LegacyCloseState::Client => {
                                 close_control.confirm.notify_one();
                             }
                         }

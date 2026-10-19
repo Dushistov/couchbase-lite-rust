@@ -204,10 +204,8 @@ unsafe extern "C" fn ws_open(
         {
             Ok(()) => {}
             Err(err) => {
-                trace!("c4sock {c4sock:?}: call c4socket_closed");
-                if !close_ctl.signaled.swap(true, Ordering::SeqCst) {
-                    c4socket_closed(c4sock.0, err.0);
-                }
+                trace!("c4sock {c4sock:?}: signal closed");
+                close_ctl.signal_closed(c4sock, err.0);
             }
         }
     });
@@ -354,9 +352,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
                 close_control.signal_to_stop_read_loop(c4sock).await;
             }
         }
-        if !close_control.signaled.swap(true, Ordering::SeqCst) {
-            c4socket_closed(c4sock.0, err);
-        }
+        close_control.signal_closed(c4sock, err);
     });
     trace!(
         "c4sock {c4sock:?}: waiting done signal {:?}",
@@ -853,6 +849,12 @@ impl From<FLError> for Error {
 }
 
 impl CloseControl {
+    fn signal_closed(&self, ctx: C4SocketPtr, error: C4Error) {
+        if !self.signaled.swap(true, Ordering::SeqCst) {
+            unsafe { c4socket_closed(ctx.0, error) };
+        }
+    }
+
     async fn signal_to_stop_read_loop(&self, ctx: C4SocketPtr) {
         let mut lock = self.stop_read_loop.lock().await;
         if let Some(stop_tx) = lock.take() {

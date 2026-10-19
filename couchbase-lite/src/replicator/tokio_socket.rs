@@ -131,12 +131,42 @@ struct FfiCore<P> {
     phase: PhantomData<P>,
 }
 
+impl<P> From<&FfiCore<P>> for usize {
+    fn from(core: &FfiCore<P>) -> Self {
+        core.socket.0 as usize
+    }
+}
+
+trait ConnectingSink: Send + 'static {
+    type Open: OpenSink;
+
+    fn got_http_response(&mut self, status: c_int, headers: FLSliceResult);
+    fn opened(self) -> Self::Open;
+}
+
+trait OpenSink: Send + 'static {
+    fn received(&mut self, data: &[u8]);
+    fn close_requested(&mut self, status: c_int, reason: &str);
+}
+
 impl FfiCore<ConnectingPhase> {
-    unsafe fn got_http_response(&mut self, status: c_int, headers: &FLSliceResult) {
+    // The caller must keep the LiteCore socket alive while this value is in use.
+    unsafe fn new(socket: C4SocketPtr) -> Self {
+        Self {
+            socket,
+            phase: PhantomData,
+        }
+    }
+}
+
+impl ConnectingSink for FfiCore<ConnectingPhase> {
+    type Open = FfiCore<OpenPhase>;
+
+    fn got_http_response(&mut self, status: c_int, headers: FLSliceResult) {
         unsafe { c4socket_gotHTTPResponse(self.socket.0, status, headers.as_fl_slice()) };
     }
 
-    unsafe fn opened(self) -> FfiCore<OpenPhase> {
+    fn opened(self) -> Self::Open {
         unsafe { c4socket_opened(self.socket.0) };
         FfiCore {
             socket: self.socket,
@@ -145,12 +175,12 @@ impl FfiCore<ConnectingPhase> {
     }
 }
 
-impl FfiCore<OpenPhase> {
-    unsafe fn received(&mut self, data: &[u8]) {
+impl OpenSink for FfiCore<OpenPhase> {
+    fn received(&mut self, data: &[u8]) {
         unsafe { c4socket_received(self.socket.0, data.into()) };
     }
 
-    unsafe fn close_requested(&mut self, status: c_int, reason: &str) {
+    fn close_requested(&mut self, status: c_int, reason: &str) {
         unsafe { c4socket_closeRequested(self.socket.0, status, reason.as_bytes().into()) };
     }
 }
@@ -220,11 +250,8 @@ unsafe extern "C" fn ws_open(
     let writer = sock_impl.writer.clone();
     let close_control = sock_impl.close_control.clone();
     c4Socket_setNativeHandle(c4sock, Box::into_raw(sock_impl) as *mut c_void);
-    let core = FfiCore::<ConnectingPhase> {
-        socket: C4SocketPtr(c4sock),
-        phase: PhantomData,
-    };
-    let c4sock = core.socket;
+    let c4sock = C4SocketPtr(c4sock);
+    let core = FfiCore::<ConnectingPhase>::new(c4sock);
     let handle2 = handle.clone();
     handle.spawn(async move {
         let close_ctl = close_control.clone();
@@ -563,24 +590,29 @@ unsafe fn c4address_to_request(
     Ok(request)
 }
 
-async fn do_open(
-    mut core: FfiCore<ConnectingPhase>,
+async fn do_open<C>(
+    mut core: C,
     request: Result<Request, Error>,
     mut stop_rx: oneshot::Receiver<()>,
     command_rx: mpsc::UnboundedReceiver<Command>,
     writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Bytes>)>>,
     close_control: Arc<CloseControl>,
     handle: Handle,
-) -> Result<(), Error> {
-    let c4sock = core.socket;
+) -> Result<(), Error>
+where
+    C: ConnectingSink,
+    for<'a> &'a C: Into<usize>,
+    for<'a> &'a C::Open: Into<usize>,
+{
+    let context: usize = (&core).into();
     let request = request?;
     let (ws_stream, http_resp) = tokio::select! {
         v = connect_async(request) => {
-            trace!("c4sock {c4sock:?}: connect_async finished");
+            trace!("c4sock {context:#x}: connect_async finished");
             v.map_err(|err| unsafe { tungstenite_err_to_c4_err(err) })?
         }
         _ = (&mut stop_rx) => {
-            trace!("c4sock {c4sock:?}: do_open interrupted");
+            trace!("c4sock {context:#x}: do_open interrupted");
             return Err(Error(network_error(
                 C4NetworkErrorCode::kC4NetErrNotConnected,
                 "open was interrupted by requestClose",
@@ -590,7 +622,7 @@ async fn do_open(
 
     {
         let headers = unsafe { headers_to_dict(&http_resp) }?;
-        unsafe { core.got_http_response(http_resp.status().as_u16() as c_int, &headers) };
+        core.got_http_response(http_resp.status().as_u16() as c_int, headers);
         mem::drop(http_resp);
     }
     let (ws_writer, ws_reader) = ws_stream.split();
@@ -598,20 +630,24 @@ async fn do_open(
         let mut lock = writer.lock().await;
         lock.0 = Some(ws_writer);
     }
-    let core = unsafe { core.opened() };
+    let core = core.opened();
     main_read_loop(core, ws_reader, stop_rx, command_rx, close_control, handle).await?;
     Ok(())
 }
 
-async fn main_read_loop(
-    mut core: FfiCore<OpenPhase>,
+async fn main_read_loop<C>(
+    mut core: C,
     mut ws_reader: WsReader,
     mut stop_rx: oneshot::Receiver<()>,
     mut command_rx: mpsc::UnboundedReceiver<Command>,
     close_control: Arc<CloseControl>,
     handle: Handle,
-) -> Result<(), Error> {
-    let c4sock = core.socket;
+) -> Result<(), Error>
+where
+    C: OpenSink,
+    for<'a> &'a C: Into<usize>,
+{
+    let context: usize = (&core).into();
     'read_loop: loop {
         tokio::select! {
             message = ws_reader.next() => {
@@ -624,7 +660,7 @@ async fn main_read_loop(
                     m @ Message::Text(_) | m @ Message::Binary(_) => {
 
                         let data = m.into_data();
-                        unsafe { core.received(data.as_ref()) };
+                        core.received(data.as_ref());
                         let mut remaining = data.len();
                         loop {
                             let Some(Command::CompletedReceive(byte_count)) = command_rx.recv().await else {
@@ -647,19 +683,19 @@ async fn main_read_loop(
                             .state
                             .load(Ordering::Acquire);
                         info!(
-                            "c4sock {c4sock:?}: close frame was received, state {state:?}"
+                            "c4sock {context:#x}: close frame was received, state {state:?}"
                         );
                         match state {
                             LegacyCloseState::None => {
                                 close_control.state.store(LegacyCloseState::Server, Ordering::Release);
                                 let task = handle.spawn_blocking(move || {
-                                    unsafe { core.close_requested(code, &reason) };
+                                    core.close_requested(code, &reason);
                                 });
                                 task.await.expect("The task being joined has panicked");
 
                             }
                             LegacyCloseState::Server => {
-                                warn!("c4sock {c4sock:?} duplicate close message from server: {code} {reason}");
+                                warn!("c4sock {context:#x} duplicate close message from server: {code} {reason}");
                                 continue 'read_loop;
                             }
                             LegacyCloseState::Client => {
@@ -671,11 +707,11 @@ async fn main_read_loop(
                     Message::Frame(_) =>
                         warn!("unsupport Message::Frame format"),
                     Message::Ping(_) => {
-                        trace!("c4sock {c4sock:?}: ping frame was received");
+                        trace!("c4sock {context:#x}: ping frame was received");
                         warn!("ping handling not implemented");
                     }
                     Message::Pong(_) => {
-                        trace!("c4sock {c4sock:?}: pong frame was received");
+                        trace!("c4sock {context:#x}: pong frame was received");
                         warn!("pong handling not implemented");
                     }
                 }
@@ -683,7 +719,7 @@ async fn main_read_loop(
             }
 
             _ = (&mut stop_rx) => {
-                info!("c4sock {c4sock:?}: read from websocket was interrupted by requestClose");
+                info!("c4sock {context:#x}: read from websocket was interrupted by requestClose");
                 return Err(Error(network_error(
                     C4NetworkErrorCode::kC4NetErrNotConnected,
                     "open was interrupted by requestClose",
@@ -692,7 +728,7 @@ async fn main_read_loop(
 
         };
     }
-    trace!("c4sock {c4sock:?}: main read loop end");
+    trace!("c4sock {context:#x}: main read loop end");
     Ok(())
 }
 

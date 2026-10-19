@@ -26,7 +26,7 @@ use std::{
     ptr::NonNull,
     str::FromStr,
     sync::{
-        atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU8, Ordering},
         Arc, Condvar, Mutex,
     },
     time::Duration,
@@ -65,15 +65,14 @@ pub fn c4socket_init(handle: Handle) {
 
 struct SocketImpl {
     handle: Handle,
-    read_push_pull: Arc<ReadPushPull>,
+    commands: mpsc::UnboundedSender<Command>,
     writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Bytes>)>>,
     send_queue: mpsc::UnboundedSender<Bytes>,
     close_control: Arc<CloseControl>,
 }
 
-struct ReadPushPull {
-    nbytes_avaible: AtomicUsize,
-    confirm: Notify,
+enum Command {
+    CompletedReceive(usize),
 }
 
 struct CloseControl {
@@ -171,13 +170,11 @@ unsafe extern "C" fn ws_open(
         request.as_ref().map(Request::uri)
     );
     let (stop_tx, stop_rx) = oneshot::channel();
+    let (commands, command_rx) = mpsc::unbounded_channel();
     let (send_q_tx, send_q_rx) = mpsc::unbounded_channel();
     let sock_impl = Box::new(SocketImpl {
         handle: handle.clone(),
-        read_push_pull: Arc::new(ReadPushPull {
-            nbytes_avaible: AtomicUsize::new(0),
-            confirm: Notify::new(),
-        }),
+        commands,
         writer: Arc::new(TokioMutex::new((None, send_q_rx))),
         close_control: Arc::new(CloseControl {
             state: AtomicLegacyCloseState::new(LegacyCloseState::None),
@@ -187,7 +184,6 @@ unsafe extern "C" fn ws_open(
         }),
         send_queue: send_q_tx,
     });
-    let read_push_pull = sock_impl.read_push_pull.clone();
     let writer = sock_impl.writer.clone();
     let close_control = sock_impl.close_control.clone();
     c4Socket_setNativeHandle(c4sock, Box::into_raw(sock_impl) as *mut c_void);
@@ -199,7 +195,7 @@ unsafe extern "C" fn ws_open(
             c4sock,
             request,
             stop_rx,
-            read_push_pull,
+            command_rx,
             writer,
             close_control,
             handle2,
@@ -251,15 +247,7 @@ async fn send_binary_msg(ctx: C4SocketPtr, writer: &mut WsWriter, data: Bytes) {
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
     trace!("c4sock {c4sock:?}: completedReceive, byte_count {byte_count}");
     let socket = socket_impl(c4sock).as_ref();
-    let nbytes = socket.read_push_pull.nbytes_avaible.load(Ordering::Acquire);
-    let nbytes = nbytes.saturating_sub(byte_count);
-    socket
-        .read_push_pull
-        .nbytes_avaible
-        .store(nbytes, Ordering::Release);
-    if nbytes == 0 {
-        socket.read_push_pull.confirm.notify_one();
-    }
+    let _ = socket.commands.send(Command::CompletedReceive(byte_count));
 }
 
 struct DoneSignal {
@@ -546,7 +534,7 @@ async fn do_open(
     c4sock: C4SocketPtr,
     request: Result<Request, Error>,
     mut stop_rx: oneshot::Receiver<()>,
-    read_push_pull: Arc<ReadPushPull>,
+    command_rx: mpsc::UnboundedReceiver<Command>,
     writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Bytes>)>>,
     close_control: Arc<CloseControl>,
     handle: Handle,
@@ -589,7 +577,7 @@ async fn do_open(
         c4sock,
         ws_reader,
         stop_rx,
-        read_push_pull,
+        command_rx,
         close_control,
         handle,
     )
@@ -601,7 +589,7 @@ async fn main_read_loop(
     c4sock: C4SocketPtr,
     mut ws_reader: WsReader,
     mut stop_rx: oneshot::Receiver<()>,
-    read_push_pull: Arc<ReadPushPull>,
+    mut command_rx: mpsc::UnboundedReceiver<Command>,
     close_control: Arc<CloseControl>,
     handle: Handle,
 ) -> Result<(), Error> {
@@ -617,11 +605,22 @@ async fn main_read_loop(
                     m @ Message::Text(_) | m @ Message::Binary(_) => {
 
                         let data = m.into_data();
-                        read_push_pull.nbytes_avaible.store(data.len(), Ordering::Release);
                         unsafe {
                             c4socket_received(c4sock.0, data.as_ref().into());
                         }
-                        read_push_pull.confirm.notified().await;
+                        let mut remaining = data.len();
+                        loop {
+                            let Some(Command::CompletedReceive(byte_count)) = command_rx.recv().await else {
+                                return Err(Error(network_error(
+                                    C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                                    "receive acknowledgement channel closed",
+                                )));
+                            };
+                            remaining = remaining.saturating_sub(byte_count);
+                            if remaining == 0 {
+                                break;
+                            }
+                        }
                     }
                     Message::Close(close_frame) => {
                         let (code, reason) = close_frame.map(|x| (u16::from(&x.code) as c_int, x.reason)).unwrap_or_else(|| {

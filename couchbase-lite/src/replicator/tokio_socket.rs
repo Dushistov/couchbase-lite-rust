@@ -19,7 +19,6 @@ use futures_util::{
 use log::{error, info, trace, warn};
 use serde_fleece::NonNullConst;
 use std::{
-    borrow::Cow,
     io::Write,
     marker::PhantomData,
     mem,
@@ -356,7 +355,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
         std::str::from_utf8(message.into())
     );
     let code: CloseCode = u16::try_from(status).unwrap_or(1).into();
-    let reason: Cow<'static, str> = String::from_utf8_lossy(message.into());
+    let reason = String::from_utf8_lossy(message.into()).into_owned();
 
     let socket = socket_impl(c4sock).as_ref();
     let writer = socket.writer.clone();
@@ -394,7 +393,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
             if let Err(err) = writer
                 .send(Message::Close(Some(CloseFrame {
                     code,
-                    reason: reason.to_string().into(),
+                    reason: reason.into(),
                 })))
                 .await
             {

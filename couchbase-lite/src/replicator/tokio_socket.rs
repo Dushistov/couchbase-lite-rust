@@ -153,15 +153,19 @@ unsafe extern "C" fn ws_open(
     options: C4Slice,
     context: *mut c_void,
 ) {
-    assert!(!context.is_null());
+    assert!(!c4sock.is_null(), "ws_open received a null socket");
+    assert!(!addr.is_null(), "ws_open received a null address");
+    assert!(
+        !context.is_null(),
+        "ws_open received a null factory context"
+    );
+    assert!(
+        c4Socket_getNativeHandle(c4sock).is_null(),
+        "ws_open found an existing native handle"
+    );
     let handle: &Handle = &*(context as *mut Handle);
-    assert!(!c4sock.is_null());
-    let c4sock: &mut C4Socket = &mut *c4sock;
-    assert!(c4Socket_getNativeHandle(c4sock).is_null());
-    assert!(!addr.is_null());
-    let addr: &C4Address = &*addr;
 
-    let request = c4address_to_request(c4sock as *mut C4Socket as usize, addr, options);
+    let request = c4address_to_request(c4sock as usize, &*addr, options);
     info!(
         "c4sock {c4sock:?}: open was called with uri: {:?}",
         request.as_ref().map(Request::uri)

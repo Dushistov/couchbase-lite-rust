@@ -21,6 +21,7 @@ use serde_fleece::NonNullConst;
 use std::{
     borrow::Cow,
     io::Write,
+    marker::PhantomData,
     mem,
     os::raw::{c_int, c_void},
     ptr::NonNull,
@@ -122,6 +123,38 @@ type WsWriter = futures_util::stream::SplitSink<
 struct C4SocketPtr(*mut C4Socket);
 unsafe impl Send for C4SocketPtr {}
 
+struct ConnectingPhase;
+struct OpenPhase;
+
+struct FfiCore<P> {
+    socket: C4SocketPtr,
+    phase: PhantomData<P>,
+}
+
+impl FfiCore<ConnectingPhase> {
+    unsafe fn got_http_response(&mut self, status: c_int, headers: &FLSliceResult) {
+        unsafe { c4socket_gotHTTPResponse(self.socket.0, status, headers.as_fl_slice()) };
+    }
+
+    unsafe fn opened(self) -> FfiCore<OpenPhase> {
+        unsafe { c4socket_opened(self.socket.0) };
+        FfiCore {
+            socket: self.socket,
+            phase: PhantomData,
+        }
+    }
+}
+
+impl FfiCore<OpenPhase> {
+    unsafe fn received(&mut self, data: &[u8]) {
+        unsafe { c4socket_received(self.socket.0, data.into()) };
+    }
+
+    unsafe fn close_requested(&mut self, status: c_int, reason: &str) {
+        unsafe { c4socket_closeRequested(self.socket.0, status, reason.as_bytes().into()) };
+    }
+}
+
 #[repr(transparent)]
 #[derive(Debug)]
 struct Error(C4Error);
@@ -187,12 +220,16 @@ unsafe extern "C" fn ws_open(
     let writer = sock_impl.writer.clone();
     let close_control = sock_impl.close_control.clone();
     c4Socket_setNativeHandle(c4sock, Box::into_raw(sock_impl) as *mut c_void);
-    let c4sock = C4SocketPtr(c4sock);
+    let core = FfiCore::<ConnectingPhase> {
+        socket: C4SocketPtr(c4sock),
+        phase: PhantomData,
+    };
+    let c4sock = core.socket;
     let handle2 = handle.clone();
     handle.spawn(async move {
         let close_ctl = close_control.clone();
         match do_open(
-            c4sock,
+            core,
             request,
             stop_rx,
             command_rx,
@@ -527,7 +564,7 @@ unsafe fn c4address_to_request(
 }
 
 async fn do_open(
-    c4sock: C4SocketPtr,
+    mut core: FfiCore<ConnectingPhase>,
     request: Result<Request, Error>,
     mut stop_rx: oneshot::Receiver<()>,
     command_rx: mpsc::UnboundedReceiver<Command>,
@@ -535,6 +572,7 @@ async fn do_open(
     close_control: Arc<CloseControl>,
     handle: Handle,
 ) -> Result<(), Error> {
+    let c4sock = core.socket;
     let request = request?;
     let (ws_stream, http_resp) = tokio::select! {
         v = connect_async(request) => {
@@ -552,13 +590,7 @@ async fn do_open(
 
     {
         let headers = unsafe { headers_to_dict(&http_resp) }?;
-        unsafe {
-            c4socket_gotHTTPResponse(
-                c4sock.0,
-                http_resp.status().as_u16() as c_int,
-                headers.as_fl_slice(),
-            )
-        };
+        unsafe { core.got_http_response(http_resp.status().as_u16() as c_int, &headers) };
         mem::drop(http_resp);
     }
     let (ws_writer, ws_reader) = ws_stream.split();
@@ -566,29 +598,20 @@ async fn do_open(
         let mut lock = writer.lock().await;
         lock.0 = Some(ws_writer);
     }
-    unsafe {
-        c4socket_opened(c4sock.0);
-    }
-    main_read_loop(
-        c4sock,
-        ws_reader,
-        stop_rx,
-        command_rx,
-        close_control,
-        handle,
-    )
-    .await?;
+    let core = unsafe { core.opened() };
+    main_read_loop(core, ws_reader, stop_rx, command_rx, close_control, handle).await?;
     Ok(())
 }
 
 async fn main_read_loop(
-    c4sock: C4SocketPtr,
+    mut core: FfiCore<OpenPhase>,
     mut ws_reader: WsReader,
     mut stop_rx: oneshot::Receiver<()>,
     mut command_rx: mpsc::UnboundedReceiver<Command>,
     close_control: Arc<CloseControl>,
     handle: Handle,
 ) -> Result<(), Error> {
+    let c4sock = core.socket;
     'read_loop: loop {
         tokio::select! {
             message = ws_reader.next() => {
@@ -601,9 +624,7 @@ async fn main_read_loop(
                     m @ Message::Text(_) | m @ Message::Binary(_) => {
 
                         let data = m.into_data();
-                        unsafe {
-                            c4socket_received(c4sock.0, data.as_ref().into());
-                        }
+                        unsafe { core.received(data.as_ref()) };
                         let mut remaining = data.len();
                         loop {
                             let Some(Command::CompletedReceive(byte_count)) = command_rx.recv().await else {
@@ -632,10 +653,7 @@ async fn main_read_loop(
                             LegacyCloseState::None => {
                                 close_control.state.store(LegacyCloseState::Server, Ordering::Release);
                                 let task = handle.spawn_blocking(move || {
-                                    let c4sock: C4SocketPtr = c4sock;
-                                    unsafe {
-                                        c4socket_closeRequested(c4sock.0, code, reason.as_bytes().into());
-                                    }
+                                    unsafe { core.close_requested(code, &reason) };
                                 });
                                 task.await.expect("The task being joined has panicked");
 

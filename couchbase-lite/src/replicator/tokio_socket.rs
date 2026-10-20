@@ -608,7 +608,17 @@ where
     let (ws_stream, http_resp) = tokio::select! {
         v = connect_async(request) => {
             trace!("c4sock {context:#x}: connect_async finished");
-            v.map_err(|err| unsafe { tungstenite_err_to_c4_err(err) })?
+            match v {
+                Ok(result) => result,
+                Err(err) => {
+                    if let tungstenite::Error::Http(ref response) = err {
+                        if let Ok(headers) = unsafe { headers_to_dict(response) } {
+                            core.got_http_response(response.status().as_u16() as c_int, headers);
+                        }
+                    }
+                    return Err(unsafe { tungstenite_err_to_c4_err(err) });
+                }
+            }
         }
         _ = (&mut stop_rx) => {
             trace!("c4sock {context:#x}: do_open interrupted");
@@ -924,10 +934,88 @@ fn http_basic_auth_header(user_id: &str, password: &str) -> String {
     ret
 }
 
-#[test]
-fn test_basic_auth_encode() {
-    assert_eq!(
-        "Basic Ym9iOnNlY3JldA==",
-        http_basic_auth_header("bob", "secret")
-    );
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_basic_auth_encode() {
+        assert_eq!(
+            "Basic Ym9iOnNlY3JldA==",
+            http_basic_auth_header("bob", "secret")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_failed_handshake_reports_http_response() {
+        use std::io::Read;
+
+        struct RecordingSink(Arc<Mutex<Vec<(c_int, String)>>>);
+
+        impl From<&RecordingSink> for usize {
+            fn from(_: &RecordingSink) -> Self {
+                0
+            }
+        }
+
+        impl ConnectingSink for RecordingSink {
+            type Open = FfiCore<OpenPhase>;
+
+            fn got_http_response(&mut self, status: c_int, headers: FLSliceResult) {
+                let header = unsafe {
+                    let value = FLValue_FromData(headers.as_fl_slice(), FLTrust::kFLUntrusted);
+                    let dict = FLValue_AsDict(value);
+                    match ValueRef::new(FLDict_Get(dict, "x-test".into())) {
+                        ValueRef::String(value) => value.to_owned(),
+                        other => panic!("missing response header: {other:?}"),
+                    }
+                };
+                self.0.lock().unwrap().push((status, header));
+            }
+
+            fn opened(self) -> Self::Open {
+                panic!("a rejected handshake must not open the socket")
+            }
+        }
+
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0; 1024];
+            stream.read(&mut request).unwrap();
+            stream
+                .write_all(
+                    b"HTTP/1.1 403 Forbidden\r\nX-Test: rejected\r\nContent-Length: 0\r\n\r\n",
+                )
+                .unwrap();
+        });
+
+        let responses = Arc::new(Mutex::new(Vec::new()));
+        let (stop_tx, stop_rx) = oneshot::channel();
+        let (_commands, command_rx) = mpsc::unbounded_channel();
+        let (_send_tx, send_rx) = mpsc::unbounded_channel();
+        let close_control = Arc::new(CloseControl {
+            confirm: Notify::new(),
+            stop_read_loop: TokioMutex::new(Some(stop_tx)),
+            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
+            signaled: AtomicBool::new(false),
+        });
+        let error = do_open(
+            RecordingSink(responses.clone()),
+            Ok(format!("ws://{address}/").into_client_request().unwrap()),
+            stop_rx,
+            command_rx,
+            Arc::new(TokioMutex::new((None, send_rx))),
+            close_control,
+            Handle::current(),
+        )
+        .await
+        .unwrap_err();
+        server.join().unwrap();
+
+        assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
+        assert_eq!(error.0.code, 403);
+        assert_eq!(*responses.lock().unwrap(), [(403, "rejected".to_owned())]);
+    }
 }

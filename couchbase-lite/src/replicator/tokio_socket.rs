@@ -97,12 +97,17 @@ impl AtomicLegacyCloseState {
     fn new(val: LegacyCloseState) -> Self {
         Self(AtomicU8::new(val as u8))
     }
-    fn store(&self, val: LegacyCloseState, ordering: Ordering) {
-        self.0.store(val as u8, ordering);
-    }
-    fn load(&self, ordering: Ordering) -> LegacyCloseState {
-        let val = self.0.load(ordering);
-        match val {
+    // Claim an unstarted close and return the state observed before the attempt.
+    fn claim(&self, new_state: LegacyCloseState) -> LegacyCloseState {
+        let previous = match self.0.compare_exchange(
+            LegacyCloseState::None as u8,
+            new_state as u8,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        ) {
+            Ok(previous) | Err(previous) => previous,
+        };
+        match previous {
             0 => LegacyCloseState::None,
             1 => LegacyCloseState::Server,
             2 => LegacyCloseState::Client,
@@ -327,14 +332,9 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
 
     socket.handle.spawn(async move {
         trace!("c4sock {c4sock:?}: start closing");
-        let state = close_control.state.load(Ordering::Acquire);
+        let state = close_control.state.claim(LegacyCloseState::Client);
         let is_client_close = match state {
-            LegacyCloseState::None => {
-                close_control
-                    .state
-                    .store(LegacyCloseState::Client, Ordering::Release);
-                true
-            }
+            LegacyCloseState::None => true,
             LegacyCloseState::Server => false,
             LegacyCloseState::Client => {
                 panic!("Internal logic error: duplicate requestClose calls")
@@ -658,15 +658,12 @@ where
                         let (code, reason) = close_frame
                             .map(|frame| (u16::from(frame.code) as c_int, frame.reason))
                             .unwrap_or((C4WebSocketCloseCode::kWebSocketCloseNoCode.0, "".into()));
-                        let state = close_control
-                            .state
-                            .load(Ordering::Acquire);
+                        let state = close_control.state.claim(LegacyCloseState::Server);
                         info!(
                             "c4sock {context:#x}: close frame was received, state {state:?}"
                         );
                         match state {
                             LegacyCloseState::None => {
-                                close_control.state.store(LegacyCloseState::Server, Ordering::Release);
                                 let task = handle.spawn_blocking(move || {
                                     core.close_requested(code, &reason);
                                 });

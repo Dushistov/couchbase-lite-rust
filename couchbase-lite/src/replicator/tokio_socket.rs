@@ -27,7 +27,7 @@ use std::{
     str::FromStr,
     sync::{
         atomic::{AtomicBool, AtomicU8, Ordering},
-        Arc, Condvar, Mutex,
+        Arc, Mutex,
     },
     time::Duration,
 };
@@ -313,44 +313,6 @@ unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usi
     let _ = socket.commands.send(Command::CompletedReceive(byte_count));
 }
 
-struct DoneSignal {
-    inner: Arc<(Mutex<bool>, Condvar)>,
-}
-
-impl Drop for DoneSignal {
-    fn drop(&mut self) {
-        trace!("DoneSignal::drop {:?}", Arc::as_ptr(&self.inner));
-        let (lock, cvar) = &*self.inner;
-        let mut done = lock.lock().expect("mutex lock failed");
-        *done = true;
-        cvar.notify_one();
-    }
-}
-
-struct WaitDoneSignal {
-    inner: Arc<(Mutex<bool>, Condvar)>,
-}
-
-impl WaitDoneSignal {
-    fn wait(&self) {
-        let (lock, cvar) = &*self.inner;
-        let mut done = lock.lock().expect("mutex lock failed");
-        while !*done {
-            done = cvar.wait(done).expect("condvar wait failed");
-        }
-    }
-}
-
-fn wait_signal() -> (WaitDoneSignal, DoneSignal) {
-    let inner = Arc::new((Mutex::new(false), Condvar::new()));
-    (
-        WaitDoneSignal {
-            inner: inner.clone(),
-        },
-        DoneSignal { inner },
-    )
-}
-
 unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, message: C4String) {
     trace!(
         "c4sock {c4sock:?}: requestClose status {status}, message: {:?}",
@@ -363,13 +325,8 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
     let close_control = socket.close_control.clone();
     let c4sock = C4SocketPtr(c4sock);
 
-    let (wait_done, done_signal) = wait_signal();
-
     socket.handle.spawn(async move {
-        trace!(
-            "c4sock {c4sock:?}: start closing, done signal addr {:?}",
-            Arc::as_ptr(&done_signal.inner)
-        );
+        trace!("c4sock {c4sock:?}: start closing");
         let state = close_control.state.load(Ordering::Acquire);
         let is_client_close = match state {
             LegacyCloseState::None => {
@@ -430,15 +387,6 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
         }
         close_control.signal_closed(c4sock, err);
     });
-    trace!(
-        "c4sock {c4sock:?}: waiting done signal {:?}",
-        Arc::as_ptr(&wait_done.inner)
-    );
-    wait_done.wait();
-    trace!(
-        "c4sock {c4sock:?}: got done signal {:?}",
-        Arc::as_ptr(&wait_done.inner)
-    );
 }
 
 unsafe extern "C" fn ws_dispose(c4sock: *mut C4Socket) {

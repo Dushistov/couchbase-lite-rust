@@ -350,12 +350,11 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
                 .filter(|code| code.is_allowed());
             let Some(code) = code else {
                 warn!("c4sock {c4sock:?}: invalid close status {status}, closing transport without a close frame");
-                // The read loop may also finish when stopped; either task must report this error.
-                *close_control.requested_close_error.lock().unwrap() = Some(err);
                 // Drop the writer and stop the reader without starting a close handshake.
                 *writer_slot = None;
                 drop(writer_guard);
-                close_control.signal_to_stop_read_loop(c4sock).await;
+                // The read loop may also finish when stopped; either task must report this error.
+                close_control.stop_for_requested_close(c4sock, err).await;
                 close_control.signal_closed(c4sock, err);
                 return;
             };
@@ -370,7 +369,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
                 error!("c4sock {c4sock:?}: requestClose, writer.send failure: {err}");
             }
         } else {
-            close_control.signal_to_stop_read_loop(c4sock).await;
+            close_control.stop_for_requested_close(c4sock, err).await;
             info!("c4sock {c4sock:?}: requestClose writer is None => not intialized");
             return;
         }
@@ -583,10 +582,12 @@ where
         }
         _ = (&mut stop_rx) => {
             trace!("c4sock {context:#x}: do_open interrupted");
-            return Err(Error(network_error(
-                C4NetworkErrorCode::kC4NetErrNotConnected,
-                "open was interrupted by requestClose",
-            )));
+            return Err(Error(close_control.requested_close_error.lock().unwrap().unwrap_or_else(|| {
+                network_error(
+                    C4NetworkErrorCode::kC4NetErrNotConnected,
+                    "open was interrupted by requestClose",
+                )
+            })));
         }
     };
 
@@ -879,6 +880,11 @@ impl From<FLError> for Error {
 }
 
 impl CloseControl {
+    async fn stop_for_requested_close(&self, ctx: C4SocketPtr, error: C4Error) {
+        *self.requested_close_error.lock().unwrap() = Some(error);
+        self.signal_to_stop_read_loop(ctx).await;
+    }
+
     fn signal_closed(&self, ctx: C4SocketPtr, error: C4Error) {
         if !self.signaled.swap(true, Ordering::SeqCst) {
             let error = self.requested_close_error.lock().unwrap().unwrap_or(error);
@@ -986,6 +992,69 @@ mod tests {
         assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
         assert_eq!(error.0.code, 403);
         assert_eq!(*responses.lock().unwrap(), [(403, "rejected".to_owned())]);
+    }
+
+    #[tokio::test]
+    async fn test_request_close_before_open_preserves_status() {
+        struct NeverOpened;
+
+        impl From<&NeverOpened> for usize {
+            fn from(_: &NeverOpened) -> Self {
+                0
+            }
+        }
+
+        impl ConnectingSink for NeverOpened {
+            type Open = FfiCore<OpenPhase>;
+
+            fn got_http_response(&mut self, _: c_int, _: FLSliceResult) {
+                panic!("the handshake must not finish");
+            }
+
+            fn opened(self) -> Self::Open {
+                panic!("the handshake must not finish");
+            }
+        }
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let (stop_tx, stop_rx) = oneshot::channel();
+        let (_commands, command_rx) = mpsc::unbounded_channel();
+        let (_send_tx, send_rx) = mpsc::unbounded_channel();
+        let close_control = Arc::new(CloseControl {
+            confirm: Notify::new(),
+            stop_read_loop: TokioMutex::new(Some(stop_tx)),
+            requested_close_error: Mutex::new(None),
+            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
+            signaled: AtomicBool::new(false),
+        });
+        let open_task = tokio::spawn(do_open(
+            NeverOpened,
+            Ok(format!("ws://{address}/").into_client_request().unwrap()),
+            stop_rx,
+            command_rx,
+            Arc::new(TokioMutex::new((None, send_rx))),
+            close_control.clone(),
+            Handle::current(),
+        ));
+
+        let (_connection, _) = tokio::time::timeout(Duration::from_secs(2), listener.accept())
+            .await
+            .unwrap()
+            .unwrap();
+        close_control
+            .stop_for_requested_close(
+                C4SocketPtr(std::ptr::null_mut()),
+                close_error(504, "Timed out"),
+            )
+            .await;
+        let error = tokio::time::timeout(Duration::from_secs(2), open_task)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap_err();
+        assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
+        assert_eq!(error.0.code, 504);
     }
 
     #[tokio::test]

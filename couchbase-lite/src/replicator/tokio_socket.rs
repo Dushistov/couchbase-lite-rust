@@ -647,6 +647,15 @@ where
                     m @ Message::Text(_) | m @ Message::Binary(_) => {
 
                         let data = m.into_data();
+                        if data.is_empty() {
+                            return Err(Error(unsafe {
+                                c4error_make(
+                                    C4ErrorDomain::LiteCoreDomain,
+                                    C4ErrorCode::kC4ErrorCorruptData.0,
+                                    "empty BLIP message".into(),
+                                )
+                            }));
+                        }
                         core.received(data.as_ref());
                         let mut remaining = data.len();
                         loop {
@@ -1078,6 +1087,86 @@ mod tests {
             .unwrap_err();
         assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
         assert_eq!(error.0.code, 504);
+    }
+
+    #[tokio::test]
+    async fn test_empty_websocket_message_is_rejected_before_litecore() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        struct NoMessages;
+
+        impl From<&NoMessages> for usize {
+            fn from(_: &NoMessages) -> Self {
+                0
+            }
+        }
+
+        impl OpenSink for NoMessages {
+            fn received(&mut self, _: &[u8]) {
+                panic!("empty message must not reach LiteCore");
+            }
+
+            fn close_requested(&mut self, _: c_int, _: &str) {
+                panic!("no close frame expected");
+            }
+        }
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut tcp, _) = listener.accept().await.unwrap();
+            let mut request = Vec::new();
+            let mut buffer = [0; 1024];
+            while !request.ends_with(b"\r\n\r\n") {
+                let count = tcp.read(&mut buffer).await.unwrap();
+                assert!(count > 0 && request.len() + count <= 4096);
+                request.extend_from_slice(&buffer[..count]);
+            }
+            let request = std::str::from_utf8(&request).unwrap();
+            let key = request
+                .lines()
+                .filter_map(|line| line.split_once(':'))
+                .find(|(name, _)| name.eq_ignore_ascii_case("Sec-WebSocket-Key"))
+                .unwrap()
+                .1
+                .trim();
+            let accept = tungstenite::handshake::derive_accept_key(key.as_bytes());
+            let response = format!(
+                "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {accept}\r\n\r\n"
+            );
+            tcp.write_all(response.as_bytes()).await.unwrap();
+            tcp.write_all(&[0x82, 0]).await.unwrap();
+            tcp
+        });
+
+        let (socket, _) = connect_async(format!("ws://{address}/")).await.unwrap();
+        let (_writer, reader) = socket.split();
+        let _server_tcp = server.await.unwrap();
+        let (_stop_tx, stop_rx) = oneshot::channel();
+        let (_commands, command_rx) = mpsc::unbounded_channel();
+        let close_control = Arc::new(CloseControl {
+            confirm: Notify::new(),
+            stop_read_loop: TokioMutex::new(None),
+            stop_error: Mutex::new(None),
+            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
+            signaled: AtomicBool::new(false),
+        });
+        let error = tokio::time::timeout(
+            Duration::from_secs(2),
+            main_read_loop(
+                NoMessages,
+                reader,
+                stop_rx,
+                command_rx,
+                close_control,
+                Handle::current(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap_err();
+        assert_eq!(error.0.domain, C4ErrorDomain::LiteCoreDomain);
+        assert_eq!(error.0.code, C4ErrorCode::kC4ErrorCorruptData.0);
     }
 
     #[tokio::test]

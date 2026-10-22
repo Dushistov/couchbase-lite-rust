@@ -78,7 +78,7 @@ enum Command {
 struct CloseControl {
     confirm: Notify,
     stop_read_loop: TokioMutex<Option<oneshot::Sender<()>>>,
-    requested_close_error: Mutex<Option<C4Error>>,
+    stop_error: Mutex<Option<C4Error>>,
     state: AtomicLegacyCloseState,
     signaled: AtomicBool,
 }
@@ -248,7 +248,7 @@ unsafe extern "C" fn ws_open(
             state: AtomicLegacyCloseState::new(LegacyCloseState::None),
             confirm: Notify::new(),
             stop_read_loop: TokioMutex::new(Some(stop_tx)),
-            requested_close_error: Mutex::new(None),
+            stop_error: Mutex::new(None),
             signaled: AtomicBool::new(false),
         }),
         send_queue: send_q_tx,
@@ -288,6 +288,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
     );
     let socket = socket_impl(c4sock).as_ref();
     let writer = socket.writer.clone();
+    let close_control = socket.close_control.clone();
     let data = Bytes::from_owner(allocated_data);
     socket
         .send_queue
@@ -295,21 +296,28 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
         .expect("Inernal error write to send queue failed");
     let c4sock = C4SocketPtr(c4sock);
     socket.handle.spawn(async move {
-        let mut writer = writer.lock().await;
-        let (writer, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) = &mut writer;
-        if let (Some(writer), Ok(data)) = (writer.as_mut(), send_rx.try_recv()) {
-            send_binary_msg(c4sock, writer, data).await;
+        let mut writer_guard = writer.lock().await;
+        let (writer_slot, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) =
+            &mut writer_guard;
+        if let (Some(writer), Ok(data)) = (writer_slot.as_mut(), send_rx.try_recv()) {
+            if let Err(err) = send_binary_msg(c4sock, writer, data).await {
+                *writer_slot = None;
+                drop(writer_guard);
+                close_control.signal_write_failure(c4sock, err).await;
+            }
         }
     });
 }
 
-async fn send_binary_msg(ctx: C4SocketPtr, writer: &mut WsWriter, data: Bytes) {
+async fn send_binary_msg(
+    ctx: C4SocketPtr,
+    writer: &mut WsWriter,
+    data: Bytes,
+) -> Result<(), tungstenite::Error> {
     let n = data.len();
-    if let Err(err) = writer.send(Message::Binary(data)).await {
-        error!("c4sock {ctx:?}: writer.send failure: {err}");
-    } else {
-        unsafe { c4socket_completedWrite(ctx.0, n) };
-    }
+    writer.send(Message::Binary(data)).await?;
+    unsafe { c4socket_completedWrite(ctx.0, n) };
+    Ok(())
 }
 
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
@@ -354,22 +362,30 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
                 *writer_slot = None;
                 drop(writer_guard);
                 // The read loop may also finish when stopped; either task must report this error.
-                close_control.stop_for_requested_close(c4sock, err).await;
+                close_control.stop_with_error(c4sock, err).await;
                 close_control.signal_closed(c4sock, err);
                 return;
             };
             while let Ok(data) = send_rx.try_recv() {
-                send_binary_msg(c4sock, writer, data).await;
+                if let Err(write_err) = send_binary_msg(c4sock, writer, data).await {
+                    *writer_slot = None;
+                    drop(writer_guard);
+                    close_control.signal_write_failure(c4sock, write_err).await;
+                    return;
+                }
             }
             trace!("c4sock {c4sock:?}: sending close message");
             if let Err(err) = writer.send(Message::Close(Some(CloseFrame {
                 code,
                 reason: reason.into(),
             }))).await {
-                error!("c4sock {c4sock:?}: requestClose, writer.send failure: {err}");
+                *writer_slot = None;
+                drop(writer_guard);
+                close_control.signal_write_failure(c4sock, err).await;
+                return;
             }
         } else {
-            close_control.stop_for_requested_close(c4sock, err).await;
+            close_control.stop_with_error(c4sock, err).await;
             info!("c4sock {c4sock:?}: requestClose writer is None => not intialized");
             return;
         }
@@ -582,7 +598,7 @@ where
         }
         _ = (&mut stop_rx) => {
             trace!("c4sock {context:#x}: do_open interrupted");
-            return Err(Error(close_control.requested_close_error.lock().unwrap().unwrap_or_else(|| {
+            return Err(Error(close_control.stop_error.lock().unwrap().unwrap_or_else(|| {
                 network_error(
                     C4NetworkErrorCode::kC4NetErrNotConnected,
                     "open was interrupted by requestClose",
@@ -880,14 +896,21 @@ impl From<FLError> for Error {
 }
 
 impl CloseControl {
-    async fn stop_for_requested_close(&self, ctx: C4SocketPtr, error: C4Error) {
-        *self.requested_close_error.lock().unwrap() = Some(error);
+    async fn stop_with_error(&self, ctx: C4SocketPtr, error: C4Error) {
+        *self.stop_error.lock().unwrap() = Some(error);
         self.signal_to_stop_read_loop(ctx).await;
+    }
+
+    async fn signal_write_failure(&self, ctx: C4SocketPtr, error: tungstenite::Error) {
+        error!("c4sock {ctx:?}: writer.send failure: {error}");
+        let error = unsafe { tungstenite_err_to_c4_err(error) }.0;
+        self.stop_with_error(ctx, error).await;
+        self.signal_closed(ctx, error);
     }
 
     fn signal_closed(&self, ctx: C4SocketPtr, error: C4Error) {
         if !self.signaled.swap(true, Ordering::SeqCst) {
-            let error = self.requested_close_error.lock().unwrap().unwrap_or(error);
+            let error = self.stop_error.lock().unwrap().unwrap_or(error);
             unsafe { c4socket_closed(ctx.0, error) };
         }
     }
@@ -972,7 +995,7 @@ mod tests {
         let close_control = Arc::new(CloseControl {
             confirm: Notify::new(),
             stop_read_loop: TokioMutex::new(Some(stop_tx)),
-            requested_close_error: Mutex::new(None),
+            stop_error: Mutex::new(None),
             state: AtomicLegacyCloseState::new(LegacyCloseState::None),
             signaled: AtomicBool::new(false),
         });
@@ -1024,7 +1047,7 @@ mod tests {
         let close_control = Arc::new(CloseControl {
             confirm: Notify::new(),
             stop_read_loop: TokioMutex::new(Some(stop_tx)),
-            requested_close_error: Mutex::new(None),
+            stop_error: Mutex::new(None),
             state: AtomicLegacyCloseState::new(LegacyCloseState::None),
             signaled: AtomicBool::new(false),
         });
@@ -1043,7 +1066,7 @@ mod tests {
             .unwrap()
             .unwrap();
         close_control
-            .stop_for_requested_close(
+            .stop_with_error(
                 C4SocketPtr(std::ptr::null_mut()),
                 close_error(504, "Timed out"),
             )
@@ -1117,7 +1140,7 @@ mod tests {
         let close_control = Arc::new(CloseControl {
             confirm: Notify::new(),
             stop_read_loop: TokioMutex::new(Some(stop_tx)),
-            requested_close_error: Mutex::new(None),
+            stop_error: Mutex::new(None),
             state: AtomicLegacyCloseState::new(LegacyCloseState::None),
             signaled: AtomicBool::new(false),
         });

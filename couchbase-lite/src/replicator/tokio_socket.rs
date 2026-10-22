@@ -78,6 +78,7 @@ enum Command {
 struct CloseControl {
     confirm: Notify,
     stop_read_loop: TokioMutex<Option<oneshot::Sender<()>>>,
+    requested_close_error: Mutex<Option<C4Error>>,
     state: AtomicLegacyCloseState,
     signaled: AtomicBool,
 }
@@ -242,6 +243,7 @@ unsafe extern "C" fn ws_open(
             state: AtomicLegacyCloseState::new(LegacyCloseState::None),
             confirm: Notify::new(),
             stop_read_loop: TokioMutex::new(Some(stop_tx)),
+            requested_close_error: Mutex::new(None),
             signaled: AtomicBool::new(false),
         }),
         send_queue: send_q_tx,
@@ -354,7 +356,6 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
         "c4sock {c4sock:?}: requestClose status {status}, message: {:?}",
         std::str::from_utf8(message.into())
     );
-    let code: CloseCode = u16::try_from(status).unwrap_or(1).into();
     let reason = String::from_utf8_lossy(message.into()).into_owned();
 
     let socket = socket_impl(c4sock).as_ref();
@@ -383,20 +384,32 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
             }
         };
         let err = close_error(status, &reason);
-        let mut writer = writer.lock().await;
-        let (writer, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) = &mut writer;
-        if let Some(writer) = writer.as_mut() {
+        let mut writer_guard = writer.lock().await;
+        let (writer_slot, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) = &mut writer_guard;
+        if let Some(writer) = writer_slot.as_mut() {
+            let code = u16::try_from(status)
+                .ok()
+                .map(CloseCode::from)
+                .filter(|code| code.is_allowed());
+            let Some(code) = code else {
+                warn!("c4sock {c4sock:?}: invalid close status {status}, closing transport without a close frame");
+                // The read loop may also finish when stopped; either task must report this error.
+                *close_control.requested_close_error.lock().unwrap() = Some(err);
+                // Drop the writer and stop the reader without starting a close handshake.
+                *writer_slot = None;
+                drop(writer_guard);
+                close_control.signal_to_stop_read_loop(c4sock).await;
+                close_control.signal_closed(c4sock, err);
+                return;
+            };
             while let Ok(data) = send_rx.try_recv() {
                 send_binary_msg(c4sock, writer, data).await;
             }
             trace!("c4sock {c4sock:?}: sending close message");
-            if let Err(err) = writer
-                .send(Message::Close(Some(CloseFrame {
-                    code,
-                    reason: reason.into(),
-                })))
-                .await
-            {
+            if let Err(err) = writer.send(Message::Close(Some(CloseFrame {
+                code,
+                reason: reason.into(),
+            }))).await {
                 error!("c4sock {c4sock:?}: requestClose, writer.send failure: {err}");
             }
         } else {
@@ -672,7 +685,16 @@ where
                         core.received(data.as_ref());
                         let mut remaining = data.len();
                         loop {
-                            let Some(Command::CompletedReceive(byte_count)) = command_rx.recv().await else {
+                            let command = tokio::select! {
+                                command = command_rx.recv() => command,
+                                _ = &mut stop_rx => {
+                                    return Err(Error(network_error(
+                                        C4NetworkErrorCode::kC4NetErrNotConnected,
+                                        "receive was interrupted by requestClose",
+                                    )));
+                                }
+                            };
+                            let Some(Command::CompletedReceive(byte_count)) = command else {
                                 return Err(Error(network_error(
                                     C4NetworkErrorCode::kC4NetErrConnectionAborted,
                                     "receive acknowledgement channel closed",
@@ -685,9 +707,9 @@ where
                         }
                     }
                     Message::Close(close_frame) => {
-                        let (code, reason) = close_frame.map(|x| (u16::from(&x.code) as c_int, x.reason)).unwrap_or_else(|| {
-                            (-1, "".into())
-                        });
+                        let (code, reason) = close_frame
+                            .map(|frame| (u16::from(frame.code) as c_int, frame.reason))
+                            .unwrap_or((C4WebSocketCloseCode::kWebSocketCloseNoCode.0, "".into()));
                         let state = close_control
                             .state
                             .load(Ordering::Acquire);
@@ -914,6 +936,7 @@ impl From<FLError> for Error {
 impl CloseControl {
     fn signal_closed(&self, ctx: C4SocketPtr, error: C4Error) {
         if !self.signaled.swap(true, Ordering::SeqCst) {
+            let error = self.requested_close_error.lock().unwrap().unwrap_or(error);
             unsafe { c4socket_closed(ctx.0, error) };
         }
     }
@@ -998,6 +1021,7 @@ mod tests {
         let close_control = Arc::new(CloseControl {
             confirm: Notify::new(),
             stop_read_loop: TokioMutex::new(Some(stop_tx)),
+            requested_close_error: Mutex::new(None),
             state: AtomicLegacyCloseState::new(LegacyCloseState::None),
             signaled: AtomicBool::new(false),
         });
@@ -1017,5 +1041,102 @@ mod tests {
         assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
         assert_eq!(error.0.code, 403);
         assert_eq!(*responses.lock().unwrap(), [(403, "rejected".to_owned())]);
+    }
+
+    #[tokio::test]
+    async fn test_close_interrupts_receive_wait_without_a_close_frame() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        struct RecordingSink(Arc<Notify>);
+
+        impl From<&RecordingSink> for usize {
+            fn from(_: &RecordingSink) -> Self {
+                0
+            }
+        }
+
+        impl OpenSink for RecordingSink {
+            fn received(&mut self, _: &[u8]) {
+                self.0.notify_one();
+            }
+
+            fn close_requested(&mut self, _: c_int, _: &str) {
+                panic!("the peer did not send a close frame");
+            }
+        }
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut tcp, _) = listener.accept().await.unwrap();
+            let mut request = Vec::new();
+            let mut buffer = [0; 1024];
+            while !request.ends_with(b"\r\n\r\n") {
+                let count = tcp.read(&mut buffer).await.unwrap();
+                assert!(count > 0 && request.len() + count <= 4096);
+                request.extend_from_slice(&buffer[..count]);
+            }
+            let request = std::str::from_utf8(&request).unwrap();
+            let key = request
+                .lines()
+                .filter_map(|line| line.split_once(':'))
+                .find(|(name, _)| name.eq_ignore_ascii_case("Sec-WebSocket-Key"))
+                .unwrap()
+                .1
+                .trim();
+            let accept = tungstenite::handshake::derive_accept_key(key.as_bytes());
+            let response = format!(
+                "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {accept}\r\n\r\n"
+            );
+            tcp.write_all(response.as_bytes()).await.unwrap();
+            tcp.write_all(&[0x82, 4, b'd', b'a', b't', b'a'])
+                .await
+                .unwrap();
+            // The client must close TCP without sending a WebSocket Close frame.
+            tcp.read(&mut buffer).await.unwrap()
+        });
+
+        let (socket, _) = connect_async(format!("ws://{address}/")).await.unwrap();
+        let (writer, reader) = socket.split();
+        let (stop_tx, stop_rx) = oneshot::channel();
+        let (_commands, command_rx) = mpsc::unbounded_channel();
+        let close_control = Arc::new(CloseControl {
+            confirm: Notify::new(),
+            stop_read_loop: TokioMutex::new(Some(stop_tx)),
+            requested_close_error: Mutex::new(None),
+            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
+            signaled: AtomicBool::new(false),
+        });
+        let received = Arc::new(Notify::new());
+        let read_task = tokio::spawn(main_read_loop(
+            RecordingSink(received.clone()),
+            reader,
+            stop_rx,
+            command_rx,
+            close_control.clone(),
+            Handle::current(),
+        ));
+
+        tokio::time::timeout(Duration::from_secs(2), received.notified())
+            .await
+            .unwrap();
+        drop(writer);
+        close_control
+            .signal_to_stop_read_loop(C4SocketPtr(std::ptr::null_mut()))
+            .await;
+        let error = tokio::time::timeout(Duration::from_secs(2), read_task)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap_err();
+        assert_eq!(error.0.domain, C4ErrorDomain::NetworkDomain);
+        assert_eq!(error.0.code, C4NetworkErrorCode::kC4NetErrNotConnected.0);
+        assert_eq!(
+            tokio::time::timeout(Duration::from_secs(2), server)
+                .await
+                .unwrap()
+                .unwrap(),
+            0
+        );
     }
 }

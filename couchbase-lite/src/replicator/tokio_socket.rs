@@ -258,20 +258,9 @@ unsafe extern "C" fn ws_open(
     c4Socket_setNativeHandle(c4sock, Box::into_raw(sock_impl) as *mut c_void);
     let c4sock = C4SocketPtr(c4sock);
     let core = FfiCore::<ConnectingPhase>::new(c4sock);
-    let handle2 = handle.clone();
     handle.spawn(async move {
         let close_ctl = close_control.clone();
-        match do_open(
-            core,
-            request,
-            stop_rx,
-            command_rx,
-            writer,
-            close_control,
-            handle2,
-        )
-        .await
-        {
+        match do_open(core, request, stop_rx, command_rx, writer, close_control).await {
             Ok(()) => {}
             Err(err) => {
                 trace!("c4sock {c4sock:?}: signal closed");
@@ -572,7 +561,6 @@ async fn do_open<C>(
     command_rx: mpsc::UnboundedReceiver<Command>,
     writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Bytes>)>>,
     close_control: Arc<CloseControl>,
-    handle: Handle,
 ) -> Result<(), Error>
 where
     C: ConnectingSink,
@@ -618,7 +606,7 @@ where
         lock.0 = Some(ws_writer);
     }
     let core = core.opened();
-    main_read_loop(core, ws_reader, stop_rx, command_rx, close_control, handle).await?;
+    main_read_loop(core, ws_reader, stop_rx, command_rx, close_control).await?;
     Ok(())
 }
 
@@ -628,7 +616,6 @@ async fn main_read_loop<C>(
     mut stop_rx: oneshot::Receiver<()>,
     mut command_rx: mpsc::UnboundedReceiver<Command>,
     close_control: Arc<CloseControl>,
-    handle: Handle,
 ) -> Result<(), Error>
 where
     C: OpenSink,
@@ -690,11 +677,7 @@ where
                         );
                         match state {
                             LegacyCloseState::None => {
-                                let task = handle.spawn_blocking(move || {
-                                    core.close_requested(code, &reason);
-                                });
-                                task.await.expect("The task being joined has panicked");
-
+                                core.close_requested(code, &reason);
                             }
                             LegacyCloseState::Server => {
                                 warn!("c4sock {context:#x} duplicate close message from server: {code} {reason}");
@@ -1015,7 +998,6 @@ mod tests {
             command_rx,
             Arc::new(TokioMutex::new((None, send_rx))),
             close_control,
-            Handle::current(),
         )
         .await
         .unwrap_err();
@@ -1067,7 +1049,6 @@ mod tests {
             command_rx,
             Arc::new(TokioMutex::new((None, send_rx))),
             close_control.clone(),
-            Handle::current(),
         ));
 
         let (_connection, _) = tokio::time::timeout(Duration::from_secs(2), listener.accept())
@@ -1153,14 +1134,7 @@ mod tests {
         });
         let error = tokio::time::timeout(
             Duration::from_secs(2),
-            main_read_loop(
-                NoMessages,
-                reader,
-                stop_rx,
-                command_rx,
-                close_control,
-                Handle::current(),
-            ),
+            main_read_loop(NoMessages, reader, stop_rx, command_rx, close_control),
         )
         .await
         .unwrap()
@@ -1240,7 +1214,6 @@ mod tests {
             stop_rx,
             command_rx,
             close_control.clone(),
-            Handle::current(),
         ));
 
         tokio::time::timeout(Duration::from_secs(2), received.notified())

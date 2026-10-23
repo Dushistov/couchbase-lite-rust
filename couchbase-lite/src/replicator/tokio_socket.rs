@@ -14,11 +14,12 @@ use crate::{
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use futures_util::{
     sink::SinkExt,
-    stream::{SplitStream, StreamExt},
+    stream::{SplitSink, SplitStream, StreamExt},
 };
 use log::{error, info, trace, warn};
 use serde_fleece::NonNullConst;
 use std::{
+    future::Future,
     io::Write,
     marker::PhantomData,
     mem,
@@ -41,7 +42,7 @@ use tokio_tungstenite::{
     tungstenite::{
         self,
         client::IntoClientRequest,
-        handshake::client::Request,
+        handshake::client::{Request, Response},
         http::{self, header::HeaderName, HeaderValue, Uri},
         protocol::{frame::coding::CloseCode, CloseFrame},
         Bytes, Message,
@@ -123,10 +124,7 @@ impl AtomicLegacyCloseState {
 }
 
 type WsReader<S> = SplitStream<WebSocketStream<S>>;
-type WsWriter = futures_util::stream::SplitSink<
-    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
-    Message,
->;
+type WsWriter<S> = SplitSink<WebSocketStream<S>, Message>;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug)]
@@ -529,9 +527,9 @@ unsafe fn c4address_to_request(
 }
 
 async fn do_open<C>(
-    mut core: C,
+    core: C,
     request: Result<Request, Error>,
-    mut stop_rx: oneshot::Receiver<()>,
+    stop_rx: oneshot::Receiver<()>,
     command_rx: mpsc::UnboundedReceiver<Command>,
     writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
     close_control: Arc<CloseControl>,
@@ -541,10 +539,36 @@ where
     for<'a> &'a C: Into<usize>,
     for<'a> &'a C::Open: Into<usize>,
 {
-    let context: usize = (&core).into();
     let request = request?;
+    do_open_with_connect(
+        core,
+        connect_async(request),
+        stop_rx,
+        command_rx,
+        writer_rx,
+        close_control,
+    )
+    .await
+}
+
+async fn do_open_with_connect<C, S, F>(
+    mut core: C,
+    connect: F,
+    mut stop_rx: oneshot::Receiver<()>,
+    command_rx: mpsc::UnboundedReceiver<Command>,
+    writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
+    close_control: Arc<CloseControl>,
+) -> Result<(), Error>
+where
+    C: ConnectingSink,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    F: Future<Output = Result<(WebSocketStream<S>, Response), tungstenite::Error>>,
+    for<'a> &'a C: Into<usize>,
+    for<'a> &'a C::Open: Into<usize>,
+{
+    let context: usize = (&core).into();
     let (ws_stream, http_resp) = tokio::select! {
-        v = connect_async(request) => {
+        v = connect => {
             trace!("c4sock {context:#x}: connect_async finished");
             match v {
                 Ok(result) => result,
@@ -588,12 +612,14 @@ where
     Ok(())
 }
 
-async fn writer_loop(
-    mut writer: WsWriter,
+async fn writer_loop<S>(
+    mut writer: WsWriter<S>,
     mut commands: mpsc::UnboundedReceiver<WriterCommand>,
     close_control: Arc<CloseControl>,
     mut c4sock: C4SocketPtr,
-) {
+) where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
     while let Some(command) = commands.recv().await {
         match command {
             WriterCommand::Write(data) => {
@@ -1053,22 +1079,28 @@ mod tests {
             }
         }
 
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap();
         let (stop_tx, stop_rx) = oneshot::channel();
         let (_commands, command_rx) = mpsc::unbounded_channel();
         let (_send_tx, send_rx) = mpsc::unbounded_channel();
         let close_control = Arc::new(CloseControl::new(Some(stop_tx)));
-        let open_task = tokio::spawn(do_open(
+        let (connecting_tx, connecting_rx) = oneshot::channel();
+        let connect = async move {
+            let _ = connecting_tx.send(());
+            std::future::pending::<
+                Result<(WebSocketStream<tokio::io::DuplexStream>, Response), tungstenite::Error>,
+            >()
+            .await
+        };
+        let open_task = tokio::spawn(do_open_with_connect(
             NeverOpened,
-            Ok(format!("ws://{address}/").into_client_request().unwrap()),
+            connect,
             stop_rx,
             command_rx,
             send_rx,
             close_control.clone(),
         ));
 
-        let (_connection, _) = tokio::time::timeout(Duration::from_secs(2), listener.accept())
+        tokio::time::timeout(Duration::from_secs(2), connecting_rx)
             .await
             .unwrap()
             .unwrap();

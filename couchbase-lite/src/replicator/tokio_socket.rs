@@ -299,8 +299,9 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
         let (writer_slot, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) =
             &mut writer_guard;
         if let (Some(writer), Ok(data)) = (writer_slot.as_mut(), send_rx.try_recv()) {
-            match send_binary_msg(writer, data).await {
-                Ok(size) => c4sock.completed_write(size),
+            let size = data.len();
+            match writer.send(Message::Binary(data)).await {
+                Ok(()) => c4sock.completed_write(size),
                 Err(err) => {
                     *writer_slot = None;
                     drop(writer_guard);
@@ -309,12 +310,6 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
             }
         }
     });
-}
-
-async fn send_binary_msg(writer: &mut WsWriter, data: Bytes) -> Result<usize, tungstenite::Error> {
-    let n = data.len();
-    writer.send(Message::Binary(data)).await?;
-    Ok(n)
 }
 
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
@@ -364,8 +359,9 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
                 return;
             };
             while let Ok(data) = send_rx.try_recv() {
-                match send_binary_msg(writer, data).await {
-                    Ok(size) => c4sock.completed_write(size),
+                let size = data.len();
+                match writer.send(Message::Binary(data)).await {
+                    Ok(()) => c4sock.completed_write(size),
                     Err(write_err) => {
                         *writer_slot = None;
                         drop(writer_guard);

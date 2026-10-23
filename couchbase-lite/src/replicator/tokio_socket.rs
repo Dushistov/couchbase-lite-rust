@@ -32,6 +32,7 @@ use std::{
     time::Duration,
 };
 use tokio::{
+    io::{AsyncRead, AsyncWrite},
     runtime::Handle,
     sync::{mpsc, oneshot, Mutex as TokioMutex, Notify},
 };
@@ -116,8 +117,7 @@ impl AtomicLegacyCloseState {
     }
 }
 
-type WsReader =
-    SplitStream<WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>>;
+type WsReader<S> = SplitStream<WebSocketStream<S>>;
 type WsWriter = futures_util::stream::SplitSink<
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
     Message,
@@ -610,15 +610,16 @@ where
     Ok(())
 }
 
-async fn main_read_loop<C>(
+async fn main_read_loop<C, S>(
     mut core: C,
-    mut ws_reader: WsReader,
+    mut ws_reader: WsReader<S>,
     mut stop_rx: oneshot::Receiver<()>,
     mut command_rx: mpsc::UnboundedReceiver<Command>,
     close_control: Arc<CloseControl>,
 ) -> Result<(), Error>
 where
     C: OpenSink,
+    S: AsyncRead + AsyncWrite + Unpin,
     for<'a> &'a C: Into<usize>,
 {
     let context: usize = (&core).into();
@@ -1141,6 +1142,66 @@ mod tests {
         .unwrap_err();
         assert_eq!(error.0.domain, C4ErrorDomain::LiteCoreDomain);
         assert_eq!(error.0.code, C4ErrorCode::kC4ErrorCorruptData.0);
+    }
+
+    #[tokio::test]
+    async fn test_peer_close_reports_status_and_reason() {
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        struct RecordingSink(Arc<Mutex<Vec<(c_int, String)>>>);
+
+        impl From<&RecordingSink> for usize {
+            fn from(_: &RecordingSink) -> Self {
+                0
+            }
+        }
+
+        impl OpenSink for RecordingSink {
+            fn received(&mut self, _: &[u8]) {
+                panic!("no data message expected");
+            }
+
+            fn close_requested(&mut self, status: c_int, reason: &str) {
+                self.0.lock().unwrap().push((status, reason.to_owned()));
+            }
+        }
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let mut server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+        let (_writer, reader) = client.split();
+        server
+            .send(Message::Close(Some(CloseFrame {
+                code: CloseCode::Normal,
+                reason: "peer shutdown".into(),
+            })))
+            .await
+            .unwrap();
+
+        let callbacks = Arc::new(Mutex::new(Vec::new()));
+        let (_stop_tx, stop_rx) = oneshot::channel();
+        let (_commands, command_rx) = mpsc::unbounded_channel();
+        let close_control = Arc::new(CloseControl {
+            confirm: Notify::new(),
+            stop_read_loop: TokioMutex::new(None),
+            stop_error: Mutex::new(None),
+            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
+            signaled: AtomicBool::new(false),
+        });
+        tokio::time::timeout(
+            Duration::from_secs(2),
+            main_read_loop(
+                RecordingSink(callbacks.clone()),
+                reader,
+                stop_rx,
+                command_rx,
+                close_control,
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(*callbacks.lock().unwrap(), [(1000, "peer shutdown".into())]);
     }
 
     #[tokio::test]

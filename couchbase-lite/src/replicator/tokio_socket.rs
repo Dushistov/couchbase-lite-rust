@@ -128,6 +128,16 @@ type WsWriter = futures_util::stream::SplitSink<
 struct C4SocketPtr(*mut C4Socket);
 unsafe impl Send for C4SocketPtr {}
 
+trait WriteSink {
+    fn completed_write(&mut self, size: usize);
+}
+
+impl WriteSink for C4SocketPtr {
+    fn completed_write(&mut self, size: usize) {
+        unsafe { c4socket_completedWrite(self.0, size) };
+    }
+}
+
 struct ConnectingPhase;
 struct OpenPhase;
 
@@ -283,30 +293,28 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
         .send_queue
         .send(data)
         .expect("Inernal error write to send queue failed");
-    let c4sock = C4SocketPtr(c4sock);
+    let mut c4sock = C4SocketPtr(c4sock);
     socket.handle.spawn(async move {
         let mut writer_guard = writer.lock().await;
         let (writer_slot, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) =
             &mut writer_guard;
         if let (Some(writer), Ok(data)) = (writer_slot.as_mut(), send_rx.try_recv()) {
-            if let Err(err) = send_binary_msg(c4sock, writer, data).await {
-                *writer_slot = None;
-                drop(writer_guard);
-                close_control.signal_write_failure(c4sock, err).await;
+            match send_binary_msg(writer, data).await {
+                Ok(size) => c4sock.completed_write(size),
+                Err(err) => {
+                    *writer_slot = None;
+                    drop(writer_guard);
+                    close_control.signal_write_failure(c4sock, err).await;
+                }
             }
         }
     });
 }
 
-async fn send_binary_msg(
-    ctx: C4SocketPtr,
-    writer: &mut WsWriter,
-    data: Bytes,
-) -> Result<(), tungstenite::Error> {
+async fn send_binary_msg(writer: &mut WsWriter, data: Bytes) -> Result<usize, tungstenite::Error> {
     let n = data.len();
     writer.send(Message::Binary(data)).await?;
-    unsafe { c4socket_completedWrite(ctx.0, n) };
-    Ok(())
+    Ok(n)
 }
 
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
@@ -325,7 +333,7 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
     let socket = socket_impl(c4sock).as_ref();
     let writer = socket.writer.clone();
     let close_control = socket.close_control.clone();
-    let c4sock = C4SocketPtr(c4sock);
+    let mut c4sock = C4SocketPtr(c4sock);
 
     socket.handle.spawn(async move {
         trace!("c4sock {c4sock:?}: start closing");
@@ -356,11 +364,14 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
                 return;
             };
             while let Ok(data) = send_rx.try_recv() {
-                if let Err(write_err) = send_binary_msg(c4sock, writer, data).await {
-                    *writer_slot = None;
-                    drop(writer_guard);
-                    close_control.signal_write_failure(c4sock, write_err).await;
-                    return;
+                match send_binary_msg(writer, data).await {
+                    Ok(size) => c4sock.completed_write(size),
+                    Err(write_err) => {
+                        *writer_slot = None;
+                        drop(writer_guard);
+                        close_control.signal_write_failure(c4sock, write_err).await;
+                        return;
+                    }
                 }
             }
             trace!("c4sock {c4sock:?}: sending close message");

@@ -67,13 +67,17 @@ pub fn c4socket_init(handle: Handle) {
 struct SocketImpl {
     handle: Handle,
     commands: mpsc::UnboundedSender<Command>,
-    writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Bytes>)>>,
-    send_queue: mpsc::UnboundedSender<Bytes>,
+    send_queue: mpsc::UnboundedSender<WriterCommand>,
     close_control: Arc<CloseControl>,
 }
 
 enum Command {
     CompletedReceive(usize),
+}
+
+enum WriterCommand {
+    Write(Bytes),
+    Close(CloseFrame, oneshot::Sender<()>),
 }
 
 struct CloseControl {
@@ -82,6 +86,7 @@ struct CloseControl {
     stop_error: Mutex<Option<C4Error>>,
     state: AtomicLegacyCloseState,
     signaled: AtomicBool,
+    writer_task: Mutex<Option<tokio::task::AbortHandle>>,
 }
 
 #[repr(u8)]
@@ -155,6 +160,7 @@ impl<P> From<&FfiCore<P>> for usize {
 trait ConnectingSink: Send + 'static {
     type Open: OpenSink;
 
+    fn socket(&self) -> C4SocketPtr;
     fn got_http_response(&mut self, status: c_int, headers: FLSliceResult);
     fn opened(self) -> Self::Open;
 }
@@ -176,6 +182,10 @@ impl FfiCore<ConnectingPhase> {
 
 impl ConnectingSink for FfiCore<ConnectingPhase> {
     type Open = FfiCore<OpenPhase>;
+
+    fn socket(&self) -> C4SocketPtr {
+        self.socket
+    }
 
     fn got_http_response(&mut self, status: c_int, headers: FLSliceResult) {
         unsafe { c4socket_gotHTTPResponse(self.socket.0, status, headers.as_fl_slice()) };
@@ -253,24 +263,16 @@ unsafe extern "C" fn ws_open(
     let sock_impl = Box::new(SocketImpl {
         handle: handle.clone(),
         commands,
-        writer: Arc::new(TokioMutex::new((None, send_q_rx))),
-        close_control: Arc::new(CloseControl {
-            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
-            confirm: Notify::new(),
-            stop_read_loop: TokioMutex::new(Some(stop_tx)),
-            stop_error: Mutex::new(None),
-            signaled: AtomicBool::new(false),
-        }),
+        close_control: Arc::new(CloseControl::new(Some(stop_tx))),
         send_queue: send_q_tx,
     });
-    let writer = sock_impl.writer.clone();
     let close_control = sock_impl.close_control.clone();
     c4Socket_setNativeHandle(c4sock, Box::into_raw(sock_impl) as *mut c_void);
     let c4sock = C4SocketPtr(c4sock);
     let core = FfiCore::<ConnectingPhase>::new(c4sock);
     handle.spawn(async move {
         let close_ctl = close_control.clone();
-        match do_open(core, request, stop_rx, command_rx, writer, close_control).await {
+        match do_open(core, request, stop_rx, command_rx, send_q_rx, close_control).await {
             Ok(()) => {}
             Err(err) => {
                 trace!("c4sock {c4sock:?}: signal closed");
@@ -286,30 +288,8 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
         allocated_data.size
     );
     let socket = socket_impl(c4sock).as_ref();
-    let writer = socket.writer.clone();
-    let close_control = socket.close_control.clone();
     let data = Bytes::from_owner(allocated_data);
-    socket
-        .send_queue
-        .send(data)
-        .expect("Inernal error write to send queue failed");
-    let mut c4sock = C4SocketPtr(c4sock);
-    socket.handle.spawn(async move {
-        let mut writer_guard = writer.lock().await;
-        let (writer_slot, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) =
-            &mut writer_guard;
-        if let (Some(writer), Ok(data)) = (writer_slot.as_mut(), send_rx.try_recv()) {
-            let size = data.len();
-            match writer.send(Message::Binary(data)).await {
-                Ok(()) => c4sock.completed_write(size),
-                Err(err) => {
-                    *writer_slot = None;
-                    drop(writer_guard);
-                    close_control.signal_write_failure(c4sock, err).await;
-                }
-            }
-        }
-    });
+    let _ = socket.send_queue.send(WriterCommand::Write(data));
 }
 
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
@@ -326,9 +306,9 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
     let reason = String::from_utf8_lossy(message.into()).into_owned();
 
     let socket = socket_impl(c4sock).as_ref();
-    let writer = socket.writer.clone();
+    let writer = socket.send_queue.clone();
     let close_control = socket.close_control.clone();
-    let mut c4sock = C4SocketPtr(c4sock);
+    let c4sock = C4SocketPtr(c4sock);
 
     socket.handle.spawn(async move {
         trace!("c4sock {c4sock:?}: start closing");
@@ -341,48 +321,35 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
             }
         };
         let err = close_error(status, &reason);
-        let mut writer_guard = writer.lock().await;
-        let (writer_slot, send_rx): &mut (Option<_>, mpsc::UnboundedReceiver<_>) = &mut writer_guard;
-        if let Some(writer) = writer_slot.as_mut() {
-            let code = u16::try_from(status)
-                .ok()
-                .map(CloseCode::from)
-                .filter(|code| code.is_allowed());
-            let Some(code) = code else {
-                warn!("c4sock {c4sock:?}: invalid close status {status}, closing transport without a close frame");
-                // Drop the writer and stop the reader without starting a close handshake.
-                *writer_slot = None;
-                drop(writer_guard);
-                // The read loop may also finish when stopped; either task must report this error.
-                close_control.stop_with_error(c4sock, err).await;
-                close_control.signal_closed(c4sock, err);
-                return;
-            };
-            while let Ok(data) = send_rx.try_recv() {
-                let size = data.len();
-                match writer.send(Message::Binary(data)).await {
-                    Ok(()) => c4sock.completed_write(size),
-                    Err(write_err) => {
-                        *writer_slot = None;
-                        drop(writer_guard);
-                        close_control.signal_write_failure(c4sock, write_err).await;
-                        return;
-                    }
-                }
-            }
-            trace!("c4sock {c4sock:?}: sending close message");
-            if let Err(err) = writer.send(Message::Close(Some(CloseFrame {
-                code,
-                reason: reason.into(),
-            }))).await {
-                *writer_slot = None;
-                drop(writer_guard);
-                close_control.signal_write_failure(c4sock, err).await;
-                return;
-            }
-        } else {
+        if close_control.writer_task.lock().unwrap().is_none() {
             close_control.stop_with_error(c4sock, err).await;
-            info!("c4sock {c4sock:?}: requestClose writer is None => not intialized");
+            info!("c4sock {c4sock:?}: requestClose before writer initialized");
+            return;
+        }
+        let code = u16::try_from(status)
+            .ok()
+            .map(CloseCode::from)
+            .filter(|code| code.is_allowed());
+        let Some(code) = code else {
+            warn!("c4sock {c4sock:?}: invalid close status {status}, closing transport without a close frame");
+            close_control.stop_with_error(c4sock, err).await;
+            close_control.signal_closed(c4sock, err);
+            return;
+        };
+        let (sent_tx, sent_rx) = oneshot::channel();
+        if writer
+            .send(WriterCommand::Close(
+                CloseFrame {
+                    code,
+                    reason: reason.into(),
+                },
+                sent_tx,
+            ))
+            .is_err()
+            || sent_rx.await.is_err()
+        {
+            close_control.stop_with_error(c4sock, err).await;
+            close_control.signal_closed(c4sock, err);
             return;
         }
         if is_client_close {
@@ -566,7 +533,7 @@ async fn do_open<C>(
     request: Result<Request, Error>,
     mut stop_rx: oneshot::Receiver<()>,
     command_rx: mpsc::UnboundedReceiver<Command>,
-    writer: Arc<TokioMutex<(Option<WsWriter>, mpsc::UnboundedReceiver<Bytes>)>>,
+    writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
     close_control: Arc<CloseControl>,
 ) -> Result<(), Error>
 where
@@ -608,13 +575,45 @@ where
         mem::drop(http_resp);
     }
     let (ws_writer, ws_reader) = ws_stream.split();
-    {
-        let mut lock = writer.lock().await;
-        lock.0 = Some(ws_writer);
-    }
+    let c4sock = core.socket();
+    let writer_task = tokio::spawn(writer_loop(
+        ws_writer,
+        writer_rx,
+        close_control.clone(),
+        c4sock,
+    ));
+    *close_control.writer_task.lock().unwrap() = Some(writer_task.abort_handle());
     let core = core.opened();
     main_read_loop(core, ws_reader, stop_rx, command_rx, close_control).await?;
     Ok(())
+}
+
+async fn writer_loop(
+    mut writer: WsWriter,
+    mut commands: mpsc::UnboundedReceiver<WriterCommand>,
+    close_control: Arc<CloseControl>,
+    mut c4sock: C4SocketPtr,
+) {
+    while let Some(command) = commands.recv().await {
+        match command {
+            WriterCommand::Write(data) => {
+                let size = data.len();
+                if let Err(error) = writer.send(Message::Binary(data)).await {
+                    close_control.signal_write_failure(c4sock, error).await;
+                    return;
+                }
+                c4sock.completed_write(size);
+            }
+            WriterCommand::Close(frame, sent) => {
+                trace!("c4sock {c4sock:?}: sending close message");
+                if let Err(error) = writer.send(Message::Close(Some(frame))).await {
+                    close_control.signal_write_failure(c4sock, error).await;
+                    return;
+                }
+                let _ = sent.send(());
+            }
+        }
+    }
 }
 
 async fn main_read_loop<C, S>(
@@ -896,6 +895,17 @@ impl From<FLError> for Error {
 }
 
 impl CloseControl {
+    fn new(stop_read_loop: Option<oneshot::Sender<()>>) -> Self {
+        Self {
+            confirm: Notify::new(),
+            stop_read_loop: TokioMutex::new(stop_read_loop),
+            stop_error: Mutex::new(None),
+            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
+            signaled: AtomicBool::new(false),
+            writer_task: Mutex::new(None),
+        }
+    }
+
     async fn stop_with_error(&self, ctx: C4SocketPtr, error: C4Error) {
         *self.stop_error.lock().unwrap() = Some(error);
         self.signal_to_stop_read_loop(ctx).await;
@@ -910,6 +920,9 @@ impl CloseControl {
 
     fn signal_closed(&self, ctx: C4SocketPtr, error: C4Error) {
         if !self.signaled.swap(true, Ordering::SeqCst) {
+            if let Some(writer_task) = self.writer_task.lock().unwrap().take() {
+                writer_task.abort();
+            }
             let error = self.stop_error.lock().unwrap().unwrap_or(error);
             unsafe { c4socket_closed(ctx.0, error) };
         }
@@ -958,6 +971,10 @@ mod tests {
         impl ConnectingSink for RecordingSink {
             type Open = FfiCore<OpenPhase>;
 
+            fn socket(&self) -> C4SocketPtr {
+                unreachable!("a rejected handshake must not access the socket")
+            }
+
             fn got_http_response(&mut self, status: c_int, headers: FLSliceResult) {
                 let header = unsafe {
                     let value = FLValue_FromData(headers.as_fl_slice(), FLTrust::kFLUntrusted);
@@ -992,19 +1009,13 @@ mod tests {
         let (stop_tx, stop_rx) = oneshot::channel();
         let (_commands, command_rx) = mpsc::unbounded_channel();
         let (_send_tx, send_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl {
-            confirm: Notify::new(),
-            stop_read_loop: TokioMutex::new(Some(stop_tx)),
-            stop_error: Mutex::new(None),
-            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
-            signaled: AtomicBool::new(false),
-        });
+        let close_control = Arc::new(CloseControl::new(Some(stop_tx)));
         let error = do_open(
             RecordingSink(responses.clone()),
             Ok(format!("ws://{address}/").into_client_request().unwrap()),
             stop_rx,
             command_rx,
-            Arc::new(TokioMutex::new((None, send_rx))),
+            send_rx,
             close_control,
         )
         .await
@@ -1029,6 +1040,10 @@ mod tests {
         impl ConnectingSink for NeverOpened {
             type Open = FfiCore<OpenPhase>;
 
+            fn socket(&self) -> C4SocketPtr {
+                unreachable!("the handshake must not finish")
+            }
+
             fn got_http_response(&mut self, _: c_int, _: FLSliceResult) {
                 panic!("the handshake must not finish");
             }
@@ -1043,19 +1058,13 @@ mod tests {
         let (stop_tx, stop_rx) = oneshot::channel();
         let (_commands, command_rx) = mpsc::unbounded_channel();
         let (_send_tx, send_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl {
-            confirm: Notify::new(),
-            stop_read_loop: TokioMutex::new(Some(stop_tx)),
-            stop_error: Mutex::new(None),
-            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
-            signaled: AtomicBool::new(false),
-        });
+        let close_control = Arc::new(CloseControl::new(Some(stop_tx)));
         let open_task = tokio::spawn(do_open(
             NeverOpened,
             Ok(format!("ws://{address}/").into_client_request().unwrap()),
             stop_rx,
             command_rx,
-            Arc::new(TokioMutex::new((None, send_rx))),
+            send_rx,
             close_control.clone(),
         ));
 
@@ -1133,13 +1142,7 @@ mod tests {
         let _server_tcp = server.await.unwrap();
         let (_stop_tx, stop_rx) = oneshot::channel();
         let (_commands, command_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl {
-            confirm: Notify::new(),
-            stop_read_loop: TokioMutex::new(None),
-            stop_error: Mutex::new(None),
-            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
-            signaled: AtomicBool::new(false),
-        });
+        let close_control = Arc::new(CloseControl::new(None));
         let error = tokio::time::timeout(
             Duration::from_secs(2),
             main_read_loop(NoMessages, reader, stop_rx, command_rx, close_control),
@@ -1188,13 +1191,7 @@ mod tests {
         let callbacks = Arc::new(Mutex::new(Vec::new()));
         let (_stop_tx, stop_rx) = oneshot::channel();
         let (_commands, command_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl {
-            confirm: Notify::new(),
-            stop_read_loop: TokioMutex::new(None),
-            stop_error: Mutex::new(None),
-            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
-            signaled: AtomicBool::new(false),
-        });
+        let close_control = Arc::new(CloseControl::new(None));
         tokio::time::timeout(
             Duration::from_secs(2),
             main_read_loop(
@@ -1268,13 +1265,7 @@ mod tests {
         let (writer, reader) = socket.split();
         let (stop_tx, stop_rx) = oneshot::channel();
         let (_commands, command_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl {
-            confirm: Notify::new(),
-            stop_read_loop: TokioMutex::new(Some(stop_tx)),
-            stop_error: Mutex::new(None),
-            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
-            signaled: AtomicBool::new(false),
-        });
+        let close_control = Arc::new(CloseControl::new(Some(stop_tx)));
         let received = Arc::new(Notify::new());
         let read_task = tokio::spawn(main_read_loop(
             RecordingSink(received.clone()),

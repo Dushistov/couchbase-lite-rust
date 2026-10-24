@@ -598,6 +598,30 @@ where
         core.got_http_response(http_resp.status().as_u16() as c_int, headers);
         mem::drop(http_resp);
     }
+    run_open_socket(
+        core,
+        ws_stream,
+        stop_rx,
+        command_rx,
+        writer_rx,
+        close_control,
+    )
+    .await
+}
+
+async fn run_open_socket<C, S>(
+    core: C,
+    ws_stream: WebSocketStream<S>,
+    stop_rx: oneshot::Receiver<()>,
+    command_rx: mpsc::UnboundedReceiver<Command>,
+    writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
+    close_control: Arc<CloseControl>,
+) -> Result<(), Error>
+where
+    C: ConnectingSink,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    for<'a> &'a C::Open: Into<usize>,
+{
     let (ws_writer, ws_reader) = ws_stream.split();
     let c4sock = core.socket();
     let writer_task = tokio::spawn(writer_loop(

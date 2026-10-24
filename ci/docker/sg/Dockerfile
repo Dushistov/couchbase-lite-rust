@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM docker.io/library/ubuntu:22.04
 
 ARG SG_DEB_ARM64
 ARG SG_DEB_AMD64

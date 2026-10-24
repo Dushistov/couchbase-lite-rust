@@ -718,7 +718,7 @@ fn test_all_types_in_query() {
 
     let _ = env_logger::try_init();
     let tmp_dir = tempdir().expect("Can not create tmp directory");
-    let tmp_path = tmp_dir.into_path();
+    let tmp_path = tmp_dir.keep();
     println!("we create tempdir at {tmp_path:?}");
     let db_path = tmp_path.join("a.cblite2");
     {

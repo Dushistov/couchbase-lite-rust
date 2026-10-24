@@ -1,0 +1,6 @@
+target-version = "py313"
+
+[lint.per-file-ignores]
+# This CI driver intentionally prints progress, runs trusted commands from PATH,
+# and uses the local Sync Gateway fixture credentials and LiteCore's env key.
+"ci/build_and_run_tests.py" = ["CPY001", "S105", "S603", "S607", "SIM112", "T201"]

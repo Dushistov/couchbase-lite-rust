@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import time, sys, os
+import argparse
+import time, sys, os, shutil
 from pathlib import Path
 from subprocess import check_call, Popen
 from typing import List
@@ -22,6 +23,25 @@ def path_to_docker_config(src_root: str) -> str:
     # TODO: use os.environ["CORE_SRC"]/Replicator/tests/data/docker,
     # when we switch to new version of couchbase-lite-core
     return os.path.join(src_root, "ci", "docker")
+
+def parse_args(argv: List[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Manage the Couchbase Server and Sync Gateway test containers.")
+    parser.add_argument("action", choices=("up", "down"), help="Start or stop the test containers")
+    parser.add_argument("--engine", choices=("docker", "podman"), default="docker",
+                        help="Container engine (default: docker)")
+    sudo = parser.add_mutually_exclusive_group()
+    sudo.add_argument("--sudo", dest="use_sudo", action="store_true", default=True,
+                      help="Run Compose with sudo (default)")
+    sudo.add_argument("--no-sudo", dest="use_sudo", action="store_false",
+                      help="Run Compose without sudo")
+    return parser.parse_args(argv)
+
+def compose_command(engine: str, use_sudo: bool) -> List[str]:
+    if not shutil.which(engine):
+        raise RuntimeError(f"Container engine not found: {engine}")
+    command = [engine, "compose"]
+    # Set SSL inside sudo because sudo may discard the caller's environment.
+    return ["sudo", "env", "SSL=false", *command] if use_sudo else command
 
 def wait_success_process(cmd: List[str]) -> bool:
     for i in range(0, 120):
@@ -46,14 +66,11 @@ def wait_couchbase_and_syncway_in_docker_up() -> None:
 
 
 @show_timing
-def run_couchbase_and_syncway_in_docker(src_root: str) -> None:
+def run_couchbase_and_syncway_in_docker(src_root: str, engine: str, use_sudo: bool) -> None:
     docker_path = path_to_docker_config(src_root)
-    docker_exe = "docker"
-    if "DOCKER" in os.environ:
-        docker_exe = os.environ["DOCKER"]
     my_env = os.environ.copy()
     my_env["SSL"] = "false"
-    check_call(["sudo", "/bin/sh", "-c", "SSL=false " + docker_exe + " compose up --build -d"], cwd = docker_path)
+    check_call([*compose_command(engine, use_sudo), "up", "--build", "-d"], cwd = docker_path, env = my_env)
     wait_couchbase_and_syncway_in_docker_up()
 
 @show_timing
@@ -68,22 +85,20 @@ def setup_users_in_sg() -> None:
                 "--data-raw", '{"name": "sguser", "password": "password", "collection_access": {"flowers": {"roses": {"admin_channels": ["*"]}, "tulips": {"admin_channels": ["*"]}, "lavenders": {"admin_channels": ["*"]}}}}'])
     
 @show_timing
-def stop_couchbase_and_syncway_in_docker(src_root: str) -> None:
+def stop_couchbase_and_syncway_in_docker(src_root: str, engine: str, use_sudo: bool) -> None:
     docker_path = path_to_docker_config(src_root)
-    docker_exe = "docker"
-    if "DOCKER" in os.environ:
-        docker_exe = os.environ["DOCKER"]
-    check_call(["sudo", docker_exe, "compose", "down"], cwd = docker_path)
+    check_call([*compose_command(engine, use_sudo), "down"], cwd = docker_path)
 
 
 def main() -> None:
+    args = parse_args(sys.argv[1:])
     ci_dir = Path(get_src_root_path(sys.argv[0]))
     src_root = ci_dir.parent
-    if sys.argv[1] == "up":
-        run_couchbase_and_syncway_in_docker(src_root)
+    if args.action == "up":
+        run_couchbase_and_syncway_in_docker(src_root, args.engine, args.use_sudo)
         setup_users_in_sg()        
-    elif sys.argv[1] == "down":
-        stop_couchbase_and_syncway_in_docker(src_root)
+    elif args.action == "down":
+        stop_couchbase_and_syncway_in_docker(src_root, args.engine, args.use_sudo)
 
 if __name__ == "__main__":
     main()

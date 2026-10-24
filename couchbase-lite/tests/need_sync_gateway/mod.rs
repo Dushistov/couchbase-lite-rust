@@ -27,6 +27,7 @@ fn test_double_replicator_restart() {
     let db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
 
     let (sync_tx, sync_rx) = std::sync::mpsc::channel::<()>();
+    let (state_tx, mut state_rx) = tokio::sync::mpsc::unbounded_channel();
     let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
 
     let mut repl = {
@@ -50,13 +51,14 @@ fn test_double_replicator_restart() {
             )
             .with_state_changed_callback(move |repl_state| {
                 println!("repl_state changed: {repl_state:?}");
-                if let ReplicatorState::Idle = repl_state {
+                if matches!(&repl_state, ReplicatorState::Idle) {
                     sync_tx.send(()).unwrap();
                     let tx = tx.clone();
                     handle.spawn(async move {
                         tx.send(()).await.unwrap();
                     });
                 }
+                state_tx.send(repl_state).unwrap();
             })
             .with_documents_ended_callback(
                 move |pushing: bool, doc_iter: &mut dyn Iterator<Item = &C4DocumentEnded>| {
@@ -95,7 +97,7 @@ fn test_double_replicator_restart() {
     }
     println!("multi restart done");
     thread::sleep(Duration::from_secs(3));
-    repl.stop();
+    stop_and_wait(&mut repl, &mut state_rx);
     stop_tx.send(()).unwrap();
     thread_join_handle.join().unwrap();
     println!("tokio done");
@@ -113,7 +115,14 @@ fn test_wrong_sync_packets_order() {
     let runtime = runtime::Runtime::new().unwrap();
     Database::init_socket_impl(runtime.handle().clone());
 
-    start_repl_and_save_documents(tmp_dir.path(), "a", 10_000, &url, auth).unwrap();
+    let document_count = env::var("SG_TEST_DOCUMENT_COUNT")
+        .map(|count| {
+            count
+                .parse()
+                .expect("SG_TEST_DOCUMENT_COUNT must be a number")
+        })
+        .unwrap_or(10_000);
+    start_repl_and_save_documents(tmp_dir.path(), "a", document_count, &url, auth).unwrap();
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -207,9 +216,35 @@ fn start_repl_and_save_documents(
             ReplicatorState::Busy(_) => was_busy = true,
         }
     }
-    thread::sleep(Duration::from_secs(2));
-    repl.stop();
+    stop_and_wait(&mut repl, &mut state_rx);
     Ok(())
+}
+
+fn stop_and_wait(
+    repl: &mut Replicator,
+    state_rx: &mut tokio::sync::mpsc::UnboundedReceiver<ReplicatorState>,
+) {
+    // Restart can leave status events from earlier replicators in the queue.
+    while state_rx.try_recv().is_ok() {}
+    assert!(
+        !matches!(repl.state(), ReplicatorState::Stopped(_)),
+        "replicator stopped before stop() was called"
+    );
+
+    repl.stop();
+    loop {
+        match state_rx.blocking_recv() {
+            Some(ReplicatorState::Stopped(err)) => {
+                match err {
+                    Error::C4Error(c4err) => assert_eq!(c4err.code, 0, "{c4err:?}"),
+                    other => panic!("replication stopped with an error: {other:?}"),
+                }
+                break;
+            }
+            Some(state) => println!("Get state after stop: {state:?}"),
+            None => panic!("replicator state channel closed before it stopped"),
+        }
+    }
 }
 
 fn get_env_var(name: &str) -> Result<String, String> {

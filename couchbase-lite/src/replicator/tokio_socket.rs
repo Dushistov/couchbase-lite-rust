@@ -679,9 +679,10 @@ where
     for<'a> &'a C: Into<usize>,
 {
     let context: usize = (&core).into();
+    let mut outstanding = 0usize;
     'read_loop: loop {
         tokio::select! {
-            message = ws_reader.next() => {
+            message = ws_reader.next(), if outstanding == 0 => {
                 let message = match message {
                     Some(x) => x,
                     None => break 'read_loop,
@@ -700,29 +701,8 @@ where
                                 )
                             }));
                         }
+                        outstanding = data.len();
                         core.received(data.as_ref());
-                        let mut remaining = data.len();
-                        loop {
-                            let command = tokio::select! {
-                                command = command_rx.recv() => command,
-                                _ = &mut stop_rx => {
-                                    return Err(Error(network_error(
-                                        C4NetworkErrorCode::kC4NetErrNotConnected,
-                                        "receive was interrupted by requestClose",
-                                    )));
-                                }
-                            };
-                            let Some(Command::CompletedReceive(byte_count)) = command else {
-                                return Err(Error(network_error(
-                                    C4NetworkErrorCode::kC4NetErrConnectionAborted,
-                                    "receive acknowledgement channel closed",
-                                )));
-                            };
-                            remaining = remaining.saturating_sub(byte_count);
-                            if remaining == 0 {
-                                break;
-                            }
-                        }
                     }
                     Message::Close(close_frame) => {
                         let (code, reason) = close_frame
@@ -759,6 +739,16 @@ where
                 }
 
             }
+
+            command = command_rx.recv(), if outstanding > 0 => match command {
+                Some(Command::CompletedReceive(byte_count)) => {
+                    outstanding = outstanding.saturating_sub(byte_count);
+                }
+                None => return Err(Error(network_error(
+                    C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                    "receive acknowledgement channel closed",
+                ))),
+            },
 
             _ = (&mut stop_rx) => {
                 info!("c4sock {context:#x}: read from websocket was interrupted by requestClose");
@@ -1262,6 +1252,77 @@ mod tests {
         .unwrap()
         .unwrap();
         assert_eq!(*callbacks.lock().unwrap(), [(1000, "peer shutdown".into())]);
+    }
+
+    #[tokio::test]
+    async fn test_next_message_waits_for_completed_receive() {
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        struct RecordingSink(Arc<Mutex<Vec<Vec<u8>>>>, Arc<Notify>);
+
+        impl From<&RecordingSink> for usize {
+            fn from(_: &RecordingSink) -> Self {
+                0
+            }
+        }
+
+        impl OpenSink for RecordingSink {
+            fn received(&mut self, data: &[u8]) {
+                self.0.lock().unwrap().push(data.to_vec());
+                self.1.notify_one();
+            }
+
+            fn close_requested(&mut self, _: c_int, _: &str) {
+                panic!("no close frame expected");
+            }
+        }
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let mut server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+        let (_writer, reader) = client.split();
+        server
+            .send(Message::Binary(Bytes::from_static(b"one")))
+            .await
+            .unwrap();
+        server
+            .send(Message::Binary(Bytes::from_static(b"two")))
+            .await
+            .unwrap();
+
+        let messages = Arc::new(Mutex::new(Vec::new()));
+        let received = Arc::new(Notify::new());
+        let (stop_tx, stop_rx) = oneshot::channel();
+        let (commands, command_rx) = mpsc::unbounded_channel();
+        let close_control = Arc::new(CloseControl::new(None));
+        let read_task = tokio::spawn(main_read_loop(
+            RecordingSink(messages.clone(), received.clone()),
+            reader,
+            stop_rx,
+            command_rx,
+            close_control,
+        ));
+
+        received.notified().await;
+        tokio::task::yield_now().await;
+        assert_eq!(*messages.lock().unwrap(), [b"one".to_vec()]);
+        commands.send(Command::CompletedReceive(1)).unwrap();
+        tokio::task::yield_now().await;
+        assert_eq!(messages.lock().unwrap().len(), 1);
+        commands.send(Command::CompletedReceive(2)).unwrap();
+        tokio::time::timeout(Duration::from_secs(2), received.notified())
+            .await
+            .unwrap();
+        assert_eq!(
+            *messages.lock().unwrap(),
+            [b"one".to_vec(), b"two".to_vec()]
+        );
+
+        stop_tx.send(()).unwrap();
+        assert_eq!(
+            read_task.await.unwrap().unwrap_err().0.domain,
+            C4ErrorDomain::NetworkDomain
+        );
     }
 
     #[tokio::test]

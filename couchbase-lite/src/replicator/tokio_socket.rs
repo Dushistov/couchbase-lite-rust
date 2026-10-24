@@ -27,7 +27,7 @@ use std::{
     ptr::NonNull,
     str::FromStr,
     sync::{
-        atomic::{AtomicBool, AtomicU8, Ordering},
+        atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
     time::Duration,
@@ -35,7 +35,8 @@ use std::{
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     runtime::Handle,
-    sync::{mpsc, oneshot, Mutex as TokioMutex, Notify},
+    sync::mpsc,
+    time::Instant,
 };
 use tokio_tungstenite::{
     connect_async,
@@ -66,62 +67,48 @@ pub fn c4socket_init(handle: Handle) {
 }
 
 struct SocketImpl {
-    handle: Handle,
     commands: mpsc::UnboundedSender<Command>,
-    send_queue: mpsc::UnboundedSender<WriterCommand>,
-    close_control: Arc<CloseControl>,
 }
 
 enum Command {
+    Write(Bytes),
     CompletedReceive(usize),
+    RequestClose(c_int, String),
 }
 
 enum WriterCommand {
     Write(Bytes),
-    Close(CloseFrame, oneshot::Sender<()>),
+    Close(CloseFrame),
+    FlushCloseReply,
+}
+
+enum WriterEvent {
+    Written(usize),
+    CloseSent,
+    CloseReplyFlushed,
+    Failed(Box<tungstenite::Error>),
+}
+
+#[derive(Clone, Copy)]
+enum CloseState {
+    Open,
+    Local {
+        deadline: Instant,
+        error: C4Error,
+    },
+    Peer {
+        deadline: Instant,
+        error: C4Error,
+        reply_requested: bool,
+    },
 }
 
 struct CloseControl {
-    confirm: Notify,
-    stop_read_loop: TokioMutex<Option<oneshot::Sender<()>>>,
-    stop_error: Mutex<Option<C4Error>>,
-    state: AtomicLegacyCloseState,
     signaled: AtomicBool,
     writer_task: Mutex<Option<tokio::task::AbortHandle>>,
 }
 
-#[repr(u8)]
-#[derive(Debug)]
-enum LegacyCloseState {
-    None = 0,
-    Server = 1,
-    Client = 2,
-}
-
-#[repr(transparent)]
-struct AtomicLegacyCloseState(AtomicU8);
-impl AtomicLegacyCloseState {
-    fn new(val: LegacyCloseState) -> Self {
-        Self(AtomicU8::new(val as u8))
-    }
-    // Claim an unstarted close and return the state observed before the attempt.
-    fn claim(&self, new_state: LegacyCloseState) -> LegacyCloseState {
-        let previous = match self.0.compare_exchange(
-            LegacyCloseState::None as u8,
-            new_state as u8,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        ) {
-            Ok(previous) | Err(previous) => previous,
-        };
-        match previous {
-            0 => LegacyCloseState::None,
-            1 => LegacyCloseState::Server,
-            2 => LegacyCloseState::Client,
-            _ => unreachable!(),
-        }
-    }
-}
+const CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
 
 type WsReader<S> = SplitStream<WebSocketStream<S>>;
 type WsWriter<S> = SplitSink<WebSocketStream<S>, Message>;
@@ -130,16 +117,6 @@ type WsWriter<S> = SplitSink<WebSocketStream<S>, Message>;
 #[derive(Clone, Copy, Debug)]
 struct C4SocketPtr(*mut C4Socket);
 unsafe impl Send for C4SocketPtr {}
-
-trait WriteSink {
-    fn completed_write(&mut self, size: usize);
-}
-
-impl WriteSink for C4SocketPtr {
-    fn completed_write(&mut self, size: usize) {
-        unsafe { c4socket_completedWrite(self.0, size) };
-    }
-}
 
 struct ConnectingPhase;
 struct OpenPhase;
@@ -158,13 +135,13 @@ impl<P> From<&FfiCore<P>> for usize {
 trait ConnectingSink: Send + 'static {
     type Open: OpenSink;
 
-    fn socket(&self) -> C4SocketPtr;
     fn got_http_response(&mut self, status: c_int, headers: FLSliceResult);
     fn opened(self) -> Self::Open;
 }
 
 trait OpenSink: Send + 'static {
     fn received(&mut self, data: &[u8]);
+    fn completed_write(&mut self, size: usize);
     fn close_requested(&mut self, status: c_int, reason: &str);
 }
 
@@ -180,10 +157,6 @@ impl FfiCore<ConnectingPhase> {
 
 impl ConnectingSink for FfiCore<ConnectingPhase> {
     type Open = FfiCore<OpenPhase>;
-
-    fn socket(&self) -> C4SocketPtr {
-        self.socket
-    }
 
     fn got_http_response(&mut self, status: c_int, headers: FLSliceResult) {
         unsafe { c4socket_gotHTTPResponse(self.socket.0, status, headers.as_fl_slice()) };
@@ -201,6 +174,10 @@ impl ConnectingSink for FfiCore<ConnectingPhase> {
 impl OpenSink for FfiCore<OpenPhase> {
     fn received(&mut self, data: &[u8]) {
         unsafe { c4socket_received(self.socket.0, data.into()) };
+    }
+
+    fn completed_write(&mut self, size: usize) {
+        unsafe { c4socket_completedWrite(self.socket.0, size) };
     }
 
     fn close_requested(&mut self, status: c_int, reason: &str) {
@@ -255,22 +232,27 @@ unsafe extern "C" fn ws_open(
         "c4sock {c4sock:?}: open was called with uri: {:?}",
         request.as_ref().map(Request::uri)
     );
-    let (stop_tx, stop_rx) = oneshot::channel();
     let (commands, command_rx) = mpsc::unbounded_channel();
     let (send_q_tx, send_q_rx) = mpsc::unbounded_channel();
-    let sock_impl = Box::new(SocketImpl {
-        handle: handle.clone(),
-        commands,
-        close_control: Arc::new(CloseControl::new(Some(stop_tx))),
-        send_queue: send_q_tx,
-    });
-    let close_control = sock_impl.close_control.clone();
-    c4Socket_setNativeHandle(c4sock, Box::into_raw(sock_impl) as *mut c_void);
+    let close_control = Arc::new(CloseControl::new());
+    c4Socket_setNativeHandle(
+        c4sock,
+        Box::into_raw(Box::new(SocketImpl { commands })) as *mut c_void,
+    );
     let c4sock = C4SocketPtr(c4sock);
     let core = FfiCore::<ConnectingPhase>::new(c4sock);
     handle.spawn(async move {
         let close_ctl = close_control.clone();
-        match do_open(core, request, stop_rx, command_rx, send_q_rx, close_control).await {
+        match do_open(
+            core,
+            request,
+            command_rx,
+            send_q_tx,
+            send_q_rx,
+            close_control,
+        )
+        .await
+        {
             Ok(()) => {}
             Err(err) => {
                 trace!("c4sock {c4sock:?}: signal closed");
@@ -287,7 +269,7 @@ unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResu
     );
     let socket = socket_impl(c4sock).as_ref();
     let data = Bytes::from_owner(allocated_data);
-    let _ = socket.send_queue.send(WriterCommand::Write(data));
+    let _ = socket.commands.send(Command::Write(data));
 }
 
 unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usize) {
@@ -302,67 +284,8 @@ unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, mess
         std::str::from_utf8(message.into())
     );
     let reason = String::from_utf8_lossy(message.into()).into_owned();
-
     let socket = socket_impl(c4sock).as_ref();
-    let writer = socket.send_queue.clone();
-    let close_control = socket.close_control.clone();
-    let c4sock = C4SocketPtr(c4sock);
-
-    socket.handle.spawn(async move {
-        trace!("c4sock {c4sock:?}: start closing");
-        let state = close_control.state.claim(LegacyCloseState::Client);
-        let is_client_close = match state {
-            LegacyCloseState::None => true,
-            LegacyCloseState::Server => false,
-            LegacyCloseState::Client => {
-                panic!("Internal logic error: duplicate requestClose calls")
-            }
-        };
-        let err = close_error(status, &reason);
-        if close_control.writer_task.lock().unwrap().is_none() {
-            close_control.stop_with_error(c4sock, err).await;
-            info!("c4sock {c4sock:?}: requestClose before writer initialized");
-            return;
-        }
-        let code = u16::try_from(status)
-            .ok()
-            .map(CloseCode::from)
-            .filter(|code| code.is_allowed());
-        let Some(code) = code else {
-            warn!("c4sock {c4sock:?}: invalid close status {status}, closing transport without a close frame");
-            close_control.stop_with_error(c4sock, err).await;
-            close_control.signal_closed(c4sock, err);
-            return;
-        };
-        let (sent_tx, sent_rx) = oneshot::channel();
-        if writer
-            .send(WriterCommand::Close(
-                CloseFrame {
-                    code,
-                    reason: reason.into(),
-                },
-                sent_tx,
-            ))
-            .is_err()
-            || sent_rx.await.is_err()
-        {
-            close_control.stop_with_error(c4sock, err).await;
-            close_control.signal_closed(c4sock, err);
-            return;
-        }
-        if is_client_close {
-            // acording to comment from c4SocketTypes.h
-            const CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
-            if tokio::time::timeout(CLOSE_TIMEOUT, close_control.confirm.notified())
-                .await
-                .is_err()
-            {
-                warn!("c4sock {c4sock:?}: timeout for waiting close ack expired");
-                close_control.signal_to_stop_read_loop(c4sock).await;
-            }
-        }
-        close_control.signal_closed(c4sock, err);
-    });
+    let _ = socket.commands.send(Command::RequestClose(status, reason));
 }
 
 unsafe extern "C" fn ws_dispose(c4sock: *mut C4Socket) {
@@ -529,8 +452,8 @@ unsafe fn c4address_to_request(
 async fn do_open<C>(
     core: C,
     request: Result<Request, Error>,
-    stop_rx: oneshot::Receiver<()>,
     command_rx: mpsc::UnboundedReceiver<Command>,
+    writer_tx: mpsc::UnboundedSender<WriterCommand>,
     writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
     close_control: Arc<CloseControl>,
 ) -> Result<(), Error>
@@ -543,8 +466,8 @@ where
     do_open_with_connect(
         core,
         connect_async(request),
-        stop_rx,
         command_rx,
+        writer_tx,
         writer_rx,
         close_control,
     )
@@ -554,8 +477,8 @@ where
 async fn do_open_with_connect<C, S, F>(
     mut core: C,
     connect: F,
-    mut stop_rx: oneshot::Receiver<()>,
-    command_rx: mpsc::UnboundedReceiver<Command>,
+    mut command_rx: mpsc::UnboundedReceiver<Command>,
+    writer_tx: mpsc::UnboundedSender<WriterCommand>,
     writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
     close_control: Arc<CloseControl>,
 ) -> Result<(), Error>
@@ -567,29 +490,46 @@ where
     for<'a> &'a C::Open: Into<usize>,
 {
     let context: usize = (&core).into();
-    let (ws_stream, http_resp) = tokio::select! {
-        v = connect => {
-            trace!("c4sock {context:#x}: connect_async finished");
-            match v {
-                Ok(result) => result,
-                Err(err) => {
-                    if let tungstenite::Error::Http(ref response) = err {
-                        if let Ok(headers) = unsafe { headers_to_dict(response) } {
-                            core.got_http_response(response.status().as_u16() as c_int, headers);
+    let mut connect = std::pin::pin!(connect);
+    let (ws_stream, http_resp) = loop {
+        tokio::select! {
+            v = &mut connect => {
+                trace!("c4sock {context:#x}: connect_async finished");
+                match v {
+                    Ok(result) => break result,
+                    Err(err) => {
+                        if let tungstenite::Error::Http(ref response) = err {
+                            match unsafe { headers_to_dict(response) } {
+                                Ok(headers) =>
+                                  core.got_http_response(response.status().as_u16() as c_int, headers),
+                                Err(err) =>
+                                  error!("c4sock {context:#x}: failed to decode http headers to fleece dict: {err:?}"),
+                            }
                         }
+                        return Err(unsafe { tungstenite_err_to_c4_err(err) });
                     }
-                    return Err(unsafe { tungstenite_err_to_c4_err(err) });
                 }
             }
-        }
-        _ = (&mut stop_rx) => {
-            trace!("c4sock {context:#x}: do_open interrupted");
-            return Err(Error(close_control.stop_error.lock().unwrap().unwrap_or_else(|| {
-                network_error(
-                    C4NetworkErrorCode::kC4NetErrNotConnected,
-                    "open was interrupted by requestClose",
-                )
-            })));
+        command = command_rx.recv() => match command {
+                Some(Command::RequestClose(status, reason)) => {
+                    return Err(Error(close_error(status, &reason)));
+                }
+                Some(Command::Write(_)) => {
+                    return Err(Error(network_error(
+                        C4NetworkErrorCode::kC4NetErrNotConnected,
+                        "write before socket opened",
+                    )));
+                }
+                Some(Command::CompletedReceive(size)) => {
+                    warn!("c4sock {context:#x}: completedReceive before open: {size} bytes");
+                }
+                None => {
+                    return Err(Error(network_error(
+                        C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                        "socket command channel closed while connecting",
+                    )));
+                }
+            }
         }
     };
 
@@ -601,8 +541,8 @@ where
     run_open_socket(
         core,
         ws_stream,
-        stop_rx,
         command_rx,
+        writer_tx,
         writer_rx,
         close_control,
     )
@@ -612,8 +552,8 @@ where
 async fn run_open_socket<C, S>(
     core: C,
     ws_stream: WebSocketStream<S>,
-    stop_rx: oneshot::Receiver<()>,
     command_rx: mpsc::UnboundedReceiver<Command>,
+    writer_tx: mpsc::UnboundedSender<WriterCommand>,
     writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
     close_control: Arc<CloseControl>,
 ) -> Result<(), Error>
@@ -623,24 +563,18 @@ where
     for<'a> &'a C::Open: Into<usize>,
 {
     let (ws_writer, ws_reader) = ws_stream.split();
-    let c4sock = core.socket();
-    let writer_task = tokio::spawn(writer_loop(
-        ws_writer,
-        writer_rx,
-        close_control.clone(),
-        c4sock,
-    ));
+    let (event_tx, event_rx) = mpsc::unbounded_channel();
+    let writer_task = tokio::spawn(writer_loop(ws_writer, writer_rx, event_tx));
     *close_control.writer_task.lock().unwrap() = Some(writer_task.abort_handle());
     let core = core.opened();
-    main_read_loop(core, ws_reader, stop_rx, command_rx, close_control).await?;
+    main_read_loop(core, ws_reader, command_rx, writer_tx, event_rx).await?;
     Ok(())
 }
 
 async fn writer_loop<S>(
     mut writer: WsWriter<S>,
     mut commands: mpsc::UnboundedReceiver<WriterCommand>,
-    close_control: Arc<CloseControl>,
-    mut c4sock: C4SocketPtr,
+    events: mpsc::UnboundedSender<WriterEvent>,
 ) where
     S: AsyncRead + AsyncWrite + Unpin,
 {
@@ -649,18 +583,30 @@ async fn writer_loop<S>(
             WriterCommand::Write(data) => {
                 let size = data.len();
                 if let Err(error) = writer.send(Message::Binary(data)).await {
-                    close_control.signal_write_failure(c4sock, error).await;
+                    let _ = events.send(WriterEvent::Failed(error.into()));
                     return;
                 }
-                c4sock.completed_write(size);
+                if events.send(WriterEvent::Written(size)).is_err() {
+                    return;
+                }
             }
-            WriterCommand::Close(frame, sent) => {
-                trace!("c4sock {c4sock:?}: sending close message");
+            WriterCommand::Close(frame) => {
                 if let Err(error) = writer.send(Message::Close(Some(frame))).await {
-                    close_control.signal_write_failure(c4sock, error).await;
+                    let _ = events.send(WriterEvent::Failed(error.into()));
                     return;
                 }
-                let _ = sent.send(());
+                if events.send(WriterEvent::CloseSent).is_err() {
+                    return;
+                }
+            }
+            WriterCommand::FlushCloseReply => {
+                if let Err(error) = writer.flush().await {
+                    let _ = events.send(WriterEvent::Failed(error.into()));
+                    return;
+                }
+                if events.send(WriterEvent::CloseReplyFlushed).is_err() {
+                    return;
+                }
             }
         }
     }
@@ -669,9 +615,9 @@ async fn writer_loop<S>(
 async fn main_read_loop<C, S>(
     mut core: C,
     mut ws_reader: WsReader<S>,
-    mut stop_rx: oneshot::Receiver<()>,
     mut command_rx: mpsc::UnboundedReceiver<Command>,
-    close_control: Arc<CloseControl>,
+    writer_tx: mpsc::UnboundedSender<WriterCommand>,
+    mut event_rx: mpsc::UnboundedReceiver<WriterEvent>,
 ) -> Result<(), Error>
 where
     C: OpenSink,
@@ -680,88 +626,142 @@ where
 {
     let context: usize = (&core).into();
     let mut outstanding = 0usize;
-    'read_loop: loop {
+    let mut state = CloseState::Open;
+    loop {
+        let deadline = match state {
+            CloseState::Open => None,
+            CloseState::Local { deadline, .. } | CloseState::Peer { deadline, .. } => {
+                Some(deadline)
+            }
+        };
         tokio::select! {
-            message = ws_reader.next(), if outstanding == 0 => {
-                let message = match message {
-                    Some(x) => x,
-                    None => break 'read_loop,
-                };
-                let message = message.map_err(|err| unsafe { tungstenite_err_to_c4_err(err) })?;
-                match message {
+            command = command_rx.recv() => match command {
+                Some(Command::Write(data)) => {
+                    if matches!(state, CloseState::Open) {
+                        writer_tx.send(WriterCommand::Write(data)).map_err(|_| {
+                            Error(network_error(
+                                C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                                "writer task stopped",
+                            ))
+                        })?;
+                    }
+                }
+                Some(Command::CompletedReceive(size)) => {
+                    if size > outstanding {
+                        warn!("c4sock {context:#x}: completedReceive acknowledged {size} bytes, only {outstanding} pending");
+                        debug_assert!(false);
+                    }
+                    outstanding = outstanding.saturating_sub(size);
+                }
+                Some(Command::RequestClose(status, reason)) => match state {
+                    CloseState::Open => {
+                        let error = close_error(status, &reason);
+                        let code = u16::try_from(status)
+                            .ok()
+                            .map(CloseCode::from)
+                            .filter(|code| code.is_allowed());
+                        let Some(code) = code else {
+                            warn!("c4sock {context:#x}: invalid close status {status}, closing transport without a close frame");
+                            return Err(Error(error));
+                        };
+                        writer_tx.send(WriterCommand::Close(CloseFrame {
+                            code,
+                            reason: reason.into(),
+                        })).map_err(|_| Error(network_error(
+                            C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                            "writer task stopped before close frame",
+                        )))?;
+                        state = CloseState::Local {
+                            deadline: Instant::now() + CLOSE_TIMEOUT,
+                            error,
+                        };
+                    }
+                    CloseState::Peer { deadline, error, reply_requested } => {
+                        if !reply_requested {
+                            writer_tx.send(WriterCommand::FlushCloseReply).map_err(|_| {
+                                Error(network_error(
+                                    C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                                    "writer task stopped before close reply",
+                                ))
+                            })?;
+                            state = CloseState::Peer { deadline, error, reply_requested: true };
+                        }
+                    }
+                    CloseState::Local { .. } => {
+                        warn!("c4sock {context:#x}: duplicate requestClose ignored");
+                    }
+                },
+                None => return Err(Error(network_error(
+                    C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                    "socket command channel closed",
+                ))),
+            },
+            event = event_rx.recv() => match event {
+                Some(WriterEvent::Written(size)) => core.completed_write(size),
+                Some(WriterEvent::CloseSent) => trace!("c4sock {context:#x}: local WebSocket close sent"),
+                Some(WriterEvent::CloseReplyFlushed) => {
+                    if let CloseState::Peer { error, .. } = state {
+                        return Err(Error(error));
+                    }
+                }
+                Some(WriterEvent::Failed(error)) => {
+                    return Err(unsafe { tungstenite_err_to_c4_err(*error) });
+                }
+                None => return Err(Error(network_error(
+                    C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                    "writer task stopped",
+                ))),
+            },
+            message = ws_reader.next(), if outstanding == 0 && !matches!(state, CloseState::Peer { .. }) => match message {
+                Some(Ok(message)) => match message {
                     m @ Message::Text(_) | m @ Message::Binary(_) => {
-
                         let data = m.into_data();
                         if data.is_empty() {
-                            return Err(Error(unsafe {
-                                c4error_make(
-                                    C4ErrorDomain::LiteCoreDomain,
-                                    C4ErrorCode::kC4ErrorCorruptData.0,
-                                    "empty BLIP message".into(),
-                                )
-                            }));
+                            return Err(Error(unsafe { c4error_make(
+                                C4ErrorDomain::LiteCoreDomain,
+                                C4ErrorCode::kC4ErrorCorruptData.0,
+                                "empty BLIP message".into(),
+                            ) }));
                         }
                         outstanding = data.len();
                         core.received(data.as_ref());
                     }
                     Message::Close(close_frame) => {
                         let (code, reason) = close_frame
-                            .map(|frame| (u16::from(frame.code) as c_int, frame.reason))
-                            .unwrap_or((C4WebSocketCloseCode::kWebSocketCloseNoCode.0, "".into()));
-                        let state = close_control.state.claim(LegacyCloseState::Server);
-                        info!(
-                            "c4sock {context:#x}: close frame was received, state {state:?}"
-                        );
+                            .map(|frame| (u16::from(frame.code) as c_int, frame.reason.to_string()))
+                            .unwrap_or((C4WebSocketCloseCode::kWebSocketCloseNoCode.0, String::new()));
+                        info!("c4sock {context:#x}: close frame was received: {code} {reason}");
                         match state {
-                            LegacyCloseState::None => {
+                            CloseState::Open => {
+                                state = CloseState::Peer {
+                                    deadline: Instant::now() + CLOSE_TIMEOUT,
+                                    error: close_error(code, &reason),
+                                    reply_requested: false,
+                                };
                                 core.close_requested(code, &reason);
                             }
-                            LegacyCloseState::Server => {
-                                warn!("c4sock {context:#x} duplicate close message from server: {code} {reason}");
-                                continue 'read_loop;
-                            }
-                            LegacyCloseState::Client => {
-                                close_control.confirm.notify_one();
-                            }
+                            CloseState::Local { error, .. } => return Err(Error(error)),
+                            CloseState::Peer { .. } => unreachable!("c4sock {context:#x}: peer read is disabled after close"),
                         }
-                        break 'read_loop;
                     }
-                    Message::Frame(_) =>
-                        warn!("unsupport Message::Frame format"),
-                    Message::Ping(_) => {
-                        trace!("c4sock {context:#x}: ping frame was received");
-                        warn!("ping handling not implemented");
-                    }
-                    Message::Pong(_) => {
-                        trace!("c4sock {context:#x}: pong frame was received");
-                        warn!("pong handling not implemented");
-                    }
-                }
-
-            }
-
-            command = command_rx.recv(), if outstanding > 0 => match command {
-                Some(Command::CompletedReceive(byte_count)) => {
-                    outstanding = outstanding.saturating_sub(byte_count);
-                }
+                    Message::Frame(_) => warn!("c4sock {context:#x}: unsupported Message::Frame format"),
+                    Message::Ping(_) => trace!("c4sock {context:#x}: ping frame was received"),
+                    Message::Pong(_) => trace!("c4sock {context:#x}: pong frame was received"),
+                },
+                Some(Err(error)) => return Err(unsafe { tungstenite_err_to_c4_err(error) }),
                 None => return Err(Error(network_error(
                     C4NetworkErrorCode::kC4NetErrConnectionAborted,
-                    "receive acknowledgement channel closed",
+                    "WebSocket stream ended without a close frame",
                 ))),
             },
-
-            _ = (&mut stop_rx) => {
-                info!("c4sock {context:#x}: read from websocket was interrupted by requestClose");
+            _ = async { if let Some(deadline) = deadline { tokio::time::sleep_until(deadline).await } }, if deadline.is_some() => {
                 return Err(Error(network_error(
-                    C4NetworkErrorCode::kC4NetErrNotConnected,
-                    "open was interrupted by requestClose",
+                    C4NetworkErrorCode::kC4NetErrTimeout,
+                    "WebSocket close timed out",
                 )));
             }
-
-        };
+        }
     }
-    trace!("c4sock {context:#x}: main read loop end");
-    Ok(())
 }
 
 unsafe fn tungstenite_err_to_c4_err(err: tungstenite::Error) -> Error {
@@ -935,27 +935,11 @@ impl From<FLError> for Error {
 }
 
 impl CloseControl {
-    fn new(stop_read_loop: Option<oneshot::Sender<()>>) -> Self {
+    fn new() -> Self {
         Self {
-            confirm: Notify::new(),
-            stop_read_loop: TokioMutex::new(stop_read_loop),
-            stop_error: Mutex::new(None),
-            state: AtomicLegacyCloseState::new(LegacyCloseState::None),
             signaled: AtomicBool::new(false),
             writer_task: Mutex::new(None),
         }
-    }
-
-    async fn stop_with_error(&self, ctx: C4SocketPtr, error: C4Error) {
-        *self.stop_error.lock().unwrap() = Some(error);
-        self.signal_to_stop_read_loop(ctx).await;
-    }
-
-    async fn signal_write_failure(&self, ctx: C4SocketPtr, error: tungstenite::Error) {
-        error!("c4sock {ctx:?}: writer.send failure: {error}");
-        let error = unsafe { tungstenite_err_to_c4_err(error) }.0;
-        self.stop_with_error(ctx, error).await;
-        self.signal_closed(ctx, error);
     }
 
     fn signal_closed(&self, ctx: C4SocketPtr, error: C4Error) {
@@ -963,16 +947,7 @@ impl CloseControl {
             if let Some(writer_task) = self.writer_task.lock().unwrap().take() {
                 writer_task.abort();
             }
-            let error = self.stop_error.lock().unwrap().unwrap_or(error);
             unsafe { c4socket_closed(ctx.0, error) };
-        }
-    }
-
-    async fn signal_to_stop_read_loop(&self, ctx: C4SocketPtr) {
-        let mut lock = self.stop_read_loop.lock().await;
-        if let Some(stop_tx) = lock.take() {
-            trace!("c4sock {:?}: stoping connect/read loop", ctx.0);
-            let _ = stop_tx.send(());
         }
     }
 }
@@ -987,6 +962,29 @@ fn http_basic_auth_header(user_id: &str, password: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::sync::{oneshot, Notify};
+
+    struct CloseOnlySink;
+
+    impl From<&CloseOnlySink> for usize {
+        fn from(_: &CloseOnlySink) -> Self {
+            0
+        }
+    }
+
+    impl OpenSink for CloseOnlySink {
+        fn received(&mut self, _: &[u8]) {
+            panic!("no data message expected");
+        }
+
+        fn completed_write(&mut self, _: usize) {
+            panic!("no write was requested");
+        }
+
+        fn close_requested(&mut self, _: c_int, _: &str) {
+            panic!("the local close should not request a close from LiteCore");
+        }
+    }
 
     #[test]
     fn test_basic_auth_encode() {
@@ -1010,10 +1008,6 @@ mod tests {
 
         impl ConnectingSink for RecordingSink {
             type Open = FfiCore<OpenPhase>;
-
-            fn socket(&self) -> C4SocketPtr {
-                unreachable!("a rejected handshake must not access the socket")
-            }
 
             fn got_http_response(&mut self, status: c_int, headers: FLSliceResult) {
                 let header = unsafe {
@@ -1046,15 +1040,14 @@ mod tests {
         });
 
         let responses = Arc::new(Mutex::new(Vec::new()));
-        let (stop_tx, stop_rx) = oneshot::channel();
         let (_commands, command_rx) = mpsc::unbounded_channel();
-        let (_send_tx, send_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl::new(Some(stop_tx)));
+        let (send_tx, send_rx) = mpsc::unbounded_channel();
+        let close_control = Arc::new(CloseControl::new());
         let error = do_open(
             RecordingSink(responses.clone()),
             Ok(format!("ws://{address}/").into_client_request().unwrap()),
-            stop_rx,
             command_rx,
+            send_tx,
             send_rx,
             close_control,
         )
@@ -1080,10 +1073,6 @@ mod tests {
         impl ConnectingSink for NeverOpened {
             type Open = FfiCore<OpenPhase>;
 
-            fn socket(&self) -> C4SocketPtr {
-                unreachable!("the handshake must not finish")
-            }
-
             fn got_http_response(&mut self, _: c_int, _: FLSliceResult) {
                 panic!("the handshake must not finish");
             }
@@ -1093,10 +1082,9 @@ mod tests {
             }
         }
 
-        let (stop_tx, stop_rx) = oneshot::channel();
-        let (_commands, command_rx) = mpsc::unbounded_channel();
-        let (_send_tx, send_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl::new(Some(stop_tx)));
+        let (commands, command_rx) = mpsc::unbounded_channel();
+        let (send_tx, send_rx) = mpsc::unbounded_channel();
+        let close_control = Arc::new(CloseControl::new());
         let (connecting_tx, connecting_rx) = oneshot::channel();
         let connect = async move {
             let _ = connecting_tx.send(());
@@ -1108,22 +1096,19 @@ mod tests {
         let open_task = tokio::spawn(do_open_with_connect(
             NeverOpened,
             connect,
-            stop_rx,
             command_rx,
+            send_tx,
             send_rx,
-            close_control.clone(),
+            close_control,
         ));
 
         tokio::time::timeout(Duration::from_secs(2), connecting_rx)
             .await
             .unwrap()
             .unwrap();
-        close_control
-            .stop_with_error(
-                C4SocketPtr(std::ptr::null_mut()),
-                close_error(504, "Timed out"),
-            )
-            .await;
+        commands
+            .send(Command::RequestClose(504, "Timed out".into()))
+            .unwrap();
         let error = tokio::time::timeout(Duration::from_secs(2), open_task)
             .await
             .unwrap()
@@ -1148,6 +1133,10 @@ mod tests {
         impl OpenSink for NoMessages {
             fn received(&mut self, _: &[u8]) {
                 panic!("empty message must not reach LiteCore");
+            }
+
+            fn completed_write(&mut self, _: usize) {
+                panic!("no write was requested");
             }
 
             fn close_requested(&mut self, _: c_int, _: &str) {
@@ -1186,12 +1175,12 @@ mod tests {
         let (socket, _) = connect_async(format!("ws://{address}/")).await.unwrap();
         let (_writer, reader) = socket.split();
         let _server_tcp = server.await.unwrap();
-        let (_stop_tx, stop_rx) = oneshot::channel();
         let (_commands, command_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl::new(None));
+        let (writer_tx, _writer_rx) = mpsc::unbounded_channel();
+        let (_written_tx, written_rx) = mpsc::unbounded_channel();
         let error = tokio::time::timeout(
             Duration::from_secs(2),
-            main_read_loop(NoMessages, reader, stop_rx, command_rx, close_control),
+            main_read_loop(NoMessages, reader, command_rx, writer_tx, written_rx),
         )
         .await
         .unwrap()
@@ -1204,7 +1193,10 @@ mod tests {
     async fn test_peer_close_reports_status_and_reason() {
         use tokio_tungstenite::tungstenite::protocol::Role;
 
-        struct RecordingSink(Arc<Mutex<Vec<(c_int, String)>>>);
+        struct RecordingSink(
+            Arc<Mutex<Vec<(c_int, String)>>>,
+            mpsc::UnboundedSender<Command>,
+        );
 
         impl From<&RecordingSink> for usize {
             fn from(_: &RecordingSink) -> Self {
@@ -1217,15 +1209,22 @@ mod tests {
                 panic!("no data message expected");
             }
 
+            fn completed_write(&mut self, _: usize) {
+                panic!("no write was requested");
+            }
+
             fn close_requested(&mut self, status: c_int, reason: &str) {
                 self.0.lock().unwrap().push((status, reason.to_owned()));
+                self.1
+                    .send(Command::RequestClose(status, reason.to_owned()))
+                    .unwrap();
             }
         }
 
         let (client_io, server_io) = tokio::io::duplex(4096);
         let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
         let mut server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
-        let (_writer, reader) = client.split();
+        let (writer, reader) = client.split();
         server
             .send(Message::Close(Some(CloseFrame {
                 code: CloseCode::Normal,
@@ -1235,23 +1234,93 @@ mod tests {
             .unwrap();
 
         let callbacks = Arc::new(Mutex::new(Vec::new()));
-        let (_stop_tx, stop_rx) = oneshot::channel();
-        let (_commands, command_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl::new(None));
-        tokio::time::timeout(
+        let (commands, command_rx) = mpsc::unbounded_channel();
+        let (writer_tx, writer_rx) = mpsc::unbounded_channel();
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
+        let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
+        let result = tokio::time::timeout(
             Duration::from_secs(2),
             main_read_loop(
-                RecordingSink(callbacks.clone()),
+                RecordingSink(callbacks.clone(), commands),
                 reader,
-                stop_rx,
                 command_rx,
-                close_control,
+                writer_tx,
+                event_rx,
             ),
         )
         .await
         .unwrap()
-        .unwrap();
+        .unwrap_err();
+        assert_eq!(result.0.domain, C4ErrorDomain::WebSocketDomain);
+        assert_eq!(result.0.code, 1000);
+        assert!(matches!(server.next().await, Some(Ok(Message::Close(_)))));
+        writer_task.await.unwrap();
         assert_eq!(*callbacks.lock().unwrap(), [(1000, "peer shutdown".into())]);
+    }
+
+    #[tokio::test]
+    async fn test_local_close_waits_for_peer_close_frame() {
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let mut server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+        let (writer, reader) = client.split();
+        let (commands, command_rx) = mpsc::unbounded_channel();
+        let (writer_tx, writer_rx) = mpsc::unbounded_channel();
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
+        let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
+        let read_task = tokio::spawn(main_read_loop(
+            CloseOnlySink,
+            reader,
+            command_rx,
+            writer_tx,
+            event_rx,
+        ));
+
+        commands
+            .send(Command::RequestClose(1000, "done".into()))
+            .unwrap();
+        assert!(matches!(server.next().await, Some(Ok(Message::Close(_)))));
+        assert!(!read_task.is_finished());
+        server.flush().await.unwrap();
+
+        let error = tokio::time::timeout(Duration::from_secs(2), read_task)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap_err();
+        assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
+        assert_eq!(error.0.code, 1000);
+        writer_task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_invalid_close_status_sends_no_close_frame() {
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let mut server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+        let (writer, reader) = client.split();
+        let (commands, command_rx) = mpsc::unbounded_channel();
+        let (writer_tx, writer_rx) = mpsc::unbounded_channel();
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
+        let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
+        commands
+            .send(Command::RequestClose(504, "timeout".into()))
+            .unwrap();
+        let error = main_read_loop(CloseOnlySink, reader, command_rx, writer_tx, event_rx)
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
+        assert_eq!(error.0.code, 504);
+        writer_task.await.unwrap();
+        let message = tokio::time::timeout(Duration::from_secs(2), server.next())
+            .await
+            .unwrap();
+        assert!(!matches!(message, Some(Ok(Message::Close(_)))));
     }
 
     #[tokio::test]
@@ -1270,6 +1339,10 @@ mod tests {
             fn received(&mut self, data: &[u8]) {
                 self.0.lock().unwrap().push(data.to_vec());
                 self.1.notify_one();
+            }
+
+            fn completed_write(&mut self, _: usize) {
+                panic!("no write was requested");
             }
 
             fn close_requested(&mut self, _: c_int, _: &str) {
@@ -1292,15 +1365,15 @@ mod tests {
 
         let messages = Arc::new(Mutex::new(Vec::new()));
         let received = Arc::new(Notify::new());
-        let (stop_tx, stop_rx) = oneshot::channel();
         let (commands, command_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl::new(None));
+        let (writer_tx, _writer_rx) = mpsc::unbounded_channel();
+        let (_event_tx, event_rx) = mpsc::unbounded_channel();
         let read_task = tokio::spawn(main_read_loop(
             RecordingSink(messages.clone(), received.clone()),
             reader,
-            stop_rx,
             command_rx,
-            close_control,
+            writer_tx,
+            event_rx,
         ));
 
         received.notified().await;
@@ -1318,7 +1391,7 @@ mod tests {
             [b"one".to_vec(), b"two".to_vec()]
         );
 
-        stop_tx.send(()).unwrap();
+        drop(commands);
         assert_eq!(
             read_task.await.unwrap().unwrap_err().0.domain,
             C4ErrorDomain::NetworkDomain
@@ -1326,8 +1399,31 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_close_interrupts_receive_wait_without_a_close_frame() {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    async fn test_writer_reports_transport_failure() {
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let (writer, _reader) = client.split();
+        drop(server_io);
+
+        let (commands, command_rx) = mpsc::unbounded_channel();
+        let (events, mut event_rx) = mpsc::unbounded_channel();
+        let writer_task = tokio::spawn(writer_loop(writer, command_rx, events));
+        commands
+            .send(WriterCommand::Write(Bytes::from_static(b"payload")))
+            .unwrap();
+
+        let event = tokio::time::timeout(Duration::from_secs(2), event_rx.recv())
+            .await
+            .unwrap();
+        assert!(matches!(event, Some(WriterEvent::Failed(_))));
+        writer_task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_close_progresses_while_receive_acknowledgement_is_pending() {
+        use tokio_tungstenite::tungstenite::protocol::Role;
 
         struct RecordingSink(Arc<Notify>);
 
@@ -1342,76 +1438,54 @@ mod tests {
                 self.0.notify_one();
             }
 
+            fn completed_write(&mut self, _: usize) {
+                panic!("no write was requested");
+            }
+
             fn close_requested(&mut self, _: c_int, _: &str) {
                 panic!("the peer did not send a close frame");
             }
         }
 
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap();
-        let server = tokio::spawn(async move {
-            let (mut tcp, _) = listener.accept().await.unwrap();
-            let mut request = Vec::new();
-            let mut buffer = [0; 1024];
-            while !request.ends_with(b"\r\n\r\n") {
-                let count = tcp.read(&mut buffer).await.unwrap();
-                assert!(count > 0 && request.len() + count <= 4096);
-                request.extend_from_slice(&buffer[..count]);
-            }
-            let request = std::str::from_utf8(&request).unwrap();
-            let key = request
-                .lines()
-                .filter_map(|line| line.split_once(':'))
-                .find(|(name, _)| name.eq_ignore_ascii_case("Sec-WebSocket-Key"))
-                .unwrap()
-                .1
-                .trim();
-            let accept = tungstenite::handshake::derive_accept_key(key.as_bytes());
-            let response = format!(
-                "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {accept}\r\n\r\n"
-            );
-            tcp.write_all(response.as_bytes()).await.unwrap();
-            tcp.write_all(&[0x82, 4, b'd', b'a', b't', b'a'])
-                .await
-                .unwrap();
-            // The client must close TCP without sending a WebSocket Close frame.
-            tcp.read(&mut buffer).await.unwrap()
-        });
-
-        let (socket, _) = connect_async(format!("ws://{address}/")).await.unwrap();
-        let (writer, reader) = socket.split();
-        let (stop_tx, stop_rx) = oneshot::channel();
-        let (_commands, command_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl::new(Some(stop_tx)));
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let mut server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+        let (writer, reader) = client.split();
+        let (commands, command_rx) = mpsc::unbounded_channel();
+        let (writer_tx, writer_rx) = mpsc::unbounded_channel();
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
+        let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
         let received = Arc::new(Notify::new());
         let read_task = tokio::spawn(main_read_loop(
             RecordingSink(received.clone()),
             reader,
-            stop_rx,
             command_rx,
-            close_control.clone(),
+            writer_tx,
+            event_rx,
         ));
 
-        tokio::time::timeout(Duration::from_secs(2), received.notified())
+        server
+            .send(Message::Binary(Bytes::from_static(b"data")))
             .await
             .unwrap();
-        drop(writer);
-        close_control
-            .signal_to_stop_read_loop(C4SocketPtr(std::ptr::null_mut()))
-            .await;
+        received.notified().await;
+        commands
+            .send(Command::RequestClose(1000, "done".into()))
+            .unwrap();
+        let close = tokio::time::timeout(Duration::from_secs(2), server.next())
+            .await
+            .unwrap();
+        assert!(matches!(close, Some(Ok(Message::Close(_)))));
+        commands.send(Command::CompletedReceive(4)).unwrap();
+        server.flush().await.unwrap();
+
         let error = tokio::time::timeout(Duration::from_secs(2), read_task)
             .await
             .unwrap()
             .unwrap()
             .unwrap_err();
-        assert_eq!(error.0.domain, C4ErrorDomain::NetworkDomain);
-        assert_eq!(error.0.code, C4NetworkErrorCode::kC4NetErrNotConnected.0);
-        assert_eq!(
-            tokio::time::timeout(Duration::from_secs(2), server)
-                .await
-                .unwrap()
-                .unwrap(),
-            0
-        );
+        assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
+        assert_eq!(error.0.code, 1000);
+        writer_task.await.unwrap();
     }
 }

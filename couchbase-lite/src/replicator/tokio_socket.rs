@@ -22,14 +22,9 @@ use std::{
     future::Future,
     io::Write,
     marker::PhantomData,
-    mem,
     os::raw::{c_int, c_void},
     ptr::NonNull,
     str::FromStr,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
     time::Duration,
 };
 use tokio::{
@@ -103,9 +98,16 @@ enum CloseState {
     },
 }
 
-struct CloseControl {
-    signaled: AtomicBool,
-    writer_task: Mutex<Option<tokio::task::AbortHandle>>,
+struct Terminal<C: CloseSink> {
+    core: Option<C>,
+}
+
+struct AbortWriter(tokio::task::AbortHandle);
+
+impl Drop for AbortWriter {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
 }
 
 const CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
@@ -132,8 +134,18 @@ impl<P> From<&FfiCore<P>> for usize {
     }
 }
 
-trait ConnectingSink: Send + 'static {
-    type Open: OpenSink;
+impl<P: Send + 'static> CloseSink for FfiCore<P> {
+    fn closed(self, error: C4Error) {
+        unsafe { c4socket_closed(self.socket.0, error) };
+    }
+}
+
+trait CloseSink: Send + 'static {
+    fn closed(self, error: C4Error);
+}
+
+trait ConnectingSink: CloseSink {
+    type Open: OpenSink + CloseSink;
 
     fn got_http_response(&mut self, status: c_int, headers: FLSliceResult);
     fn opened(self) -> Self::Open;
@@ -209,6 +221,40 @@ fn close_error(status: c_int, reason: &str) -> C4Error {
     }
 }
 
+impl<C: CloseSink> Terminal<C> {
+    fn new(core: C) -> Self {
+        Self { core: Some(core) }
+    }
+
+    fn core(&mut self) -> &mut C {
+        self.core.as_mut().expect("terminal already closed")
+    }
+
+    fn finish(&mut self, error: C4Error) {
+        if let Some(core) = self.core.take() {
+            core.closed(error);
+        }
+    }
+}
+
+impl<C: ConnectingSink> Terminal<C> {
+    fn opened(mut self) -> Terminal<C::Open> {
+        let core = self.core.take().expect("terminal already closed");
+        Terminal::new(core.opened())
+    }
+}
+
+impl<C: CloseSink> Drop for Terminal<C> {
+    fn drop(&mut self) {
+        if self.core.is_some() {
+            self.finish(network_error(
+                C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                "socket task was cancelled",
+            ));
+        }
+    }
+}
+
 unsafe extern "C" fn ws_open(
     c4sock: *mut C4Socket,
     addr: *const C4Address,
@@ -233,33 +279,13 @@ unsafe extern "C" fn ws_open(
         request.as_ref().map(Request::uri)
     );
     let (commands, command_rx) = mpsc::unbounded_channel();
-    let (send_q_tx, send_q_rx) = mpsc::unbounded_channel();
-    let close_control = Arc::new(CloseControl::new());
     c4Socket_setNativeHandle(
         c4sock,
         Box::into_raw(Box::new(SocketImpl { commands })) as *mut c_void,
     );
     let c4sock = C4SocketPtr(c4sock);
-    let core = FfiCore::<ConnectingPhase>::new(c4sock);
-    handle.spawn(async move {
-        let close_ctl = close_control.clone();
-        match do_open(
-            core,
-            request,
-            command_rx,
-            send_q_tx,
-            send_q_rx,
-            close_control,
-        )
-        .await
-        {
-            Ok(()) => {}
-            Err(err) => {
-                trace!("c4sock {c4sock:?}: signal closed");
-                close_ctl.signal_closed(c4sock, err.0);
-            }
-        }
-    });
+    let terminal = Terminal::new(FfiCore::<ConnectingPhase>::new(c4sock));
+    handle.spawn(async move { do_open(terminal, request, command_rx).await });
 }
 
 unsafe extern "C" fn ws_write(c4sock: *mut C4Socket, allocated_data: C4SliceResult) {
@@ -450,125 +476,118 @@ unsafe fn c4address_to_request(
 }
 
 async fn do_open<C>(
-    core: C,
+    mut terminal: Terminal<C>,
     request: Result<Request, Error>,
     command_rx: mpsc::UnboundedReceiver<Command>,
-    writer_tx: mpsc::UnboundedSender<WriterCommand>,
-    writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
-    close_control: Arc<CloseControl>,
-) -> Result<(), Error>
-where
+) where
     C: ConnectingSink,
     for<'a> &'a C: Into<usize>,
     for<'a> &'a C::Open: Into<usize>,
 {
-    let request = request?;
-    do_open_with_connect(
-        core,
-        connect_async(request),
-        command_rx,
-        writer_tx,
-        writer_rx,
-        close_control,
-    )
-    .await
+    let request = match request {
+        Ok(request) => request,
+        Err(error) => {
+            terminal.finish(error.0);
+            return;
+        }
+    };
+    do_open_with_connect(terminal, connect_async(request), command_rx).await;
 }
 
 async fn do_open_with_connect<C, S, F>(
-    mut core: C,
+    mut terminal: Terminal<C>,
     connect: F,
     mut command_rx: mpsc::UnboundedReceiver<Command>,
-    writer_tx: mpsc::UnboundedSender<WriterCommand>,
-    writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
-    close_control: Arc<CloseControl>,
-) -> Result<(), Error>
-where
+) where
     C: ConnectingSink,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     F: Future<Output = Result<(WebSocketStream<S>, Response), tungstenite::Error>>,
     for<'a> &'a C: Into<usize>,
     for<'a> &'a C::Open: Into<usize>,
 {
-    let context: usize = (&core).into();
+    let context: usize = (&*terminal.core()).into();
     let mut connect = std::pin::pin!(connect);
     let (ws_stream, http_resp) = loop {
         tokio::select! {
-            v = &mut connect => {
+            result = &mut connect => {
                 trace!("c4sock {context:#x}: connect_async finished");
-                match v {
+                match result {
                     Ok(result) => break result,
-                    Err(err) => {
-                        if let tungstenite::Error::Http(ref response) = err {
+                    Err(error) => {
+                        if let tungstenite::Error::Http(ref response) = error {
                             match unsafe { headers_to_dict(response) } {
                                 Ok(headers) =>
-                                  core.got_http_response(response.status().as_u16() as c_int, headers),
+                                    terminal.core().got_http_response(response.status().as_u16() as c_int, headers),
                                 Err(err) =>
-                                  error!("c4sock {context:#x}: failed to decode http headers to fleece dict: {err:?}"),
+                                    error!("c4sock {context:#x}: failed to decode http headers to fleece dict: {err:?}"),
                             }
                         }
-                        return Err(unsafe { tungstenite_err_to_c4_err(err) });
+                        terminal.finish(unsafe { tungstenite_err_to_c4_err(error) }.0);
+                        return;
                     }
                 }
             }
-        command = command_rx.recv() => match command {
+            command = command_rx.recv() => match command {
                 Some(Command::RequestClose(status, reason)) => {
-                    return Err(Error(close_error(status, &reason)));
+                    terminal.finish(close_error(status, &reason));
+                    return;
                 }
                 Some(Command::Write(_)) => {
-                    return Err(Error(network_error(
+                    terminal.finish(network_error(
                         C4NetworkErrorCode::kC4NetErrNotConnected,
                         "write before socket opened",
-                    )));
+                    ));
+                    return;
                 }
                 Some(Command::CompletedReceive(size)) => {
                     warn!("c4sock {context:#x}: completedReceive before open: {size} bytes");
                 }
                 None => {
-                    return Err(Error(network_error(
+                    terminal.finish(network_error(
                         C4NetworkErrorCode::kC4NetErrConnectionAborted,
                         "socket command channel closed while connecting",
-                    )));
+                    ));
+                    return;
                 }
             }
         }
     };
 
-    {
-        let headers = unsafe { headers_to_dict(&http_resp) }?;
-        core.got_http_response(http_resp.status().as_u16() as c_int, headers);
-        mem::drop(http_resp);
+    match unsafe { headers_to_dict(&http_resp) } {
+        Ok(headers) => terminal
+            .core()
+            .got_http_response(http_resp.status().as_u16() as c_int, headers),
+        Err(error) => {
+            terminal.finish(Error::from(error).0);
+            return;
+        }
     }
-    run_open_socket(
-        core,
-        ws_stream,
-        command_rx,
-        writer_tx,
-        writer_rx,
-        close_control,
-    )
-    .await
+    drop(http_resp);
+    run_open_socket(terminal, ws_stream, command_rx).await;
 }
 
 async fn run_open_socket<C, S>(
-    core: C,
+    terminal: Terminal<C>,
     ws_stream: WebSocketStream<S>,
     command_rx: mpsc::UnboundedReceiver<Command>,
-    writer_tx: mpsc::UnboundedSender<WriterCommand>,
-    writer_rx: mpsc::UnboundedReceiver<WriterCommand>,
-    close_control: Arc<CloseControl>,
-) -> Result<(), Error>
-where
+) where
     C: ConnectingSink,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     for<'a> &'a C::Open: Into<usize>,
 {
     let (ws_writer, ws_reader) = ws_stream.split();
+    let (writer_tx, writer_rx) = mpsc::unbounded_channel();
     let (event_tx, event_rx) = mpsc::unbounded_channel();
     let writer_task = tokio::spawn(writer_loop(ws_writer, writer_rx, event_tx));
-    *close_control.writer_task.lock().unwrap() = Some(writer_task.abort_handle());
-    let core = core.opened();
-    main_read_loop(core, ws_reader, command_rx, writer_tx, event_rx).await?;
-    Ok(())
+    let _writer_guard = AbortWriter(writer_task.abort_handle());
+    let mut terminal = terminal.opened();
+    match main_event_loop(terminal.core(), ws_reader, command_rx, writer_tx, event_rx).await {
+        Ok(()) => terminal.finish(network_error(
+            C4NetworkErrorCode::kC4NetErrConnectionAborted,
+            "WebSocket read loop exited",
+        )),
+        Err(error) => terminal.finish(error.0),
+    }
 }
 
 async fn writer_loop<S>(
@@ -612,8 +631,8 @@ async fn writer_loop<S>(
     }
 }
 
-async fn main_read_loop<C, S>(
-    mut core: C,
+async fn main_event_loop<C, S>(
+    core: &mut C,
     mut ws_reader: WsReader<S>,
     mut command_rx: mpsc::UnboundedReceiver<Command>,
     writer_tx: mpsc::UnboundedSender<WriterCommand>,
@@ -624,7 +643,7 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
     for<'a> &'a C: Into<usize>,
 {
-    let context: usize = (&core).into();
+    let context: usize = (&*core).into();
     let mut outstanding = 0usize;
     let mut state = CloseState::Open;
     loop {
@@ -934,24 +953,6 @@ impl From<FLError> for Error {
     }
 }
 
-impl CloseControl {
-    fn new() -> Self {
-        Self {
-            signaled: AtomicBool::new(false),
-            writer_task: Mutex::new(None),
-        }
-    }
-
-    fn signal_closed(&self, ctx: C4SocketPtr, error: C4Error) {
-        if !self.signaled.swap(true, Ordering::SeqCst) {
-            if let Some(writer_task) = self.writer_task.lock().unwrap().take() {
-                writer_task.abort();
-            }
-            unsafe { c4socket_closed(ctx.0, error) };
-        }
-    }
-}
-
 fn http_basic_auth_header(user_id: &str, password: &str) -> String {
     let credentials = format!("{user_id}:{password}");
     let mut ret = "Basic ".to_string();
@@ -962,6 +963,7 @@ fn http_basic_auth_header(user_id: &str, password: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Arc, Mutex};
     use tokio::sync::{oneshot, Notify};
 
     struct CloseOnlySink;
@@ -998,11 +1000,17 @@ mod tests {
     async fn test_failed_handshake_reports_http_response() {
         use std::io::Read;
 
-        struct RecordingSink(Arc<Mutex<Vec<(c_int, String)>>>);
+        struct RecordingSink(Arc<Mutex<Vec<(c_int, String)>>>, Arc<Mutex<Vec<C4Error>>>);
 
         impl From<&RecordingSink> for usize {
             fn from(_: &RecordingSink) -> Self {
                 0
+            }
+        }
+
+        impl CloseSink for RecordingSink {
+            fn closed(self, error: C4Error) {
+                self.1.lock().unwrap().push(error);
             }
         }
 
@@ -1040,33 +1048,38 @@ mod tests {
         });
 
         let responses = Arc::new(Mutex::new(Vec::new()));
+        let closes = Arc::new(Mutex::new(Vec::new()));
         let (_commands, command_rx) = mpsc::unbounded_channel();
-        let (send_tx, send_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl::new());
-        let error = do_open(
-            RecordingSink(responses.clone()),
+        do_open(
+            Terminal::new(RecordingSink(responses.clone(), closes.clone())),
             Ok(format!("ws://{address}/").into_client_request().unwrap()),
             command_rx,
-            send_tx,
-            send_rx,
-            close_control,
         )
-        .await
-        .unwrap_err();
+        .await;
         server.join().unwrap();
 
-        assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
-        assert_eq!(error.0.code, 403);
+        assert_eq!(closes.lock().unwrap().len(), 1);
+        assert_eq!(
+            closes.lock().unwrap()[0].domain,
+            C4ErrorDomain::WebSocketDomain
+        );
+        assert_eq!(closes.lock().unwrap()[0].code, 403);
         assert_eq!(*responses.lock().unwrap(), [(403, "rejected".to_owned())]);
     }
 
     #[tokio::test]
     async fn test_request_close_before_open_preserves_status() {
-        struct NeverOpened;
+        struct NeverOpened(Arc<Mutex<Vec<C4Error>>>);
 
         impl From<&NeverOpened> for usize {
             fn from(_: &NeverOpened) -> Self {
                 0
+            }
+        }
+
+        impl CloseSink for NeverOpened {
+            fn closed(self, error: C4Error) {
+                self.0.lock().unwrap().push(error);
             }
         }
 
@@ -1083,8 +1096,7 @@ mod tests {
         }
 
         let (commands, command_rx) = mpsc::unbounded_channel();
-        let (send_tx, send_rx) = mpsc::unbounded_channel();
-        let close_control = Arc::new(CloseControl::new());
+        let closes = Arc::new(Mutex::new(Vec::new()));
         let (connecting_tx, connecting_rx) = oneshot::channel();
         let connect = async move {
             let _ = connecting_tx.send(());
@@ -1094,12 +1106,9 @@ mod tests {
             .await
         };
         let open_task = tokio::spawn(do_open_with_connect(
-            NeverOpened,
+            Terminal::new(NeverOpened(closes.clone())),
             connect,
             command_rx,
-            send_tx,
-            send_rx,
-            close_control,
         ));
 
         tokio::time::timeout(Duration::from_secs(2), connecting_rx)
@@ -1109,13 +1118,159 @@ mod tests {
         commands
             .send(Command::RequestClose(504, "Timed out".into()))
             .unwrap();
-        let error = tokio::time::timeout(Duration::from_secs(2), open_task)
+        tokio::time::timeout(Duration::from_secs(2), open_task)
             .await
             .unwrap()
-            .unwrap()
-            .unwrap_err();
-        assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
-        assert_eq!(error.0.code, 504);
+            .unwrap();
+        assert_eq!(closes.lock().unwrap().len(), 1);
+        assert_eq!(
+            closes.lock().unwrap()[0].domain,
+            C4ErrorDomain::WebSocketDomain
+        );
+        assert_eq!(closes.lock().unwrap()[0].code, 504);
+    }
+
+    #[tokio::test]
+    async fn test_cancelled_connect_reports_closed_once() {
+        struct NeverOpened(Arc<Mutex<Vec<C4Error>>>);
+
+        impl From<&NeverOpened> for usize {
+            fn from(_: &NeverOpened) -> Self {
+                0
+            }
+        }
+
+        impl CloseSink for NeverOpened {
+            fn closed(self, error: C4Error) {
+                self.0.lock().unwrap().push(error);
+            }
+        }
+
+        impl ConnectingSink for NeverOpened {
+            type Open = FfiCore<OpenPhase>;
+
+            fn got_http_response(&mut self, _: c_int, _: FLSliceResult) {
+                panic!("the handshake must not finish");
+            }
+
+            fn opened(self) -> Self::Open {
+                panic!("the handshake must not finish");
+            }
+        }
+
+        let closes = Arc::new(Mutex::new(Vec::new()));
+        let (_commands, command_rx) = mpsc::unbounded_channel();
+        let (started_tx, started_rx) = oneshot::channel();
+        let connect = async move {
+            let _ = started_tx.send(());
+            std::future::pending::<
+                Result<(WebSocketStream<tokio::io::DuplexStream>, Response), tungstenite::Error>,
+            >()
+            .await
+        };
+        let task = tokio::spawn(do_open_with_connect(
+            Terminal::new(NeverOpened(closes.clone())),
+            connect,
+            command_rx,
+        ));
+        started_rx.await.unwrap();
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        let closes = closes.lock().unwrap();
+        assert_eq!(closes.len(), 1);
+        assert_eq!(closes[0].domain, C4ErrorDomain::NetworkDomain);
+        assert_eq!(
+            closes[0].code,
+            C4NetworkErrorCode::kC4NetErrConnectionAborted.0
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cancelled_open_socket_reports_closed_once() {
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        struct ConnectingRecorder {
+            closes: Arc<Mutex<Vec<C4Error>>>,
+            opened: oneshot::Sender<()>,
+        }
+
+        struct OpenRecorder(Arc<Mutex<Vec<C4Error>>>);
+
+        impl From<&ConnectingRecorder> for usize {
+            fn from(_: &ConnectingRecorder) -> Self {
+                0
+            }
+        }
+
+        impl From<&OpenRecorder> for usize {
+            fn from(_: &OpenRecorder) -> Self {
+                0
+            }
+        }
+
+        impl CloseSink for ConnectingRecorder {
+            fn closed(self, error: C4Error) {
+                self.closes.lock().unwrap().push(error);
+            }
+        }
+
+        impl CloseSink for OpenRecorder {
+            fn closed(self, error: C4Error) {
+                self.0.lock().unwrap().push(error);
+            }
+        }
+
+        impl ConnectingSink for ConnectingRecorder {
+            type Open = OpenRecorder;
+
+            fn got_http_response(&mut self, _: c_int, _: FLSliceResult) {}
+
+            fn opened(self) -> Self::Open {
+                self.opened.send(()).unwrap();
+                OpenRecorder(self.closes)
+            }
+        }
+
+        impl OpenSink for OpenRecorder {
+            fn received(&mut self, _: &[u8]) {
+                panic!("no data message expected");
+            }
+
+            fn completed_write(&mut self, _: usize) {
+                panic!("no write was requested");
+            }
+
+            fn close_requested(&mut self, _: c_int, _: &str) {
+                panic!("no close frame expected");
+            }
+        }
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let _server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+        let response = http::Response::builder().status(101).body(None).unwrap();
+        let (_commands, command_rx) = mpsc::unbounded_channel();
+        let closes = Arc::new(Mutex::new(Vec::new()));
+        let (opened_tx, opened_rx) = oneshot::channel();
+        let terminal = Terminal::new(ConnectingRecorder {
+            closes: closes.clone(),
+            opened: opened_tx,
+        });
+        let task = tokio::spawn(do_open_with_connect(
+            terminal,
+            std::future::ready(Ok((client, response))),
+            command_rx,
+        ));
+        opened_rx.await.unwrap();
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        let closes = closes.lock().unwrap();
+        assert_eq!(closes.len(), 1);
+        assert_eq!(closes[0].domain, C4ErrorDomain::NetworkDomain);
+        assert_eq!(
+            closes[0].code,
+            C4NetworkErrorCode::kC4NetErrConnectionAborted.0
+        );
     }
 
     #[tokio::test]
@@ -1178,9 +1333,10 @@ mod tests {
         let (_commands, command_rx) = mpsc::unbounded_channel();
         let (writer_tx, _writer_rx) = mpsc::unbounded_channel();
         let (_written_tx, written_rx) = mpsc::unbounded_channel();
+        let mut sink = NoMessages;
         let error = tokio::time::timeout(
             Duration::from_secs(2),
-            main_read_loop(NoMessages, reader, command_rx, writer_tx, written_rx),
+            main_event_loop(&mut sink, reader, command_rx, writer_tx, written_rx),
         )
         .await
         .unwrap()
@@ -1238,15 +1394,10 @@ mod tests {
         let (writer_tx, writer_rx) = mpsc::unbounded_channel();
         let (event_tx, event_rx) = mpsc::unbounded_channel();
         let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
+        let mut sink = RecordingSink(callbacks.clone(), commands);
         let result = tokio::time::timeout(
             Duration::from_secs(2),
-            main_read_loop(
-                RecordingSink(callbacks.clone(), commands),
-                reader,
-                command_rx,
-                writer_tx,
-                event_rx,
-            ),
+            main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx),
         )
         .await
         .unwrap()
@@ -1270,13 +1421,10 @@ mod tests {
         let (writer_tx, writer_rx) = mpsc::unbounded_channel();
         let (event_tx, event_rx) = mpsc::unbounded_channel();
         let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
-        let read_task = tokio::spawn(main_read_loop(
-            CloseOnlySink,
-            reader,
-            command_rx,
-            writer_tx,
-            event_rx,
-        ));
+        let read_task = tokio::spawn(async move {
+            let mut sink = CloseOnlySink;
+            main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx).await
+        });
 
         commands
             .send(Command::RequestClose(1000, "done".into()))
@@ -1310,7 +1458,8 @@ mod tests {
         commands
             .send(Command::RequestClose(504, "timeout".into()))
             .unwrap();
-        let error = main_read_loop(CloseOnlySink, reader, command_rx, writer_tx, event_rx)
+        let mut sink = CloseOnlySink;
+        let error = main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx)
             .await
             .unwrap_err();
 
@@ -1368,13 +1517,12 @@ mod tests {
         let (commands, command_rx) = mpsc::unbounded_channel();
         let (writer_tx, _writer_rx) = mpsc::unbounded_channel();
         let (_event_tx, event_rx) = mpsc::unbounded_channel();
-        let read_task = tokio::spawn(main_read_loop(
-            RecordingSink(messages.clone(), received.clone()),
-            reader,
-            command_rx,
-            writer_tx,
-            event_rx,
-        ));
+        let messages_for_task = messages.clone();
+        let received_for_task = received.clone();
+        let read_task = tokio::spawn(async move {
+            let mut sink = RecordingSink(messages_for_task, received_for_task);
+            main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx).await
+        });
 
         received.notified().await;
         tokio::task::yield_now().await;
@@ -1456,13 +1604,11 @@ mod tests {
         let (event_tx, event_rx) = mpsc::unbounded_channel();
         let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
         let received = Arc::new(Notify::new());
-        let read_task = tokio::spawn(main_read_loop(
-            RecordingSink(received.clone()),
-            reader,
-            command_rx,
-            writer_tx,
-            event_rx,
-        ));
+        let received_for_task = received.clone();
+        let read_task = tokio::spawn(async move {
+            let mut sink = RecordingSink(received_for_task);
+            main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx).await
+        });
 
         server
             .send(Message::Binary(Bytes::from_static(b"data")))

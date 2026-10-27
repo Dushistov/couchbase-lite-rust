@@ -535,6 +535,7 @@ impl DbState {
         let monitor = Arc::new(StateMonitor::new());
         let state_monitor = monitor.clone();
         let state_output = self.output.clone();
+        let output_busy = AtomicBool::new(false);
         let docs_output = self.output.clone();
         let validation_output = self.output.clone();
         let conflict_exec = self.executor.clone();
@@ -542,7 +543,14 @@ impl DbState {
         let params = ReplicatorParameters::default()
             .with_auth(self.config.auth.clone())
             .with_state_changed_callback(move |state| {
-                state_output.callback(state_event(generation, &state));
+                // Progress updates can report Busy repeatedly without changing
+                // the event we show to users. Keep the output queue available
+                // for state transitions and errors while a large pull is active.
+                let busy = matches!(&state, ReplicatorState::Busy(_));
+                let was_busy = output_busy.swap(busy, Ordering::Relaxed);
+                if !busy || !was_busy {
+                    state_output.callback(state_event(generation, &state));
+                }
                 state_monitor.record(&state);
             })
             .with_documents_ended_callback(

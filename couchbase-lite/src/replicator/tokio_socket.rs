@@ -2,11 +2,12 @@ use crate::{
     ffi::{
         c4Socket_getNativeHandle, c4Socket_setNativeHandle, c4error_make, c4socket_closeRequested,
         c4socket_closed, c4socket_completedWrite, c4socket_gotHTTPResponse, c4socket_opened,
-        c4socket_received, c4socket_registerFactory, C4Address, C4Error, C4ErrorCode,
-        C4ErrorDomain, C4NetworkErrorCode, C4Slice, C4SliceResult, C4Socket, C4SocketFactory,
-        C4SocketFraming, C4String, C4WebSocketCloseCode, FLDict_Get, FLEncoder_BeginDict,
-        FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free, FLEncoder_New, FLEncoder_WriteKey,
-        FLEncoder_WriteString, FLError, FLSliceResult, FLTrust, FLValue_AsDict, FLValue_FromData,
+        c4socket_received, c4socket_registerFactory, c4socket_release, c4socket_retain, C4Address,
+        C4Error, C4ErrorCode, C4ErrorDomain, C4NetworkErrorCode, C4Slice, C4SliceResult, C4Socket,
+        C4SocketFactory, C4SocketFraming, C4String, C4WebSocketCloseCode, FLDict_Get,
+        FLEncoder_BeginDict, FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free, FLEncoder_New,
+        FLEncoder_WriteKey, FLEncoder_WriteString, FLError, FLSliceResult, FLTrust, FLValue_AsDict,
+        FLValue_FromData,
     },
     replicator::consts::*,
     value::ValueRef,
@@ -116,9 +117,25 @@ type WsReader<S> = SplitStream<WebSocketStream<S>>;
 type WsWriter<S> = SplitSink<WebSocketStream<S>, Message>;
 
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 struct C4SocketPtr(*mut C4Socket);
 unsafe impl Send for C4SocketPtr {}
+
+impl C4SocketPtr {
+    unsafe fn retain(socket: *mut C4Socket) -> Self {
+        Self(c4socket_retain(socket))
+    }
+
+    fn as_ptr(&self) -> *mut C4Socket {
+        self.0
+    }
+}
+
+impl Drop for C4SocketPtr {
+    fn drop(&mut self) {
+        unsafe { c4socket_release(self.as_ptr()) };
+    }
+}
 
 struct ConnectingPhase;
 struct OpenPhase;
@@ -130,13 +147,13 @@ struct FfiCore<P> {
 
 impl<P> From<&FfiCore<P>> for usize {
     fn from(core: &FfiCore<P>) -> Self {
-        core.socket.0 as usize
+        core.socket.as_ptr() as usize
     }
 }
 
 impl<P: Send + 'static> CloseSink for FfiCore<P> {
     fn closed(self, error: C4Error) {
-        unsafe { c4socket_closed(self.socket.0, error) };
+        unsafe { c4socket_closed(self.socket.as_ptr(), error) };
     }
 }
 
@@ -158,10 +175,10 @@ trait OpenSink: Send + 'static {
 }
 
 impl FfiCore<ConnectingPhase> {
-    // The caller must keep the LiteCore socket alive while this value is in use.
-    unsafe fn new(socket: C4SocketPtr) -> Self {
+    // Keep the socket alive until the async task reports its terminal result.
+    unsafe fn new(socket: *mut C4Socket) -> Self {
         Self {
-            socket,
+            socket: C4SocketPtr::retain(socket),
             phase: PhantomData,
         }
     }
@@ -171,11 +188,11 @@ impl ConnectingSink for FfiCore<ConnectingPhase> {
     type Open = FfiCore<OpenPhase>;
 
     fn got_http_response(&mut self, status: c_int, headers: FLSliceResult) {
-        unsafe { c4socket_gotHTTPResponse(self.socket.0, status, headers.as_fl_slice()) };
+        unsafe { c4socket_gotHTTPResponse(self.socket.as_ptr(), status, headers.as_fl_slice()) };
     }
 
     fn opened(self) -> Self::Open {
-        unsafe { c4socket_opened(self.socket.0) };
+        unsafe { c4socket_opened(self.socket.as_ptr()) };
         FfiCore {
             socket: self.socket,
             phase: PhantomData,
@@ -185,15 +202,15 @@ impl ConnectingSink for FfiCore<ConnectingPhase> {
 
 impl OpenSink for FfiCore<OpenPhase> {
     fn received(&mut self, data: &[u8]) {
-        unsafe { c4socket_received(self.socket.0, data.into()) };
+        unsafe { c4socket_received(self.socket.as_ptr(), data.into()) };
     }
 
     fn completed_write(&mut self, size: usize) {
-        unsafe { c4socket_completedWrite(self.socket.0, size) };
+        unsafe { c4socket_completedWrite(self.socket.as_ptr(), size) };
     }
 
     fn close_requested(&mut self, status: c_int, reason: &str) {
-        unsafe { c4socket_closeRequested(self.socket.0, status, reason.as_bytes().into()) };
+        unsafe { c4socket_closeRequested(self.socket.as_ptr(), status, reason.as_bytes().into()) };
     }
 }
 
@@ -283,7 +300,6 @@ unsafe extern "C" fn ws_open(
         c4sock,
         Box::into_raw(Box::new(SocketImpl { commands })) as *mut c_void,
     );
-    let c4sock = C4SocketPtr(c4sock);
     let terminal = Terminal::new(FfiCore::<ConnectingPhase>::new(c4sock));
     handle.spawn(async move { do_open(terminal, request, command_rx).await });
 }
@@ -963,7 +979,12 @@ fn http_basic_auth_header(user_id: &str, password: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Arc, Mutex};
+    use crate::ffi::c4socket_fromNative;
+
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    };
     use tokio::sync::{oneshot, Notify};
 
     struct CloseOnlySink;
@@ -994,6 +1015,54 @@ mod tests {
             "Basic Ym9iOnNlY3JldA==",
             http_basic_auth_header("bob", "secret")
         );
+    }
+
+    #[test]
+    fn test_socket_survives_litecore_releasing_its_reference() {
+        unsafe extern "C" fn mark_disposed(socket: *mut C4Socket) {
+            let disposed = c4Socket_getNativeHandle(socket) as *const AtomicBool;
+            (*disposed).store(true, Ordering::SeqCst);
+        }
+
+        let disposed = AtomicBool::new(false);
+        let factory = C4SocketFactory {
+            framing: C4SocketFraming::kC4NoFraming,
+            context: std::ptr::null_mut(),
+            open: None,
+            write: None,
+            completedReceive: None,
+            close: None,
+            requestClose: None,
+            dispose: Some(mark_disposed),
+        };
+        let address = C4Address {
+            scheme: "ws".into(),
+            hostname: "localhost".into(),
+            port: 80,
+            path: "/".into(),
+        };
+        let socket = unsafe {
+            c4socket_fromNative(
+                factory,
+                &disposed as *const AtomicBool as *mut c_void,
+                &address,
+            )
+        };
+        assert!(!socket.is_null());
+
+        // fromNative returns an unretained pointer. Give LiteCore one reference,
+        // then let the async side take the reference it needs for a late callback.
+        unsafe { c4socket_retain(socket) };
+        let core = unsafe { FfiCore::<ConnectingPhase>::new(socket) };
+        unsafe { c4socket_release(socket) };
+        if disposed.load(Ordering::SeqCst) {
+            // The pointer has already been freed; dropping core would use it again.
+            std::mem::forget(core);
+            panic!("LiteCore disposed the socket while the async side still owns it");
+        }
+
+        drop(core);
+        assert!(disposed.load(Ordering::SeqCst));
     }
 
     #[tokio::test]

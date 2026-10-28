@@ -9,10 +9,109 @@ on:
       - master
   schedule:
     - cron: '00 02 */4 * *'
+  workflow_dispatch:
+    inputs:
+      stress_profile:
+        description: Chat stress profile
+        type: choice
+        options: [smoke, stress]
+        default: smoke
+      stress_seed:
+        description: Reproducible schedule and payload seed
+        type: number
+        default: 12345
+      stress_clients:
+        description: Override client count (leave empty for profile default)
+        type: string
+      stress_messages:
+        description: Override total messages (leave empty for profile default)
+        type: string
 env:
   RUST_BACKTRACE: 1
   CLC_STABLE_HASH: "37eb02aa9465fdbcd4e67e708c04f84d78069eb5"
 jobs:
+  chat-stress:
+    name: Real Sync Gateway chat stress
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    concurrency:
+      group: chat-stress-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    env:
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 1
+      COUCHBASE_LITE_CORE_SRC_DIR: ${{ github.workspace }}/couchbase-lite-core
+      STRESS_PROFILE: ${{ github.event_name == 'schedule' && 'stress' || inputs.stress_profile || 'smoke' }}
+      STRESS_SEED: ${{ inputs.stress_seed || '12345' }}
+      STRESS_CLIENTS: ${{ inputs.stress_clients || '' }}
+      STRESS_MESSAGES: ${{ inputs.stress_messages || '' }}
+      COMPOSE_PROJECT: chat-stress-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout couchbase-lite-core
+        uses: actions/checkout@v4
+        with:
+          repository: 'dushistov/couchbase-lite-core'
+          ref: ${{ env.CLC_STABLE_HASH }}
+          submodules: 'recursive'
+          path: 'couchbase-lite-core'
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13.0'
+      - uses: jwlawson/actions-setup-cmake@v1.14
+        with:
+          cmake-version: '3.21.x'
+          github-api-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check runner resources
+        run: |
+          df -h .
+          free -h
+          cargo --version
+          python3 --version
+      - name: Start isolated Sync Gateway fixture
+        run: python3 ci/docker-up-down.py up --no-sudo --stress-only --project-name "$COMPOSE_PROJECT"
+      - name: Run chat stress campaign
+        env:
+          CORE_SRC: ${{ github.workspace }}/couchbase-lite-core
+        run: |
+          args=(--profile "$STRESS_PROFILE" --seed "$STRESS_SEED" --artifacts "$RUNNER_TEMP/chat-stress")
+          if [ -n "$STRESS_CLIENTS" ]; then args+=(--clients "$STRESS_CLIENTS"); fi
+          if [ -n "$STRESS_MESSAGES" ]; then args+=(--messages "$STRESS_MESSAGES"); fi
+          python3 ci/build_and_run_tests.py --chat-stress "${args[@]}"
+        shell: bash
+      - name: Capture service logs
+        if: failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/chat-stress"
+          docker compose --project-directory ci/docker --project-name "$COMPOSE_PROJECT" logs --no-color --tail=300 > "$RUNNER_TEMP/chat-stress/services.log" 2>&1 || true
+      - name: Stop isolated Sync Gateway fixture
+        if: always()
+        run: python3 ci/docker-up-down.py down --no-sudo --project-name "$COMPOSE_PROJECT"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: chat-stress-summary-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/chat-stress/summary.json
+            ${{ runner.temp }}/chat-stress/coverage.json
+            ${{ runner.temp }}/chat-stress/environment.json
+            ${{ runner.temp }}/chat-stress/actions.jsonl
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: chat-stress-failure-${{ github.run_id }}
+          path: ${{ runner.temp }}/chat-stress
+          if-no-files-found: ignore
+          retention-days: 7
   rust-tests:
     name: Rust tests
 

@@ -200,6 +200,22 @@ def selected_tests(options: list[str]) -> set[str]:
 def main() -> None:
     ci_dir = Path(sys.argv[0]).resolve().parent
     src_root = ci_dir.parent
+    if sys.argv[1:2] == ["--chat-stress"]:
+        import chat_stress
+
+        settings = chat_stress.settings_from_args(sys.argv[2:], src_root)
+        core_src = src_root / "couchbase-lite-core"
+        if core_src.is_dir():
+            os.environ.setdefault("COUCHBASE_LITE_CORE_SRC_DIR", str(core_src))
+        if not os.environ.get("COUCHBASE_LITE_CORE_SRC_DIR"):
+            raise SystemExit("chat stress requires COUCHBASE_LITE_CORE_SRC_DIR")
+        check_call(
+            ["cargo", "build", "-p", "chat-demo", "--no-default-features",
+             "--features=build-cpp,use-couchbase-lite-sqlite,use-tokio-websocket"],
+            cwd=src_root,
+        )
+        chat_stress.run(settings, src_root)
+        return
     tests = selected_tests(sys.argv[1:])
 
     if VALGRIND_TESTS in tests:

@@ -120,7 +120,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-22.04, macos-14]
+        os: [ubuntu-22.04, macos-15]
         rust: [stable, beta]
     env:
       RUSTUP_MAX_RETRIES: 10
@@ -207,7 +207,7 @@ jobs:
           python ci/docker-up-down.py down
   ios-tests:
     name: Check work with iOS
-    runs-on: macos-14
+    runs-on: macos-15
     strategy:
       fail-fast: true
       matrix:
@@ -263,7 +263,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-14]
+        os: [ubuntu-22.04, macos-15]
     steps:
       - uses: actions/checkout@v4
       - name: Checkout couchbase-lite-core

@@ -18,6 +18,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -176,7 +177,7 @@ class Client:
         command.extend(["--", str(db_path), url, user, password])
         env = os.environ.copy()
         env["TOKIO_WORKER_THREADS"] = str(workers)
-        env["RUST_LOG"] = "couchbase_lite::replicator::tokio_socket=trace"
+        env["RUST_LOG"] = "couchbase=warn,couchbase_lite::replicator::tokio_socket=trace"
         self.process = subprocess.Popen(command, stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                         text=True, bufsize=1, env=env)
@@ -216,14 +217,17 @@ class Client:
     def _read_stderr(self, password: str) -> None:
         assert self.process.stderr is not None
         count = 0
+        tail: deque[str] = deque(maxlen=200)
         with (self.artifacts / "stderr.log").open("w", encoding="utf-8") as log:
             for line in self.process.stderr:
                 for name, pattern in TRACE_PATTERNS.items():
                     self.trace_counts[name] += line.count(pattern)
+                clean = line.replace(password, "[REDACTED]")
+                tail.append(clean)
                 if count < MAX_LOG_BYTES:
-                    clean = line.replace(password, "[REDACTED]")
                     log.write(clean)
                     count += len(clean)
+        (self.artifacts / "stderr-tail.log").write_text("".join(tail), encoding="utf-8")
         self.stderr_done.set()
 
     def wait(self, event_type: str, command: int, *, timeout: float = COMMAND_TIMEOUT
@@ -546,9 +550,8 @@ def run(settings: Settings, src_root: Path) -> None:
         wait_inventory(lambda: {key: value for key, value in active[1].list_docs().items()
                                 if key.startswith(id_prefix)}, known, deadline,
                        "channel probe on second client")
-        # A late reader is useful for smoke, but a 5,000-document catch-up
-        # overwhelms chat-demo's bounded callback output queue. The stress
-        # reader starts with a clean database and follows the entire workload.
+        # The stress reader starts with a clean database and follows the
+        # entire workload; the smoke reader catches up after convergence.
         if settings.profile == "stress":
             reader = launch(settings.clients)
 
@@ -702,7 +705,7 @@ def run(settings: Settings, src_root: Path) -> None:
                     "socket_trace_counts": socket_counts,
                     "socket_callback_branches": "trace counts show calls, not complete callback ordering",
                     "close_response_pause": close_wait,
-                    "remaining": ["5,000-document cold catch-up exceeds chat-demo output queue",
+                    "remaining": ["5,000-document cold catch-up",
                                   "close timeout owner requires branch instrumentation",
                                   "server-initiated close", "TLS and auth failures",
                                   "frame mutation", "internal invariant branches"]})

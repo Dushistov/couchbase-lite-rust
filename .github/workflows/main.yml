@@ -28,7 +28,7 @@ on:
         type: string
 env:
   RUST_BACKTRACE: 1
-  CLC_STABLE_HASH: "37eb02aa9465fdbcd4e67e708c04f84d78069eb5"
+  CLC_STABLE_HASH: "790b368ab8d45ae779a6c9e4b08e99cbcd8aa3e6"
 jobs:
   chat-stress:
     name: Real Sync Gateway chat stress

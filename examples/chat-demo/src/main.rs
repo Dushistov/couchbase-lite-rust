@@ -280,7 +280,7 @@ struct Output {
 
 impl Output {
     fn start(mode: OutputMode) -> (Arc<Self>, thread::JoinHandle<()>) {
-        let (tx, rx) = mpsc::sync_channel::<OutputEvent>(256);
+        let (tx, rx) = mpsc::sync_channel::<OutputEvent>(8192);
         let failed = Arc::new(AtomicBool::new(false));
         let output = Arc::new(Self {
             tx,

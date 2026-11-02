@@ -3,7 +3,7 @@
 
 use couchbase_lite::*;
 use serde::{Deserialize, Serialize};
-use std::{env, path::Path, str, thread, time::Duration};
+use std::{env, num::NonZero, path::Path, str, thread, time::Duration};
 use tempfile::{tempdir, TempDir};
 use tokio::runtime;
 
@@ -35,6 +35,7 @@ fn test_double_replicator_restart() {
         let handle = runtime.handle().clone();
         let params = ReplicatorParameters::default()
             .with_auth(auth.clone())
+            .with_heartbeat_interval(NonZero::new(1).unwrap())
             .with_validation_func(
                 |coll_spec: C4CollectionSpec,
                  doc_id: C4String,

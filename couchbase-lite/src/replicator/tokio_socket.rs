@@ -74,12 +74,14 @@ enum Command {
 
 enum WriterCommand {
     Write(Bytes),
+    Ping(u64),
     Close(CloseFrame),
     FlushCloseReply,
 }
 
 enum WriterEvent {
     Written(usize),
+    PingSent(u64),
     CloseSent,
     CloseReplyFlushed,
     Failed(Box<tungstenite::Error>),
@@ -112,6 +114,55 @@ impl Drop for AbortWriter {
 }
 
 const CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
+const DEFAULT_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(300);
+const PONG_TIMEOUT: Duration = Duration::from_secs(10);
+
+#[derive(Clone, Copy)]
+enum PendingPing {
+    Queued(u64),
+    Sent { sequence: u64, deadline: Instant },
+    PongBeforeSent(u64),
+}
+
+struct Heartbeat {
+    interval: Duration,
+    next_ping: Instant,
+    sequence: u64,
+    pending: Option<PendingPing>,
+}
+
+impl Heartbeat {
+    fn new(interval: Duration) -> Self {
+        Self {
+            interval,
+            next_ping: Instant::now() + interval,
+            sequence: 0,
+            pending: None,
+        }
+    }
+
+    fn pong_deadline(&self) -> Option<Instant> {
+        match self.pending {
+            Some(PendingPing::Sent { deadline, .. }) => Some(deadline),
+            _ => None,
+        }
+    }
+
+    fn received_pong(&mut self, data: &[u8]) -> bool {
+        let sequence = match self.pending {
+            Some(PendingPing::Queued(sequence) | PendingPing::Sent { sequence, .. }) => sequence,
+            _ => return false,
+        };
+        if data != sequence.to_be_bytes() {
+            return false;
+        }
+        self.pending = match self.pending {
+            Some(PendingPing::Queued(_)) => Some(PendingPing::PongBeforeSent(sequence)),
+            _ => None,
+        };
+        true
+    }
+}
 
 type WsReader<S> = SplitStream<WebSocketStream<S>>;
 type WsWriter<S> = SplitSink<WebSocketStream<S>, Message>;
@@ -293,7 +344,7 @@ unsafe extern "C" fn ws_open(
     let request = c4address_to_request(c4sock as usize, &*addr, options);
     info!(
         "c4sock {c4sock:?}: open was called with uri: {:?}",
-        request.as_ref().map(Request::uri)
+        request.as_ref().map(|(request, _)| request.uri())
     );
     let (commands, command_rx) = mpsc::unbounded_channel();
     c4Socket_setNativeHandle(
@@ -351,7 +402,7 @@ unsafe fn c4address_to_request(
     marker: usize,
     addr: &C4Address,
     options: C4Slice,
-) -> Result<Request, Error> {
+) -> Result<(Request, Duration), Error> {
     let mut authority = Vec::with_capacity(addr.hostname.size + 1 + 5);
     authority.extend_from_slice(<&[u8]>::from(addr.hostname));
     write!(authority, ":{}", addr.port).expect("append to Vec failed");
@@ -379,6 +430,39 @@ unsafe fn c4address_to_request(
             "options argument in open is not fleece Dict".into(),
         ))
     })?;
+
+    let heartbeat = match ValueRef::new(FLDict_Get(
+        options.as_ptr(),
+        kC4ReplicatorHeartbeatInterval.into(),
+    )) {
+        ValueRef::Null | ValueRef::SignedInt(..=0) | ValueRef::UnsignedInt(0) => {
+            DEFAULT_HEARTBEAT_INTERVAL
+        }
+        ValueRef::SignedInt(seconds) => {
+            Duration::from_secs(u64::try_from(seconds).map_err(|_| {
+                Error(c4error_make(
+                    C4ErrorDomain::LiteCoreDomain,
+                    C4ErrorCode::kC4ErrorInvalidParameter.0,
+                    "heartbeat interval is invalid".into(),
+                ))
+            })?)
+        }
+        ValueRef::UnsignedInt(seconds) => Duration::from_secs(seconds),
+        _ => {
+            return Err(Error(c4error_make(
+                C4ErrorDomain::LiteCoreDomain,
+                C4ErrorCode::kC4ErrorInvalidParameter.0,
+                "heartbeat interval must be an integer number of seconds".into(),
+            )))
+        }
+    };
+    if heartbeat.as_secs() > i32::MAX as u64 {
+        return Err(Error(c4error_make(
+            C4ErrorDomain::LiteCoreDomain,
+            C4ErrorCode::kC4ErrorInvalidParameter.0,
+            "heartbeat interval exceeds i32::MAX seconds".into(),
+        )));
+    }
 
     if let ValueRef::Array(opts) = ValueRef::new(FLDict_Get(
         options.as_ptr(),
@@ -488,32 +572,33 @@ unsafe fn c4address_to_request(
             .insert("Cookie", HeaderValue::from_str(cookies.as_str())?);
     }
 
-    Ok(request)
+    Ok((request, heartbeat))
 }
 
 async fn do_open<C>(
     mut terminal: Terminal<C>,
-    request: Result<Request, Error>,
+    request: Result<(Request, Duration), Error>,
     command_rx: mpsc::UnboundedReceiver<Command>,
 ) where
     C: ConnectingSink,
     for<'a> &'a C: Into<usize>,
     for<'a> &'a C::Open: Into<usize>,
 {
-    let request = match request {
+    let (request, heartbeat) = match request {
         Ok(request) => request,
         Err(error) => {
             terminal.finish(error.0);
             return;
         }
     };
-    do_open_with_connect(terminal, connect_async(request), command_rx).await;
+    do_open_with_connect(terminal, connect_async(request), command_rx, heartbeat).await;
 }
 
 async fn do_open_with_connect<C, S, F>(
     mut terminal: Terminal<C>,
     connect: F,
     mut command_rx: mpsc::UnboundedReceiver<Command>,
+    heartbeat: Duration,
 ) where
     C: ConnectingSink,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -579,13 +664,14 @@ async fn do_open_with_connect<C, S, F>(
         }
     }
     drop(http_resp);
-    run_open_socket(terminal, ws_stream, command_rx).await;
+    run_open_socket(terminal, ws_stream, command_rx, heartbeat).await;
 }
 
 async fn run_open_socket<C, S>(
     terminal: Terminal<C>,
     ws_stream: WebSocketStream<S>,
     command_rx: mpsc::UnboundedReceiver<Command>,
+    heartbeat: Duration,
 ) where
     C: ConnectingSink,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -597,7 +683,16 @@ async fn run_open_socket<C, S>(
     let writer_task = tokio::spawn(writer_loop(ws_writer, writer_rx, event_tx));
     let _writer_guard = AbortWriter(writer_task.abort_handle());
     let mut terminal = terminal.opened();
-    match main_event_loop(terminal.core(), ws_reader, command_rx, writer_tx, event_rx).await {
+    match main_event_loop(
+        terminal.core(),
+        ws_reader,
+        command_rx,
+        writer_tx,
+        event_rx,
+        heartbeat,
+    )
+    .await
+    {
         Ok(()) => terminal.finish(network_error(
             C4NetworkErrorCode::kC4NetErrConnectionAborted,
             "WebSocket read loop exited",
@@ -622,6 +717,16 @@ async fn writer_loop<S>(
                     return;
                 }
                 if events.send(WriterEvent::Written(size)).is_err() {
+                    return;
+                }
+            }
+            WriterCommand::Ping(sequence) => {
+                let payload = Bytes::copy_from_slice(&sequence.to_be_bytes());
+                if let Err(error) = writer.send(Message::Ping(payload)).await {
+                    let _ = events.send(WriterEvent::Failed(error.into()));
+                    return;
+                }
+                if events.send(WriterEvent::PingSent(sequence)).is_err() {
                     return;
                 }
             }
@@ -653,6 +758,7 @@ async fn main_event_loop<C, S>(
     mut command_rx: mpsc::UnboundedReceiver<Command>,
     writer_tx: mpsc::UnboundedSender<WriterCommand>,
     mut event_rx: mpsc::UnboundedReceiver<WriterEvent>,
+    heartbeat_interval: Duration,
 ) -> Result<(), Error>
 where
     C: OpenSink,
@@ -662,12 +768,20 @@ where
     let context: usize = (&*core).into();
     let mut outstanding = 0usize;
     let mut state = CloseState::Open;
+    let mut heartbeat = Heartbeat::new(heartbeat_interval);
     loop {
         let deadline = match state {
             CloseState::Open => None,
             CloseState::Local { deadline, .. } | CloseState::Peer { deadline, .. } => {
                 Some(deadline)
             }
+        };
+        let ping_due =
+            matches!(state, CloseState::Open) && outstanding == 0 && heartbeat.pending.is_none();
+        let pong_deadline = if matches!(state, CloseState::Open) && outstanding == 0 {
+            heartbeat.pong_deadline()
+        } else {
+            None
         };
         tokio::select! {
             command = command_rx.recv() => match command {
@@ -687,6 +801,11 @@ where
                         debug_assert!(false);
                     }
                     outstanding = outstanding.saturating_sub(size);
+                    if outstanding == 0 {
+                        if let Some(PendingPing::Sent { deadline, .. }) = &mut heartbeat.pending {
+                            *deadline = Instant::now() + PONG_TIMEOUT;
+                        }
+                    }
                 }
                 Some(Command::RequestClose(status, reason)) => match state {
                     CloseState::Open => {
@@ -733,6 +852,20 @@ where
             },
             event = event_rx.recv() => match event {
                 Some(WriterEvent::Written(size)) => core.completed_write(size),
+                Some(WriterEvent::PingSent(sequence)) => {
+                    trace!("c4sock {context:#x}: heartbeat ping sent: {sequence}");
+                    heartbeat.next_ping = Instant::now() + heartbeat.interval;
+                    heartbeat.pending = match heartbeat.pending {
+                        Some(PendingPing::Queued(pending)) if pending == sequence => {
+                            Some(PendingPing::Sent {
+                                sequence,
+                                deadline: Instant::now() + PONG_TIMEOUT,
+                            })
+                        }
+                        Some(PendingPing::PongBeforeSent(pending)) if pending == sequence => None,
+                        pending => pending,
+                    };
+                }
                 Some(WriterEvent::CloseSent) => trace!("c4sock {context:#x}: local WebSocket close sent"),
                 Some(WriterEvent::CloseReplyFlushed) => {
                     if let CloseState::Peer { error, .. } = state {
@@ -781,7 +914,13 @@ where
                     }
                     Message::Frame(_) => warn!("c4sock {context:#x}: unsupported Message::Frame format"),
                     Message::Ping(_) => trace!("c4sock {context:#x}: ping frame was received"),
-                    Message::Pong(_) => trace!("c4sock {context:#x}: pong frame was received"),
+                    Message::Pong(data) => {
+                        if heartbeat.received_pong(&data) {
+                            trace!("c4sock {context:#x}: heartbeat pong received");
+                        } else {
+                            trace!("c4sock {context:#x}: unsolicited pong frame was received");
+                        }
+                    }
                 },
                 Some(Err(error)) => return Err(unsafe { tungstenite_err_to_c4_err(error) }),
                 None => return Err(Error(network_error(
@@ -793,6 +932,21 @@ where
                 return Err(Error(network_error(
                     C4NetworkErrorCode::kC4NetErrTimeout,
                     "WebSocket close timed out",
+                )));
+            }
+            _ = tokio::time::sleep_until(heartbeat.next_ping), if ping_due => {
+                heartbeat.sequence = heartbeat.sequence.wrapping_add(1);
+                let sequence = heartbeat.sequence;
+                writer_tx.send(WriterCommand::Ping(sequence)).map_err(|_| Error(network_error(
+                    C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                    "writer task stopped before heartbeat ping",
+                )))?;
+                heartbeat.pending = Some(PendingPing::Queued(sequence));
+            }
+            _ = async { if let Some(deadline) = pong_deadline { tokio::time::sleep_until(deadline).await } }, if pong_deadline.is_some() => {
+                return Err(Error(network_error(
+                    C4NetworkErrorCode::kC4NetErrTimeout,
+                    "WebSocket heartbeat Pong timed out",
                 )));
             }
         }
@@ -1018,6 +1172,189 @@ mod tests {
     }
 
     #[test]
+    fn test_heartbeat_option_is_parsed() {
+        let address = C4Address {
+            scheme: "ws".into(),
+            hostname: "localhost".into(),
+            port: 80,
+            path: "/".into(),
+        };
+        let default = serde_fleece::fleece!({}).unwrap();
+        let explicit = serde_fleece::fleece!({ kC4ReplicatorHeartbeatInterval: 2i64 }).unwrap();
+        let invalid =
+            serde_fleece::fleece!({ kC4ReplicatorHeartbeatInterval: i64::from(i32::MAX) + 1 })
+                .unwrap();
+        assert_eq!(
+            unsafe { c4address_to_request(0, &address, default.as_fl_slice()) }
+                .unwrap()
+                .1,
+            DEFAULT_HEARTBEAT_INTERVAL
+        );
+        assert_eq!(
+            unsafe { c4address_to_request(0, &address, explicit.as_fl_slice()) }
+                .unwrap()
+                .1,
+            Duration::from_secs(2)
+        );
+        assert!(unsafe { c4address_to_request(0, &address, invalid.as_fl_slice()) }.is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_heartbeat_ping_pong_and_timeout() {
+        use futures_util::FutureExt;
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let mut server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+        let (writer, reader) = client.split();
+        let (_commands, command_rx) = mpsc::unbounded_channel();
+        let (writer_tx, writer_rx) = mpsc::unbounded_channel();
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
+        let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
+        let read_task = tokio::spawn(async move {
+            let mut sink = CloseOnlySink;
+            main_event_loop(
+                &mut sink,
+                reader,
+                command_rx,
+                writer_tx,
+                event_rx,
+                Duration::from_secs(2),
+            )
+            .await
+        });
+
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_secs(1)).await;
+        assert!(!read_task.is_finished());
+        assert!(server.next().now_or_never().is_none());
+        tokio::time::advance(Duration::from_secs(1)).await;
+        let first = match server.next().await.unwrap().unwrap() {
+            Message::Ping(data) => data,
+            message => panic!("expected ping, got {message:?}"),
+        };
+        server.send(Message::Pong(first)).await.unwrap();
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_secs(2)).await;
+        assert!(matches!(server.next().await, Some(Ok(Message::Ping(_)))));
+        server
+            .send(Message::Pong(Bytes::from_static(b"wrong")))
+            .await
+            .unwrap();
+        tokio::task::yield_now().await;
+        tokio::time::advance(PONG_TIMEOUT).await;
+        let error = read_task.await.unwrap().unwrap_err();
+        assert_eq!(error.0.domain, C4ErrorDomain::NetworkDomain);
+        assert_eq!(error.0.code, C4NetworkErrorCode::kC4NetErrTimeout.0);
+        writer_task.await.unwrap();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_server_ping_is_answered_automatically() {
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let mut server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+        let (writer, reader) = client.split();
+        let (_commands, command_rx) = mpsc::unbounded_channel();
+        let (writer_tx, writer_rx) = mpsc::unbounded_channel();
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
+        let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
+        let read_task = tokio::spawn(async move {
+            let mut sink = CloseOnlySink;
+            main_event_loop(
+                &mut sink,
+                reader,
+                command_rx,
+                writer_tx,
+                event_rx,
+                DEFAULT_HEARTBEAT_INTERVAL,
+            )
+            .await
+        });
+
+        server
+            .send(Message::Ping(Bytes::from_static(b"server")))
+            .await
+            .unwrap();
+        assert_eq!(
+            server.next().await.unwrap().unwrap(),
+            Message::Pong(Bytes::from_static(b"server"))
+        );
+        read_task.abort();
+        writer_task.abort();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_heartbeat_waits_for_receive_backpressure() {
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        struct BlockingSink(Arc<Notify>);
+
+        impl From<&BlockingSink> for usize {
+            fn from(_: &BlockingSink) -> Self {
+                0
+            }
+        }
+        impl OpenSink for BlockingSink {
+            fn received(&mut self, _: &[u8]) {
+                self.0.notify_one();
+            }
+            fn completed_write(&mut self, _: usize) {
+                panic!("no write expected");
+            }
+            fn close_requested(&mut self, _: c_int, _: &str) {
+                panic!("no close expected");
+            }
+        }
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let mut server = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+        let (writer, reader) = client.split();
+        let (commands, command_rx) = mpsc::unbounded_channel();
+        let (writer_tx, writer_rx) = mpsc::unbounded_channel();
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
+        let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
+        let received = Arc::new(Notify::new());
+        let sink_received = received.clone();
+        let read_task = tokio::spawn(async move {
+            let mut sink = BlockingSink(sink_received);
+            main_event_loop(
+                &mut sink,
+                reader,
+                command_rx,
+                writer_tx,
+                event_rx,
+                Duration::from_secs(1),
+            )
+            .await
+        });
+
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_secs(1)).await;
+        let ping = match server.next().await.unwrap().unwrap() {
+            Message::Ping(data) => data,
+            message => panic!("expected ping, got {message:?}"),
+        };
+        server
+            .send(Message::Binary(Bytes::from_static(b"blip")))
+            .await
+            .unwrap();
+        received.notified().await;
+        server.send(Message::Pong(ping)).await.unwrap();
+        tokio::time::advance(PONG_TIMEOUT + Duration::from_secs(1)).await;
+        assert!(!read_task.is_finished());
+        commands.send(Command::CompletedReceive(4)).unwrap();
+        tokio::task::yield_now().await;
+        assert!(!read_task.is_finished());
+        read_task.abort();
+        writer_task.abort();
+    }
+
+    #[test]
     fn test_socket_survives_litecore_releasing_its_reference() {
         unsafe extern "C" fn mark_disposed(socket: *mut C4Socket) {
             let disposed = c4Socket_getNativeHandle(socket) as *const AtomicBool;
@@ -1121,7 +1458,10 @@ mod tests {
         let (_commands, command_rx) = mpsc::unbounded_channel();
         do_open(
             Terminal::new(RecordingSink(responses.clone(), closes.clone())),
-            Ok(format!("ws://{address}/").into_client_request().unwrap()),
+            Ok((
+                format!("ws://{address}/").into_client_request().unwrap(),
+                DEFAULT_HEARTBEAT_INTERVAL,
+            )),
             command_rx,
         )
         .await;
@@ -1178,6 +1518,7 @@ mod tests {
             Terminal::new(NeverOpened(closes.clone())),
             connect,
             command_rx,
+            DEFAULT_HEARTBEAT_INTERVAL,
         ));
 
         tokio::time::timeout(Duration::from_secs(2), connecting_rx)
@@ -1241,6 +1582,7 @@ mod tests {
             Terminal::new(NeverOpened(closes.clone())),
             connect,
             command_rx,
+            DEFAULT_HEARTBEAT_INTERVAL,
         ));
         started_rx.await.unwrap();
         task.abort();
@@ -1329,6 +1671,7 @@ mod tests {
             terminal,
             std::future::ready(Ok((client, response))),
             command_rx,
+            DEFAULT_HEARTBEAT_INTERVAL,
         ));
         opened_rx.await.unwrap();
         task.abort();
@@ -1405,7 +1748,14 @@ mod tests {
         let mut sink = NoMessages;
         let error = tokio::time::timeout(
             Duration::from_secs(2),
-            main_event_loop(&mut sink, reader, command_rx, writer_tx, written_rx),
+            main_event_loop(
+                &mut sink,
+                reader,
+                command_rx,
+                writer_tx,
+                written_rx,
+                DEFAULT_HEARTBEAT_INTERVAL,
+            ),
         )
         .await
         .unwrap()
@@ -1466,7 +1816,14 @@ mod tests {
         let mut sink = RecordingSink(callbacks.clone(), commands);
         let result = tokio::time::timeout(
             Duration::from_secs(2),
-            main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx),
+            main_event_loop(
+                &mut sink,
+                reader,
+                command_rx,
+                writer_tx,
+                event_rx,
+                DEFAULT_HEARTBEAT_INTERVAL,
+            ),
         )
         .await
         .unwrap()
@@ -1492,7 +1849,15 @@ mod tests {
         let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
         let read_task = tokio::spawn(async move {
             let mut sink = CloseOnlySink;
-            main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx).await
+            main_event_loop(
+                &mut sink,
+                reader,
+                command_rx,
+                writer_tx,
+                event_rx,
+                DEFAULT_HEARTBEAT_INTERVAL,
+            )
+            .await
         });
 
         commands
@@ -1528,9 +1893,16 @@ mod tests {
             .send(Command::RequestClose(504, "timeout".into()))
             .unwrap();
         let mut sink = CloseOnlySink;
-        let error = main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx)
-            .await
-            .unwrap_err();
+        let error = main_event_loop(
+            &mut sink,
+            reader,
+            command_rx,
+            writer_tx,
+            event_rx,
+            DEFAULT_HEARTBEAT_INTERVAL,
+        )
+        .await
+        .unwrap_err();
 
         assert_eq!(error.0.domain, C4ErrorDomain::WebSocketDomain);
         assert_eq!(error.0.code, 504);
@@ -1590,7 +1962,15 @@ mod tests {
         let received_for_task = received.clone();
         let read_task = tokio::spawn(async move {
             let mut sink = RecordingSink(messages_for_task, received_for_task);
-            main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx).await
+            main_event_loop(
+                &mut sink,
+                reader,
+                command_rx,
+                writer_tx,
+                event_rx,
+                DEFAULT_HEARTBEAT_INTERVAL,
+            )
+            .await
         });
 
         received.notified().await;
@@ -1676,7 +2056,15 @@ mod tests {
         let received_for_task = received.clone();
         let read_task = tokio::spawn(async move {
             let mut sink = RecordingSink(received_for_task);
-            main_event_loop(&mut sink, reader, command_rx, writer_tx, event_rx).await
+            main_event_loop(
+                &mut sink,
+                reader,
+                command_rx,
+                writer_tx,
+                event_rx,
+                DEFAULT_HEARTBEAT_INTERVAL,
+            )
+            .await
         });
 
         server

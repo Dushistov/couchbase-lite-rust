@@ -16,6 +16,7 @@ use crate::{
 use log::{info, trace};
 use std::{
     mem::{self, MaybeUninit},
+    num::NonZero,
     os::raw::c_void,
     ptr,
     ptr::NonNull,
@@ -32,6 +33,7 @@ pub struct Replicator {
     free_callback_f: unsafe fn(_: *mut c_void),
     boxed_callback_f: NonNull<c_void>,
     mode: ReplicatorMode,
+    heartbeat_secs: Option<i32>,
 }
 
 /// Parameters describing a replication, used when creating `Replicator`
@@ -41,6 +43,7 @@ pub struct ReplicatorParameters<StateCallback, DocumentsEndedCallback, Validatio
     documents_ended_callback: DocumentsEndedCallback,
     auth: ReplicatorAuthentication,
     mode: ReplicatorMode,
+    heartbeat_interval: Option<NonZero<u32>>,
 }
 
 #[derive(Clone, Copy)]
@@ -53,6 +56,16 @@ impl<SC, DEC, V> ReplicatorParameters<SC, DEC, V> {
     #[inline]
     pub fn with_auth(self, auth: ReplicatorAuthentication) -> Self {
         Self { auth, ..self }
+    }
+    /// Set the interval, in seconds, between WebSocket keepalive pings.
+    /// The default is 300 seconds; a Pong must arrive within 10 seconds.
+    /// Values above `i32::MAX` are rejected when creating the replicator.
+    #[inline]
+    pub fn with_heartbeat_interval(self, seconds: NonZero<u32>) -> Self {
+        Self {
+            heartbeat_interval: Some(seconds),
+            ..self
+        }
     }
     /// Set callback that can reject incoming revisions.
     /// Arguments: collection_name, doc_id, rev_id, rev_flags, doc_body.
@@ -71,6 +84,7 @@ impl<SC, DEC, V> ReplicatorParameters<SC, DEC, V> {
             documents_ended_callback: self.documents_ended_callback,
             auth: self.auth,
             mode: self.mode,
+            heartbeat_interval: self.heartbeat_interval,
         }
     }
     /// Set callback to reports back change of replicator state
@@ -88,6 +102,7 @@ impl<SC, DEC, V> ReplicatorParameters<SC, DEC, V> {
             documents_ended_callback: self.documents_ended_callback,
             auth: self.auth,
             mode: self.mode,
+            heartbeat_interval: self.heartbeat_interval,
         }
     }
     /// Set callback to reports about the replication status of documents
@@ -105,6 +120,7 @@ impl<SC, DEC, V> ReplicatorParameters<SC, DEC, V> {
             documents_ended_callback,
             auth: self.auth,
             mode: self.mode,
+            heartbeat_interval: self.heartbeat_interval,
         }
     }
     /// Set push mode (from db to remote/other db)
@@ -144,6 +160,7 @@ impl Default
             state_changed_callback: |_repl_state| {},
             documents_ended_callback: |_pushing, _doc_iter| {},
             auth: ReplicatorAuthentication::None,
+            heartbeat_interval: None,
             mode: ReplicatorMode {
                 push: C4ReplicatorMode::kC4Continuous,
                 pull: C4ReplicatorMode::kC4Continuous,
@@ -283,6 +300,14 @@ impl Replicator {
             ((*ctx).docs_ended_cb)(pushing, &mut it);
         }
 
+        let heartbeat_secs = params
+            .heartbeat_interval
+            .map(|seconds| {
+                i32::try_from(seconds.get()).map_err(|_| {
+                    Error::LogicError("heartbeat interval exceeds i32::MAX seconds".into())
+                })
+            })
+            .transpose()?;
         let ctx = Box::new(CallbackContext {
             validation_cb: params.validation_cb,
             state_cb: params.state_changed_callback,
@@ -299,6 +324,7 @@ impl Replicator {
             Some(call_on_status_changed::<ValidationF, StateCallback, DocumentsEndedCallback>),
             Some(call_on_documents_ended::<ValidationF, StateCallback, DocumentsEndedCallback>),
             params.mode,
+            heartbeat_secs,
         )
     }
 
@@ -334,6 +360,7 @@ impl Replicator {
             c_callback_on_status_changed,
             c_callback_on_documents_ended,
             mode,
+            heartbeat_secs,
         } = self;
         mem::forget(self);
         unsafe {
@@ -350,6 +377,7 @@ impl Replicator {
             c_callback_on_status_changed,
             c_callback_on_documents_ended,
             mode,
+            heartbeat_secs,
         )?;
         repl.start(reset)?;
         Ok(repl)
@@ -378,6 +406,7 @@ impl Replicator {
         call_on_status_changed: C4ReplicatorStatusChangedCallback,
         call_on_documents_ended: C4ReplicatorDocumentsEndedCallback,
         mode: ReplicatorMode,
+        heartbeat_secs: Option<i32>,
     ) -> Result<Self> {
         use consts::*;
 
@@ -390,6 +419,7 @@ impl Replicator {
 
         let options_dict: FLSliceResult = match auth {
             ReplicatorAuthentication::SessionToken(token) => serde_fleece::fleece!({
+                kC4ReplicatorHeartbeatInterval: i64::from(heartbeat_secs.unwrap_or_default()),
                 kC4ReplicatorOptionAuthentication: {
                     kC4ReplicatorAuthType: kC4AuthTypeSession,
                     kC4ReplicatorAuthToken: *token,
@@ -397,6 +427,7 @@ impl Replicator {
             }),
             ReplicatorAuthentication::Basic { username, password } => {
                 serde_fleece::fleece!({
+                    kC4ReplicatorHeartbeatInterval: i64::from(heartbeat_secs.unwrap_or_default()),
                     kC4ReplicatorOptionAuthentication: {
                         kC4ReplicatorAuthType: kC4AuthTypeBasic,
                         kC4ReplicatorAuthUserName: *username,
@@ -404,7 +435,9 @@ impl Replicator {
                     }
                 })
             }
-            ReplicatorAuthentication::None => serde_fleece::fleece!({}),
+            ReplicatorAuthentication::None => serde_fleece::fleece!({
+                kC4ReplicatorHeartbeatInterval: i64::from(heartbeat_secs.unwrap_or_default())
+            }),
         }?;
 
         let mut collect_opt = C4ReplicationCollection {
@@ -448,6 +481,7 @@ impl Replicator {
                 validation,
                 c_callback_on_status_changed: call_on_status_changed,
                 c_callback_on_documents_ended: call_on_documents_ended,
+                heartbeat_secs,
                 mode,
             })
             .ok_or_else(|| {
@@ -525,6 +559,7 @@ pub(crate) mod consts {
         kC4ReplicatorAuthToken,
         kC4ReplicatorAuthType,
         kC4ReplicatorAuthUserName,
+        kC4ReplicatorHeartbeatInterval,
         kC4ReplicatorOptionAuthentication,
     );
 

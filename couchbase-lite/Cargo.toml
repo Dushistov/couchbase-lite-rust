@@ -41,7 +41,7 @@ base64 = "0.22.0"
 tempfile = "3.0"
 env_logger = { version = "0.11.3", default-features = false }
 serde = { version = "1.0.104", default-features = false, features = ["derive", "std"] }
-tokio = { version = "1.16.1", default-features = false, features = ["sync", "rt", "rt-multi-thread", "net", "time"] }
+tokio = { version = "1.16.1", default-features = false, features = ["sync", "rt", "rt-multi-thread", "net", "time", "test-util"] }
 
 [package.metadata.docs.rs]
 features = [ "docs-rs" ] # This feature will be enabled during the docs.rs build

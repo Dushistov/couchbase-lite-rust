@@ -115,13 +115,14 @@ impl Drop for AbortWriter {
 
 const CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
 const DEFAULT_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(300);
+const PING_SEND_TIMEOUT: Duration = Duration::from_secs(10);
 const PONG_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Clone, Copy)]
 enum PendingPing {
-    Queued(u64),
+    Queued { sequence: u64, deadline: Instant },
     Sent { sequence: u64, deadline: Instant },
-    PongBeforeSent(u64),
+    PongBeforeSent { sequence: u64, deadline: Instant },
 }
 
 struct Heartbeat {
@@ -141,6 +142,15 @@ impl Heartbeat {
         }
     }
 
+    fn send_deadline(&self) -> Option<Instant> {
+        match self.pending {
+            Some(
+                PendingPing::Queued { deadline, .. } | PendingPing::PongBeforeSent { deadline, .. },
+            ) => Some(deadline),
+            _ => None,
+        }
+    }
+
     fn pong_deadline(&self) -> Option<Instant> {
         match self.pending {
             Some(PendingPing::Sent { deadline, .. }) => Some(deadline),
@@ -150,14 +160,18 @@ impl Heartbeat {
 
     fn received_pong(&mut self, data: &[u8]) -> bool {
         let sequence = match self.pending {
-            Some(PendingPing::Queued(sequence) | PendingPing::Sent { sequence, .. }) => sequence,
+            Some(PendingPing::Queued { sequence, .. } | PendingPing::Sent { sequence, .. }) => {
+                sequence
+            }
             _ => return false,
         };
         if data != sequence.to_be_bytes() {
             return false;
         }
         self.pending = match self.pending {
-            Some(PendingPing::Queued(_)) => Some(PendingPing::PongBeforeSent(sequence)),
+            Some(PendingPing::Queued { deadline, .. }) => {
+                Some(PendingPing::PongBeforeSent { sequence, deadline })
+            }
             _ => None,
         };
         true
@@ -778,6 +792,12 @@ where
         };
         let ping_due =
             matches!(state, CloseState::Open) && outstanding == 0 && heartbeat.pending.is_none();
+        // Receiving data can delay reading a Pong, but must not hide a stalled writer.
+        let send_deadline = if matches!(state, CloseState::Open) {
+            heartbeat.send_deadline()
+        } else {
+            None
+        };
         let pong_deadline = if matches!(state, CloseState::Open) && outstanding == 0 {
             heartbeat.pong_deadline()
         } else {
@@ -856,13 +876,13 @@ where
                     trace!("c4sock {context:#x}: heartbeat ping sent: {sequence}");
                     heartbeat.next_ping = Instant::now() + heartbeat.interval;
                     heartbeat.pending = match heartbeat.pending {
-                        Some(PendingPing::Queued(pending)) if pending == sequence => {
+                        Some(PendingPing::Queued { sequence: pending, .. }) if pending == sequence => {
                             Some(PendingPing::Sent {
                                 sequence,
                                 deadline: Instant::now() + PONG_TIMEOUT,
                             })
                         }
-                        Some(PendingPing::PongBeforeSent(pending)) if pending == sequence => None,
+                        Some(PendingPing::PongBeforeSent { sequence: pending, .. }) if pending == sequence => None,
                         pending => pending,
                     };
                 }
@@ -941,7 +961,16 @@ where
                     C4NetworkErrorCode::kC4NetErrConnectionAborted,
                     "writer task stopped before heartbeat ping",
                 )))?;
-                heartbeat.pending = Some(PendingPing::Queued(sequence));
+                heartbeat.pending = Some(PendingPing::Queued {
+                    sequence,
+                    deadline: Instant::now() + PING_SEND_TIMEOUT,
+                });
+            }
+            _ = async { if let Some(deadline) = send_deadline { tokio::time::sleep_until(deadline).await } }, if send_deadline.is_some() => {
+                return Err(Error(network_error(
+                    C4NetworkErrorCode::kC4NetErrTimeout,
+                    "WebSocket heartbeat Ping send timed out",
+                )));
             }
             _ = async { if let Some(deadline) = pong_deadline { tokio::time::sleep_until(deadline).await } }, if pong_deadline.is_some() => {
                 return Err(Error(network_error(
@@ -1248,6 +1277,52 @@ mod tests {
         assert_eq!(error.0.domain, C4ErrorDomain::NetworkDomain);
         assert_eq!(error.0.code, C4NetworkErrorCode::kC4NetErrTimeout.0);
         writer_task.await.unwrap();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_heartbeat_times_out_when_ping_send_is_blocked() {
+        check_blocked_heartbeat(false).await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_heartbeat_times_out_when_queued_behind_blocked_write() {
+        check_blocked_heartbeat(true).await;
+    }
+
+    async fn check_blocked_heartbeat(write_first: bool) {
+        use tokio_tungstenite::tungstenite::protocol::Role;
+
+        // Neither a Ping nor a data frame fits, and the server never reads.
+        let (client_io, _server_io) = tokio::io::duplex(1);
+        let client = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let (writer, reader) = client.split();
+        let (commands, command_rx) = mpsc::unbounded_channel();
+        let (writer_tx, writer_rx) = mpsc::unbounded_channel();
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
+        let writer_task = tokio::spawn(writer_loop(writer, writer_rx, event_tx));
+        let _abort_writer = AbortWriter(writer_task.abort_handle());
+        if write_first {
+            commands
+                .send(Command::Write(Bytes::from_static(b"blocked")))
+                .unwrap();
+        }
+        let mut sink = CloseOnlySink;
+        let error = tokio::time::timeout(
+            Duration::from_secs(60),
+            main_event_loop(
+                &mut sink,
+                reader,
+                command_rx,
+                writer_tx,
+                event_rx,
+                Duration::from_secs(1),
+            ),
+        )
+        .await
+        .expect("heartbeat must detect a stalled send")
+        .unwrap_err();
+        assert_eq!(error.0.domain, C4ErrorDomain::NetworkDomain);
+        assert_eq!(error.0.code, C4NetworkErrorCode::kC4NetErrTimeout.0);
     }
 
     #[tokio::test(start_paused = true)]

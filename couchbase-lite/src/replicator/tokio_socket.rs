@@ -125,6 +125,11 @@ enum PendingPing {
     PongBeforeSent { sequence: u64, deadline: Instant },
 }
 
+enum TimerAction {
+    SendPing,
+    Timeout(&'static str),
+}
+
 struct Heartbeat {
     interval: Duration,
     next_ping: Instant,
@@ -139,22 +144,6 @@ impl Heartbeat {
             next_ping: Instant::now() + interval,
             sequence: 0,
             pending: None,
-        }
-    }
-
-    fn send_deadline(&self) -> Option<Instant> {
-        match self.pending {
-            Some(
-                PendingPing::Queued { deadline, .. } | PendingPing::PongBeforeSent { deadline, .. },
-            ) => Some(deadline),
-            _ => None,
-        }
-    }
-
-    fn pong_deadline(&self) -> Option<Instant> {
-        match self.pending {
-            Some(PendingPing::Sent { deadline, .. }) => Some(deadline),
-            _ => None,
         }
     }
 
@@ -784,24 +773,26 @@ where
     let mut state = CloseState::Open;
     let mut heartbeat = Heartbeat::new(heartbeat_interval);
     loop {
-        let deadline = match state {
-            CloseState::Open => None,
+        let timer = match state {
             CloseState::Local { deadline, .. } | CloseState::Peer { deadline, .. } => {
-                Some(deadline)
+                Some((deadline, TimerAction::Timeout("WebSocket close timed out")))
             }
-        };
-        let ping_due =
-            matches!(state, CloseState::Open) && outstanding == 0 && heartbeat.pending.is_none();
-        // Receiving data can delay reading a Pong, but must not hide a stalled writer.
-        let send_deadline = if matches!(state, CloseState::Open) {
-            heartbeat.send_deadline()
-        } else {
-            None
-        };
-        let pong_deadline = if matches!(state, CloseState::Open) && outstanding == 0 {
-            heartbeat.pong_deadline()
-        } else {
-            None
+            CloseState::Open => match heartbeat.pending {
+                // Receive backpressure must not hide a stalled writer.
+                Some(
+                    PendingPing::Queued { deadline, .. }
+                    | PendingPing::PongBeforeSent { deadline, .. },
+                ) => Some((
+                    deadline,
+                    TimerAction::Timeout("WebSocket heartbeat Ping send timed out"),
+                )),
+                Some(PendingPing::Sent { deadline, .. }) if outstanding == 0 => Some((
+                    deadline,
+                    TimerAction::Timeout("WebSocket heartbeat Pong timed out"),
+                )),
+                None if outstanding == 0 => Some((heartbeat.next_ping, TimerAction::SendPing)),
+                _ => None,
+            },
         };
         tokio::select! {
             command = command_rx.recv() => match command {
@@ -948,36 +939,27 @@ where
                     "WebSocket stream ended without a close frame",
                 ))),
             },
-            _ = async { if let Some(deadline) = deadline { tokio::time::sleep_until(deadline).await } }, if deadline.is_some() => {
-                return Err(Error(network_error(
-                    C4NetworkErrorCode::kC4NetErrTimeout,
-                    "WebSocket close timed out",
-                )));
-            }
-            _ = tokio::time::sleep_until(heartbeat.next_ping), if ping_due => {
-                heartbeat.sequence = heartbeat.sequence.wrapping_add(1);
-                let sequence = heartbeat.sequence;
-                writer_tx.send(WriterCommand::Ping(sequence)).map_err(|_| Error(network_error(
-                    C4NetworkErrorCode::kC4NetErrConnectionAborted,
-                    "writer task stopped before heartbeat ping",
-                )))?;
-                heartbeat.pending = Some(PendingPing::Queued {
-                    sequence,
-                    deadline: Instant::now() + PING_SEND_TIMEOUT,
-                });
-            }
-            _ = async { if let Some(deadline) = send_deadline { tokio::time::sleep_until(deadline).await } }, if send_deadline.is_some() => {
-                return Err(Error(network_error(
-                    C4NetworkErrorCode::kC4NetErrTimeout,
-                    "WebSocket heartbeat Ping send timed out",
-                )));
-            }
-            _ = async { if let Some(deadline) = pong_deadline { tokio::time::sleep_until(deadline).await } }, if pong_deadline.is_some() => {
-                return Err(Error(network_error(
-                    C4NetworkErrorCode::kC4NetErrTimeout,
-                    "WebSocket heartbeat Pong timed out",
-                )));
-            }
+            Some(action) = async {
+                let (deadline, action) = timer?;
+                tokio::time::sleep_until(deadline).await;
+                Some(action)
+            }, if timer.is_some() => match action {
+                TimerAction::SendPing => {
+                    heartbeat.sequence = heartbeat.sequence.wrapping_add(1);
+                    let sequence = heartbeat.sequence;
+                    writer_tx.send(WriterCommand::Ping(sequence)).map_err(|_| Error(network_error(
+                        C4NetworkErrorCode::kC4NetErrConnectionAborted,
+                        "writer task stopped before heartbeat ping",
+                    )))?;
+                    heartbeat.pending = Some(PendingPing::Queued {
+                        sequence,
+                        deadline: Instant::now() + PING_SEND_TIMEOUT,
+                    });
+                }
+                TimerAction::Timeout(message) => {
+                    return Err(Error(network_error(C4NetworkErrorCode::kC4NetErrTimeout, message)));
+                }
+            },
         }
     }
 }

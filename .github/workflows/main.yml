@@ -205,6 +205,34 @@ jobs:
           python ci/docker-up-down.py up
           python ci/build_and_run_tests.py --with-server-only --with-valigrind
           python ci/docker-up-down.py down
+  windows-smoke:
+    name: Windows native build and smoke tests
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+      COUCHBASE_LITE_CORE_SRC_DIR: ${{ github.workspace }}\couchbase-lite-core
+      LIBCLANG_PATH: C:\Program Files\LLVM\bin
+    steps:
+      - uses: actions/checkout@v5
+      - name: Checkout couchbase-lite-core
+        uses: actions/checkout@v5
+        with:
+          repository: 'dushistov/couchbase-lite-core'
+          ref: ${{ env.CLC_STABLE_HASH }}
+          submodules: 'recursive'
+          path: 'couchbase-lite-core'
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.21.x'
+          github-api-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and run Rust unit tests
+        run: cargo test -p couchbase-lite --lib --no-default-features --features build-cpp,use-couchbase-lite-sqlite,use-tokio-websocket
+      - name: Run database write/read smoke test
+        run: cargo test -p couchbase-lite --test functional_tests test_write_read --no-default-features --features build-cpp,use-couchbase-lite-sqlite,use-tokio-websocket
   ios-tests:
     name: Check work with iOS
     runs-on: macos-15

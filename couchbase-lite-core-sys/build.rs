@@ -84,7 +84,15 @@ fn main() {
         println!("cargo:rustc-link-lib=z");
         println!("cargo:rustc-link-lib=c++");
     } else if is_msvc {
+        let zlib = if find_full_library_path(&native_libs_search_paths, "zlibstaticd").is_ok() {
+            "zlibstaticd"
+        } else {
+            "zlibstatic"
+        };
+        println!("cargo:rustc-link-lib=static={zlib}");
         println!("cargo:rustc-link-lib=ws2_32");
+        println!("cargo:rustc-link-lib=ncrypt");
+        println!("cargo:rustc-link-lib=crypt32");
     }
 
     let mut includes = vec![
@@ -126,7 +134,7 @@ fn find_full_library_path(
     lib: &str,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let static_lib_ext = if win_target() { "lib" } else { "a" };
-    let prefix = "lib";
+    let prefix = if win_target() { "" } else { "lib" };
     let file_name = format!("{prefix}{lib}.{static_lib_ext}");
 
     for path in native_libs_search_paths {
@@ -139,7 +147,7 @@ fn find_full_library_path(
 }
 
 fn specify_library_search_dirs_for_std_layout(bdir: &Path) -> Vec<PathBuf> {
-    vec![
+    let mut dirs = vec![
         bdir.to_path_buf(),
         bdir.join("vendor").join("fleece"),
         bdir.join("Networking").join("BLIP"),
@@ -149,7 +157,16 @@ fn specify_library_search_dirs_for_std_layout(bdir: &Path) -> Vec<PathBuf> {
             .join("crypto")
             .join("library"),
         bdir.join("vendor").join("mbedtls").join("library"),
-    ]
+    ];
+    if win_target() {
+        dirs.push(
+            bdir.join("Networking")
+                .join("BLIP")
+                .join("vendor")
+                .join("zlib"),
+        );
+    }
+    dirs
 }
 
 #[cfg(feature = "git-download")]
@@ -615,11 +632,23 @@ fn extract_name_from_c4_macro(
 
 #[cfg(feature = "build")]
 fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> Vec<PathBuf> {
+    use std::process::Command;
+
     let mut cmake_config = cmake::Config::new(src_dir);
     cmake_config
         .define("DISABLE_LTO_BUILD", "True")
         .define("ENABLE_TESTING", "False")
         .define("LITECORE_BUILD_TESTS", "False");
+    if is_msvc {
+        // Vendored Fleece's ParseDate.cc tests WIN32 rather than MSVC's _WIN32.
+        cmake_config.cxxflag("/DWIN32");
+        // LiteCore and Fleece are linked into the same static image. Without this,
+        // Fleece's headers mark LiteCore's calls as dllimport (LNK4217/LNK4286).
+        cmake_config.cflag("/DFLEECE_EXPORTS");
+        cmake_config.cxxflag("/DFLEECE_EXPORTS");
+        // BLIP also uses LiteCore's exported log domain in the same static image.
+        cmake_config.cxxflag("/DLITECORE_EXPORTS");
+    }
     if !cfg!(feature = "use-couchbase-lite-sqlite") {
         println!("disable build of sqlite");
         cmake_config.define("MAINTAINER_MODE", "False");
@@ -634,23 +663,55 @@ fn cmake_build_src_dir(src_dir: &Path, is_msvc: bool) -> Vec<PathBuf> {
             .define("CMAKE_SHARED_LINKER_FLAGS", ld_flags);
     }
 
-    cmake_config.build_arg("LiteCoreStatic");
-    cmake_config.build_arg("FleeceStatic");
-    cmake_config.build_arg("BLIPStatic");
-    if cfg!(feature = "use-couchbase-lite-websocket") {
-        cmake_config.build_arg("LiteCoreWebSocket");
+    if is_msvc {
+        cmake_config.build_target("LiteCoreStatic");
+    } else {
+        cmake_config.build_arg("LiteCoreStatic");
+        cmake_config.build_arg("FleeceStatic");
+        cmake_config.build_arg("BLIPStatic");
+        if cfg!(feature = "use-couchbase-lite-websocket") {
+            cmake_config.build_arg("LiteCoreWebSocket");
+        }
     }
     let cmake_profile = cmake_config.get_profile().to_string();
     let dst = cmake_config.build().join("build");
 
+    if is_msvc {
+        let mut targets = vec![("vendor/fleece", "FleeceStatic"), ("", "BLIPStatic")];
+        if cfg!(feature = "use-couchbase-lite-websocket") {
+            targets.push(("", "LiteCoreWebSocket"));
+        }
+        for (subdir, target) in targets {
+            // Visual Studio keeps subdirectory targets beside their CMakeLists.txt.
+            let mut command = Command::new("cmake");
+            command
+                .arg("--build")
+                .arg(dst.join(subdir))
+                .arg("--config")
+                .arg(&cmake_profile)
+                .arg("--target")
+                .arg(target);
+            if let Ok(jobs) = env::var("NUM_JOBS") {
+                command.arg("--parallel").arg(jobs);
+            }
+            let status = command
+                .status()
+                .unwrap_or_else(|error| panic!("failed to run cmake for {target}: {error}"));
+            assert!(status.success(), "failed to build {target}");
+        }
+    }
+
     println!("cargo:rerun-if-env-changed=CC");
     println!("cargo:rerun-if-env-changed=CXX");
 
-    vec![if !is_msvc {
-        dst
+    if is_msvc {
+        specify_library_search_dirs_for_std_layout(&dst)
+            .into_iter()
+            .map(|dir| dir.join(&cmake_profile))
+            .collect()
     } else {
-        dst.join(cmake_profile)
-    }]
+        vec![dst]
+    }
 }
 
 #[cfg(not(feature = "build"))]

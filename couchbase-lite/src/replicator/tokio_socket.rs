@@ -165,6 +165,22 @@ impl Heartbeat {
         };
         true
     }
+
+    fn ping_sent(&mut self, sequence: u64) {
+        self.next_ping = Instant::now() + self.interval;
+        self.pending = match self.pending {
+            Some(PendingPing::Queued {
+                sequence: pending, ..
+            }) if pending == sequence => Some(PendingPing::Sent {
+                sequence,
+                deadline: Instant::now() + PONG_TIMEOUT,
+            }),
+            Some(PendingPing::PongBeforeSent {
+                sequence: pending, ..
+            }) if pending == sequence => None,
+            pending => pending,
+        };
+    }
 }
 
 type WsReader<S> = SplitStream<WebSocketStream<S>>;
@@ -865,17 +881,7 @@ where
                 Some(WriterEvent::Written(size)) => core.completed_write(size),
                 Some(WriterEvent::PingSent(sequence)) => {
                     trace!("c4sock {context:#x}: heartbeat ping sent: {sequence}");
-                    heartbeat.next_ping = Instant::now() + heartbeat.interval;
-                    heartbeat.pending = match heartbeat.pending {
-                        Some(PendingPing::Queued { sequence: pending, .. }) if pending == sequence => {
-                            Some(PendingPing::Sent {
-                                sequence,
-                                deadline: Instant::now() + PONG_TIMEOUT,
-                            })
-                        }
-                        Some(PendingPing::PongBeforeSent { sequence: pending, .. }) if pending == sequence => None,
-                        pending => pending,
-                    };
+                    heartbeat.ping_sent(sequence);
                 }
                 Some(WriterEvent::CloseSent) => trace!("c4sock {context:#x}: local WebSocket close sent"),
                 Some(WriterEvent::CloseReplyFlushed) => {

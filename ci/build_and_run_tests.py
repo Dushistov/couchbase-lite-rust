@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 """To simplify migration between different CI"""
 
+import json
 import os
+import shlex
 import sys
 import time
 from collections.abc import Callable
 from functools import wraps
 from multiprocessing import cpu_count
 from pathlib import Path
-from subprocess import check_call
+from subprocess import PIPE, Popen, check_call
 
 CPP_TESTS = "cpp"
 RUST_TESTS = "rust"
 RUST_IOS_TESTS = "rust-ios"
+RUST_ANDROID_TESTS = "rust-android"
+RUST_ANDROID_BUILD_ONLY = "rust-android-build-only"
 VALGRIND_TESTS = "valgrind"
 WITH_SERVER_TESTS = "with-server"
 REUSE_CPP_ONLY_BUILD = "reuse-cpp-only-build"
@@ -21,6 +25,8 @@ TEST_SELECTIONS = {
     "--rust-only": RUST_TESTS,
     "--cpp-only": CPP_TESTS,
     "--rust-ios-only": RUST_IOS_TESTS,
+    "--rust-android-only": RUST_ANDROID_TESTS,
+    "--rust-android-build-only": RUST_ANDROID_BUILD_ONLY,
     "--with-server-only": WITH_SERVER_TESTS,
     "--cargo-check-to-reuse-cpp-only-build": REUSE_CPP_ONLY_BUILD,
 }
@@ -161,6 +167,110 @@ def build_and_test_rust_part_for_ios(src_root: Path) -> None:
     )
 
 
+def android_test_executables(cmd: list[str], src_root: Path, env: dict[str, str]) -> list[Path]:
+    """Build Rust tests and collect the binaries to run on an Android device."""
+    executables = []
+    with Popen(
+        [*cmd, "--no-run", "--message-format=json"],
+        cwd=src_root,
+        env=env,
+        stdout=PIPE,
+        text=True,
+    ) as process:
+        assert process.stdout is not None
+        for line in process.stdout:
+            message = json.loads(line)
+            if message["reason"] == "compiler-message":
+                print(message["message"].get("rendered", ""), file=sys.stderr, end="")
+            elif message["reason"] == "compiler-artifact":
+                executable = message.get("executable")
+                if executable and message["profile"]["test"]:
+                    executables.append(Path(executable))
+        if process.wait() != 0:
+            raise RuntimeError(f"Android test build failed: {' '.join(cmd)}")
+    if not executables:
+        raise RuntimeError("Cargo produced no Android test executables")
+    return list(dict.fromkeys(executables))
+
+
+@show_timing
+def build_and_test_rust_part_for_android(src_root: Path, *, run_on_device: bool) -> None:
+    """Cross-compile Android native code and run x86_64 Rust tests on an emulator."""
+    ndk = Path(os.environ["ANDROID_NDK_HOME"]).resolve()
+    core_src = Path(os.environ["CORE_SRC"]).resolve()
+    toolchain = ndk / "build/cmake/android.toolchain.cmake"
+    llvm_bin = ndk / "toolchains/llvm/prebuilt/linux-x86_64/bin"
+    if not toolchain.is_file():
+        raise RuntimeError(f"Android NDK toolchain not found: {toolchain}")
+
+    for target, abi in (
+        ("x86_64-linux-android", "x86_64"),
+        ("aarch64-linux-android", "arm64-v8a"),
+    ):
+        print(f"Building Android target {target}", flush=True)
+        build_dir = src_root / "target/android-native" / abi
+        build_dir.mkdir(parents=True, exist_ok=True)
+        check_call(
+            [
+                "cmake", "-S", str(core_src), "-B", str(build_dir), "-G", "Ninja",
+                f"-DCMAKE_TOOLCHAIN_FILE={toolchain}",
+                "-DANDROID_PLATFORM=android-24", f"-DANDROID_ABI={abi}",
+                "-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Debug",
+                "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+                "-DDISABLE_LTO_BUILD=True", "-DLITECORE_BUILD_TESTS=False",
+                "-DENABLE_TESTING=False", "-DCOUCHBASE_LITE_RUST_WEBSOCKET=True",
+                f"-DCMAKE_PROJECT_LiteCore_INCLUDE={src_root / 'couchbase-lite-core-sys/cmake/rust.cmake'}",
+            ]
+        )
+        check_call(["cmake", "--build", str(build_dir), "--target", "CouchbaseLiteRust"])
+
+        linker = llvm_bin / f"{target}24-clang"
+        env = os.environ.copy()
+        env["COUCHBASE_LITE_CORE_SRC_DIR"] = str(core_src)
+        env["COUCHBASE_LITE_CORE_BUILD_DIR"] = str(build_dir)
+        env[f"CARGO_TARGET_{target.upper().replace('-', '_')}_LINKER"] = str(linker)
+        env[f"CC_{target.replace('-', '_')}"] = str(linker)
+        env[f"CXX_{target.replace('-', '_')}"] = str(llvm_bin / f"{target}24-clang++")
+        env[f"AR_{target.replace('-', '_')}"] = str(llvm_bin / "llvm-ar")
+
+        cmd = [
+            "cargo", "test", "--target", target, "--no-default-features",
+            "-p", "couchbase-lite", "-p", "serde-fleece", "-p", "couchbase-lite-core-sys",
+            "--features", (
+                "couchbase-lite/use-couchbase-lite-sqlite,"
+                "couchbase-lite/use-tokio-websocket,"
+                "serde-fleece/use-couchbase-lite-sqlite,"
+                "couchbase-lite-core-sys/use-couchbase-lite-sqlite"
+            ),
+        ]
+        executables = android_test_executables(cmd, src_root, env)
+        if target == "aarch64-linux-android":
+            check_call(
+                ["cargo", "build", "-p", "chat-demo", "--target", target,
+                 "--no-default-features",
+                 "--features=use-couchbase-lite-sqlite,use-couchbase-lite-websocket"],
+                cwd=src_root,
+                env=env,
+            )
+        elif run_on_device:
+            device_dir = "/data/local/tmp/couchbase-lite-rust-tests"
+            check_call(["adb", "shell", "mkdir", "-p", device_dir])
+            cpp_shared = ndk / "toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib" \
+                / target / "libc++_shared.so"
+            check_call(["adb", "push", str(cpp_shared), device_dir])
+            for executable in executables:
+                check_call(["adb", "push", str(executable), device_dir])
+                test_path = f"{device_dir}/{executable.name}"
+                check_call(["adb", "shell", "chmod", "755", test_path])
+                remote_cmd = (
+                    f"cd {shlex.quote(device_dir)} && "
+                    f"TMPDIR={shlex.quote(device_dir)} "
+                    f"LD_LIBRARY_PATH={shlex.quote(device_dir)} "
+                    f"./{shlex.quote(executable.name)} --test-threads=2"
+                )
+                check_call(["adb", "shell", remote_cmd])
+
+
 @show_timing
 def run_tests_that_require_server(src_root: Path, *, use_valgrind: bool) -> None:
     """Run the ignored integration tests against the local Sync Gateway."""
@@ -237,6 +347,10 @@ def main() -> None:
         build_and_test_rust_part(src_root, use_valgrind=VALGRIND_TESTS in tests)
     if RUST_IOS_TESTS in tests:
         build_and_test_rust_part_for_ios(src_root)
+    if RUST_ANDROID_TESTS in tests or RUST_ANDROID_BUILD_ONLY in tests:
+        build_and_test_rust_part_for_android(
+            src_root, run_on_device=RUST_ANDROID_TESTS in tests
+        )
     if WITH_SERVER_TESTS in tests:
         run_tests_that_require_server(src_root, use_valgrind=VALGRIND_TESTS in tests)
     if REUSE_CPP_ONLY_BUILD in tests:

@@ -79,8 +79,10 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=Security");
         println!("cargo:rustc-link-lib=c++");
     } else if target_os == "android" {
-        println!("cargo:rustc-link-lib=icuuc");
-        println!("cargo:rustc-link-lib=icui18n");
+        // LiteCore loads Android's ICU libraries through its runtime shim.
+        println!("cargo:rustc-link-lib=log");
+        println!("cargo:rustc-link-lib=atomic");
+        println!("cargo:rustc-link-lib=dl");
         println!("cargo:rustc-link-lib=z");
         println!("cargo:rustc-link-lib=c++");
     } else if is_msvc {
@@ -312,6 +314,9 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     bindings = include_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-I".to_string() + x.as_ref().to_str().unwrap())
     });
+    if target.contains("android") {
+        bindings = bindings.clang_arg(format!("--target={target}"));
+    }
     bindings = framework_dirs.iter().fold(bindings, |acc, x| {
         acc.clang_arg("-F".to_string() + x.as_ref().to_str().unwrap())
     });

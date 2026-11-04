@@ -215,6 +215,46 @@ jobs:
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run Rust tests
         run: python ci/build_and_run_tests.py --rust-only
+  android-tests:
+    name: Android Rust tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+      CORE_SRC: ${{ github.workspace }}/couchbase-lite-core
+    steps:
+      - uses: actions/checkout@v5
+      - name: Checkout couchbase-lite-core
+        uses: actions/checkout@v5
+        with:
+          repository: 'dushistov/couchbase-lite-core'
+          ref: ${{ env.CLC_STABLE_HASH }}
+          submodules: 'recursive'
+          path: 'couchbase-lite-core'
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          targets: x86_64-linux-android,aarch64-linux-android
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13.0'
+      - uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28.x'
+          github-api-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run Android tests and cross-compile chat-demo
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          ndk: 25.2.9519653
+          script: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/25.2.9519653" python ci/build_and_run_tests.py --rust-android-only
   ios-tests:
     name: Check work with iOS
     runs-on: macos-15

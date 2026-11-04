@@ -49,23 +49,21 @@ jobs:
       STRESS_MESSAGES: ${{ inputs.stress_messages || '' }}
       COMPOSE_PROJECT: chat-stress-${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Checkout couchbase-lite-core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: 'dushistov/couchbase-lite-core'
           ref: ${{ env.CLC_STABLE_HASH }}
           submodules: 'recursive'
           path: 'couchbase-lite-core'
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          profile: minimal
-          override: true
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13.0'
-      - uses: jwlawson/actions-setup-cmake@v1.14
+      - uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.21.x'
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
@@ -94,7 +92,7 @@ jobs:
       - name: Stop isolated Sync Gateway fixture
         if: always()
         run: python3 ci/docker-up-down.py down --no-sudo --project-name "$COMPOSE_PROJECT"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: success()
         with:
           name: chat-stress-summary-${{ github.run_id }}
@@ -105,7 +103,7 @@ jobs:
             ${{ runner.temp }}/chat-stress/actions.jsonl
           if-no-files-found: ignore
           retention-days: 7
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: chat-stress-failure-${{ github.run_id }}
@@ -126,9 +124,9 @@ jobs:
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Checkout couchbase-lite-core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: 'dushistov/couchbase-lite-core'
           ref: ${{ env.CLC_STABLE_HASH }}
@@ -137,36 +135,17 @@ jobs:
       - name: Export path to c++ library
         run: |
           echo "CORE_SRC=$GITHUB_WORKSPACE/couchbase-lite-core" >> $GITHUB_ENV
-      # We need to disable the existing toolchain to avoid updating rust-docs
-      # which takes a long time. The fastest way to do this is to rename the
-      # existing folder, as deleting it takes about as much time as not doing
-      # anything and just updating rust-docs.
-      - name: Rename existing rust toolchain (Windows)
-        if: matrix.os == 'windows-latest'
-        run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
-
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
-          profile: minimal
-          override: true
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13.0'
-      - uses: jwlawson/actions-setup-cmake@v1.14
+      - uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.21.x'
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install llvm tools on Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          set -e
-          curl https://releases.llvm.org/9.0.0/LLVM-9.0.0-win64.exe -o llvm-installer.exe
-          7z x llvm-installer.exe -oc:\\llvm-binary
-          echo "LIBCLANG_PATH=C:\\llvm-binary\\bin" >> $GITHUB_ENV
-          echo "c:\\llvm-binary\\bin" >> $GITHUB_PATH
-        shell: bash
       - name: Check versions
         run: |
           set -e
@@ -224,7 +203,9 @@ jobs:
           submodules: 'recursive'
           path: 'couchbase-lite-core'
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13.0'
@@ -245,9 +226,9 @@ jobs:
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Checkout couchbase-lite-core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: 'dushistov/couchbase-lite-core'
           ref: ${{ env.CLC_STABLE_HASH }}
@@ -257,16 +238,14 @@ jobs:
         run: |
           echo "CORE_SRC=$GITHUB_WORKSPACE/couchbase-lite-core" >> $GITHUB_ENV
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
-          profile: minimal
-          override: true
-          target: "aarch64-apple-ios"
+          targets: "aarch64-apple-ios"
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13.0'
-      - uses: jwlawson/actions-setup-cmake@v1.14
+      - uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.21.x'
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
@@ -294,9 +273,9 @@ jobs:
       matrix:
         os: [ubuntu-22.04, macos-15]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Checkout couchbase-lite-core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: 'dushistov/couchbase-lite-core'
           ref: ${{ env.CLC_STABLE_HASH }}
@@ -308,7 +287,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13.0'
-      - uses: jwlawson/actions-setup-cmake@v1.14
+      - uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.21.x'
           github-api-token: ${{ secrets.GITHUB_TOKEN }}
@@ -336,9 +315,9 @@ jobs:
     name: Checks with rustc/nightly
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Checkout couchbase-lite-core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: 'dushistov/couchbase-lite-core'
           ref: ${{ env.CLC_STABLE_HASH }}
@@ -347,12 +326,10 @@ jobs:
       - name: Export path to c++ library
         run: |
           echo "COUCHBASE_LITE_CORE_SRC_DIR=$GITHUB_WORKSPACE/couchbase-lite-core" >> $GITHUB_ENV
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@v1
         with:
-          profile: minimal
           # Docs.rs uses nightly, which allows for easier syntax for linking to functions.
           toolchain: nightly
-          override: true
           components: rust-src,rustfmt,clippy
       - name: rustdoc for couchbase-lite
         run: cargo rustdoc -p couchbase-lite --no-default-features --features="build-cpp,use-couchbase-lite-sqlite,use-tokio-websocket,use-native-tls" -- -D warnings

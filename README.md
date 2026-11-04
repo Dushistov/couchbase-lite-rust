@@ -13,7 +13,7 @@ Quote from [couchbase-lite-core](https://github.com/couchbase/couchbase-lite-cor
 
 Build script can either download couchbase-lite-core library (C/C++) with help of git ("git-download" feature),
 or you can provide path to source code via `COUCHBASE_LITE_CORE_SRC_DIR`environment variable.
-After that build script can run cmake and proper build command for you ("build" feature)
+After that build script can run CMake 3.19 or newer and the proper build command for you ("build" feature)
 or you can build couchbase-lite-core by yourself and provide path to build directory via `COUCHBASE_LITE_CORE_BUILD_DIR` environment variable.
 Also it is possible that static libraries in `COUCHBASE_LITE_CORE_BUILD_DIR` has unique placement,
 for example if you use cmake to generate XCode/Visual Studio project,

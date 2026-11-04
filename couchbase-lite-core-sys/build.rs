@@ -15,8 +15,6 @@ fn main() {}
 fn main() {
     env_logger::init();
     let target = getenv_unwrap("TARGET");
-    let target_os = getenv_unwrap("CARGO_CFG_TARGET_OS");
-    let is_msvc = target.contains("msvc");
 
     if cfg!(feature = "with-asan") && !cfg!(feature = "build") {
         panic!("Invalid set of options: with-asan should be used with build");
@@ -24,7 +22,50 @@ fn main() {
 
     let sdir = download_source_code_via_git_if_needed().expect("download of source code failed");
 
-    let bdirs = cmake_build_src_dir(&sdir);
+    // Miri interprets the Rust helpers, but cannot call or inspect LiteCore's
+    // native library. Bindgen still needs the real headers below.
+    if env::var_os("CARGO_CFG_MIRI").is_none() {
+        link_native_libraries(&sdir, &target);
+    }
+
+    let mut includes = vec![
+        sdir.join("C").join("include"),
+        sdir.join("vendor").join("fleece").join("API"),
+        sdir.clone(),
+    ];
+
+    let (mut addon_include_dirs, framework_dirs) =
+        cc_system_include_dirs().expect("get system include directories from cc failed");
+    includes.append(&mut addon_include_dirs);
+
+    let out_dir = getenv_unwrap("OUT_DIR");
+    let out_dir = Path::new(&out_dir);
+
+    let mut headers = vec![
+        "c4.h",
+        "fleece/FLSlice.h",
+        "fleece/Fleece.h",
+        "fleece/FLExpert.h",
+    ];
+    if cfg!(feature = "use-couchbase-lite-websocket") {
+        headers.push("c4Private.h");
+        includes.push(sdir.join("C"));
+    }
+
+    run_bindgen_for_c_headers(
+        &target,
+        &includes,
+        &framework_dirs,
+        &headers,
+        &out_dir.join("c4_header.rs"),
+    )
+    .expect("bindgen failed");
+}
+
+fn link_native_libraries(sdir: &Path, target: &str) {
+    let target_os = getenv_unwrap("CARGO_CFG_TARGET_OS");
+    let is_msvc = target.contains("msvc");
+    let bdirs = cmake_build_src_dir(sdir);
     println!("build directory: {bdirs:?}\nsource directory {sdir:?}");
 
     let native_libs_search_paths = if bdirs.is_empty() {
@@ -96,39 +137,6 @@ fn main() {
         println!("cargo:rustc-link-lib=ncrypt");
         println!("cargo:rustc-link-lib=crypt32");
     }
-
-    let mut includes = vec![
-        sdir.join("C").join("include"),
-        sdir.join("vendor").join("fleece").join("API"),
-        sdir.clone(),
-    ];
-
-    let (mut addon_include_dirs, framework_dirs) =
-        cc_system_include_dirs().expect("get system include directories from cc failed");
-    includes.append(&mut addon_include_dirs);
-
-    let out_dir = getenv_unwrap("OUT_DIR");
-    let out_dir = Path::new(&out_dir);
-
-    let mut headers = vec![
-        "c4.h",
-        "fleece/FLSlice.h",
-        "fleece/Fleece.h",
-        "fleece/FLExpert.h",
-    ];
-    if cfg!(feature = "use-couchbase-lite-websocket") {
-        headers.push("c4Private.h");
-        includes.push(sdir.join("C"));
-    }
-
-    run_bindgen_for_c_headers(
-        &target,
-        &includes,
-        &framework_dirs,
-        &headers,
-        &out_dir.join("c4_header.rs"),
-    )
-    .expect("bindgen failed");
 }
 
 fn find_full_library_path(

@@ -5,6 +5,7 @@
     non_camel_case_types,
     improper_ctypes,
     non_snake_case,
+    unnecessary_transmutes,
     clippy::all
 )]
 

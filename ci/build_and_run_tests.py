@@ -14,6 +14,7 @@ from subprocess import PIPE, Popen, check_call
 
 CPP_TESTS = "cpp"
 RUST_TESTS = "rust"
+MIRI_TESTS = "miri"
 RUST_IOS_TESTS = "rust-ios"
 RUST_ANDROID_TESTS = "rust-android"
 RUST_ANDROID_BUILD_ONLY = "rust-android-build-only"
@@ -23,6 +24,7 @@ REUSE_CPP_ONLY_BUILD = "reuse-cpp-only-build"
 
 TEST_SELECTIONS = {
     "--rust-only": RUST_TESTS,
+    "--miri-only": MIRI_TESTS,
     "--cpp-only": CPP_TESTS,
     "--rust-ios-only": RUST_IOS_TESTS,
     "--rust-android-only": RUST_ANDROID_TESTS,
@@ -113,6 +115,28 @@ def build_and_test_rust_part(src_root: Path, *, use_valgrind: bool) -> None:
         cmd.insert(1, "valgrind")
     check_call(cmd, cwd=src_root)
     check_call(["cargo", "build", "-p", "chat-demo"], cwd=src_root)
+
+
+@show_timing
+def run_miri_tests(src_root: Path) -> None:
+    """Interpret Rust-only FFI helper tests without building LiteCore."""
+    env = os.environ.copy()
+    env.setdefault("COUCHBASE_LITE_CORE_SRC_DIR", str(src_root / "couchbase-lite-core"))
+    check_call(["cargo", "+nightly", "miri", "setup"], cwd=src_root, env=env)
+    check_call(
+        [
+            "cargo",
+            "+nightly",
+            "miri",
+            "test",
+            "-p",
+            "couchbase-lite-core-sys",
+            "--lib",
+            "--no-default-features",
+        ],
+        cwd=src_root,
+        env=env,
+    )
 
 
 @show_timing
@@ -345,6 +369,8 @@ def main() -> None:
         build_and_test_cpp_part(src_root)
     if RUST_TESTS in tests:
         build_and_test_rust_part(src_root, use_valgrind=VALGRIND_TESTS in tests)
+    if MIRI_TESTS in tests:
+        run_miri_tests(src_root)
     if RUST_IOS_TESTS in tests:
         build_and_test_rust_part_for_ios(src_root)
     if RUST_ANDROID_TESTS in tests or RUST_ANDROID_BUILD_ONLY in tests:

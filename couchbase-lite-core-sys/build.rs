@@ -855,6 +855,16 @@ fn fail(s: &str) -> ! {
 struct CollectIncludes(Arc<Mutex<Vec<String>>>);
 
 impl ParseCallbacks for CollectIncludes {
+    fn process_comment(&self, comment: &str) -> Option<String> {
+        // These bracketed values in LiteCore's C comments are plain text, not
+        // Rust intra-doc links. Bindgen 0.73 emits them on constants too.
+        let mut comment = comment.to_owned();
+        for value in ["string", "1", "2", "3", "4"] {
+            comment = comment.replace(&format!("[{value}]"), &format!("\\[{value}\\]"));
+        }
+        Some(comment)
+    }
+
     fn include_file(&self, filename: &str) {
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed

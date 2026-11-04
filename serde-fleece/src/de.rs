@@ -18,8 +18,16 @@ use itoa::Integer;
 use serde::de::{self, IntoDeserializer};
 
 #[repr(transparent)]
-#[derive(Clone, Copy)]
 pub struct NonNullConst<T>(*const T);
+
+// Copying the pointer does not require the `T` type to be Copy
+impl<T> Copy for NonNullConst<T> {}
+
+impl<T> Clone for NonNullConst<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 
 impl<T> NonNullConst<T> {
     #[inline]

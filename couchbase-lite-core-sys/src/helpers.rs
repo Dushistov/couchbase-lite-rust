@@ -158,23 +158,64 @@ pub const kC4DefaultCollectionSpec: C4CollectionSpec = C4CollectionSpec {
     scope: kC4DefaultScopeID,
 };
 
-#[test]
-fn test_null_slice_handling() {
-    let ffi_null_slice = FLSlice {
-        buf: ptr::null(),
-        size: 0,
-    };
-    let slice: &[u8] = ffi_null_slice.into();
-    assert!(slice.is_empty());
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::ManuallyDrop;
 
-    let ffi_null_slice: FLSliceResult = unsafe { crate::FLSliceResult_New(0) };
-    let slice: &[u8] = ffi_null_slice.as_bytes();
-    assert!(slice.is_empty());
+    #[test]
+    fn test_null_slice_handling() {
+        let ffi_null_slice = FLSlice::default();
+        let slice: &[u8] = ffi_null_slice.into();
+        assert!(slice.is_empty());
 
-    let ffi_null_slice = FLSliceResult {
-        buf: ptr::null(),
-        size: 0,
-    };
-    let slice: &[u8] = ffi_null_slice.as_bytes();
-    assert!(slice.is_empty());
+        // This value has no native allocation. Suppress its native Release call.
+        let ffi_null_slice = ManuallyDrop::new(FLSliceResult::default());
+        assert!(ffi_null_slice.as_bytes().is_empty());
+        assert!(ffi_null_slice.is_empty());
+    }
+
+    #[test]
+    fn test_nonempty_slice_handling() {
+        let bytes = [0, 1, 255];
+        let ffi_slice = FLSlice::from(bytes.as_slice());
+        let slice: &[u8] = ffi_slice.into();
+        assert_eq!(slice, bytes);
+
+        // The bytes belong to Rust, so the native Release call must not run.
+        let ffi_result = ManuallyDrop::new(FLSliceResult {
+            buf: bytes.as_ptr().cast(),
+            size: bytes.len(),
+        });
+        assert_eq!(ffi_result.as_bytes(), bytes);
+        let slice: &[u8] = ffi_result.as_fl_slice().into();
+        assert_eq!(slice, bytes);
+        assert!(!ffi_result.is_empty());
+    }
+
+    #[test]
+    fn test_string_slice_handling() {
+        let text = "héllo";
+        let ffi_string = FLSlice::from(text);
+        let decoded: &str = ffi_string.try_into().unwrap();
+        assert_eq!(decoded, text);
+
+        let ffi_result = ManuallyDrop::new(FLSliceResult {
+            buf: text.as_ptr().cast(),
+            size: text.len(),
+        });
+        assert_eq!(ffi_result.as_utf8_lossy(), text);
+
+        let invalid_utf8 = [255];
+        let invalid_string = FLSlice::from(invalid_utf8.as_slice());
+        let decoded: Result<&str, _> = invalid_string.try_into();
+        assert!(decoded.is_err());
+    }
+
+    #[test]
+    #[cfg(not(miri))]
+    fn test_native_empty_slice_result() {
+        let ffi_null_slice = unsafe { crate::FLSliceResult_New(0) };
+        assert!(ffi_null_slice.as_bytes().is_empty());
+    }
 }

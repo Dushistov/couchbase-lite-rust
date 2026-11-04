@@ -110,6 +110,34 @@ jobs:
           path: ${{ runner.temp }}/chat-stress
           if-no-files-found: ignore
           retention-days: 7
+  miri:
+    name: Miri Rust FFI helpers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+      COUCHBASE_LITE_CORE_SRC_DIR: ${{ github.workspace }}/couchbase-lite-core
+    steps:
+      - uses: actions/checkout@v5
+      - name: Checkout couchbase-lite-core headers
+        uses: actions/checkout@v5
+        with:
+          repository: 'dushistov/couchbase-lite-core'
+          ref: ${{ env.CLC_STABLE_HASH }}
+          submodules: 'recursive'
+          path: 'couchbase-lite-core'
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: nightly
+          components: miri,rust-src
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13.0'
+      - name: Install libclang for bindgen
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
+      - name: Run Miri tests
+        run: python ci/build_and_run_tests.py --miri-only
   rust-tests:
     name: Rust tests
 

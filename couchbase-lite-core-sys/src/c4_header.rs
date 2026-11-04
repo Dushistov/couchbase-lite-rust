@@ -7,7 +7,6 @@
     non_snake_case,
     clippy::all
 )]
-
 #[cfg(not(feature = "docs-rs"))]
 include!(concat!(env!("OUT_DIR"), "/c4_header.rs"));
 

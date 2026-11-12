@@ -195,8 +195,33 @@ jobs:
         shell: bash
       - name: Run tests
         run: python ci/build_and_run_tests.py --rust-only
-      - name: Run tests with valgrind
-        if: matrix.os == 'ubuntu-22.04' && matrix.rust == 'stable'
+  valgrind-tests:
+    name: Rust tests with Valgrind
+    runs-on: ubuntu-22.04
+    env:
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+      CORE_SRC: ${{ github.workspace }}/couchbase-lite-core
+    steps:
+      - uses: actions/checkout@v5
+      - name: Checkout couchbase-lite-core
+        uses: actions/checkout@v5
+        with:
+          repository: 'dushistov/couchbase-lite-core'
+          ref: ${{ env.CLC_STABLE_HASH }}
+          submodules: 'recursive'
+          path: 'couchbase-lite-core'
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13.0'
+      - uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.21.x'
+          github-api-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Valgrind
         run: |
           set -e
           cat /etc/issue
@@ -206,18 +231,64 @@ jobs:
           sudo apt-get install -y libc6-dbg
           valgrind --version
           cargo install cargo-valgrind
-          python ci/build_and_run_tests.py --rust-only --with-valigrind
         shell: bash
-      - name: Run tests that requires SG up and running
-        if: matrix.os == 'ubuntu-22.04' && matrix.rust == 'stable'
+      - name: Run Rust tests under Valgrind
+        run: python ci/build_and_run_tests.py --rust-only --with-valigrind
+  network-tests:
+    name: Sync Gateway tests
+    runs-on: ubuntu-22.04
+    env:
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+      CORE_SRC: ${{ github.workspace }}/couchbase-lite-core
+    steps:
+      - uses: actions/checkout@v5
+      - name: Start Sync Gateway
+        id: network_fixture
+        run: python3 ci/docker-up-down.py up
+        background: true
+      - name: Checkout couchbase-lite-core
+        uses: actions/checkout@v5
+        with:
+          repository: 'dushistov/couchbase-lite-core'
+          ref: ${{ env.CLC_STABLE_HASH }}
+          submodules: 'recursive'
+          path: 'couchbase-lite-core'
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13.0'
+      - uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.21.x'
+          github-api-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Valgrind
         run: |
           set -e
-          python ci/docker-up-down.py up
-          python ci/build_and_run_tests.py --with-server-only
-          python ci/docker-up-down.py down
-          python ci/docker-up-down.py up
-          python ci/build_and_run_tests.py --with-server-only --with-valigrind
-          python ci/docker-up-down.py down
+          curl -L https://github.com/Dushistov/valgrind/releases/download/dwarf5-fix1/valgrind-git-bin-18072022.tar.bz2 -o valgrind-git-bin.tar.bz2
+          sudo tar -xjvpf valgrind-git-bin.tar.bz2 -C /
+          sudo apt-get update -y
+          sudo apt-get install -y libc6-dbg
+          valgrind --version
+          cargo install cargo-valgrind
+        shell: bash
+      - name: Wait for Sync Gateway
+        wait: network_fixture
+      - name: Run Sync Gateway tests
+        run: python ci/build_and_run_tests.py --with-server-only
+      - name: Stop Sync Gateway
+        if: always() && (steps.network_fixture.outcome == 'success' || steps.network_fixture.outcome == 'failure')
+        run: python ci/docker-up-down.py down
+      - name: Restart Sync Gateway for Valgrind
+        id: network_valgrind_fixture
+        run: python ci/docker-up-down.py up
+      - name: Run Sync Gateway tests under Valgrind
+        run: python ci/build_and_run_tests.py --with-server-only --with-valigrind
+      - name: Stop Sync Gateway after Valgrind
+        if: always() && (steps.network_valgrind_fixture.outcome == 'success' || steps.network_valgrind_fixture.outcome == 'failure')
+        run: python ci/docker-up-down.py down
   android-tests:
     name: Android Rust tests
     runs-on: ubuntu-24.04

@@ -25,7 +25,7 @@ from typing import Any
 
 from stress_proxy import TcpRelay
 
-PROFILES = {"smoke": (4, 1000, 300), "stress": (8, 5000, 600)}
+PROFILES = {"smoke": (4, 1000, 300), "stress": (42, 5000, 600)}
 PAGE_SIZE = 17  # The small page size also exercises cursor handling.
 COMMAND_TIMEOUT = 45
 POLL_INTERVAL = 1.0

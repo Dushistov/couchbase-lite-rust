@@ -69,16 +69,24 @@ impl Transaction<'_> {
         }
     }
 
-    /// Get shared "fleece" encoder, `&mut self` to make possible
-    /// exists only one session
+    /// Borrows the database's shared Fleece encoder exclusively through this transaction.
+    ///
+    /// Finish the session before committing:
+    /// ```compile_fail,E0505
+    /// # fn committing(mut transaction: couchbase_lite::Transaction<'_>) {
+    /// let session = transaction.shared_encoder_session().unwrap();
+    /// transaction.commit().unwrap();
+    /// drop(session);
+    /// # }
+    /// ```
     #[inline]
-    pub fn shared_encoder_session(&mut self) -> Result<FlEncoderSession> {
+    pub fn shared_encoder_session(&mut self) -> Result<FlEncoderSession<'_>> {
         let enc = unsafe { c4db_getSharedFleeceEncoder(self.db.inner.0.as_ptr()) };
         NonNull::new(enc)
             .ok_or_else(|| {
                 Error::LogicError("c4db_getSharedFleeceEncoder return null.into()".into())
             })
-            .map(FlEncoderSession::new)
+            .map(|enc| unsafe { FlEncoderSession::new(enc) })
     }
 
     fn main_save(&mut self, doc: &mut Document, deletion: bool) -> Result<()> {

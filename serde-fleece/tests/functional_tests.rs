@@ -545,8 +545,8 @@ impl Encoder {
         Encoder { inner: enc }
     }
 
-    fn session(&mut self) -> FlEncoderSession {
-        FlEncoderSession::new(self.inner)
+    fn session(&mut self) -> FlEncoderSession<'_> {
+        unsafe { FlEncoderSession::new(self.inner) }
     }
 }
 
@@ -556,7 +556,7 @@ impl Drop for Encoder {
     }
 }
 
-fn to_fleece_to_json_enc<T: Serialize>(value: &T, enc: FlEncoderSession) -> String {
+fn to_fleece_to_json_enc<T: Serialize>(value: &T, enc: FlEncoderSession<'_>) -> String {
     let data = to_fl_slice_result_with_encoder(value, enc).unwrap();
     let val = unsafe { FLValue_FromData(data.as_fl_slice(), FLTrust::kFLUntrusted) };
     assert!(!val.is_null());

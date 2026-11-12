@@ -90,23 +90,25 @@ couchbase_cli_check bucket-create -c 127.0.0.1 \
   --bucket-replica 0 --enable-flush 1
 echo
 
-echo "Creating scope"
-couchbase_cli_check collection-manage -c 127.0.0.1 \
- -u Administrator -p password --bucket lite-core \
- --create-scope flowers
+if [ "${COUCHBASE_VERSION%%.*}" -ge 7 ]; then
+  echo "Creating scope"
+  couchbase_cli_check collection-manage -c 127.0.0.1 \
+   -u Administrator -p password --bucket lite-core \
+   --create-scope flowers
 
-echo "Creating collections:"
-couchbase_cli_check collection-manage -c 127.0.0.1 \
- -u Administrator -p password --bucket lite-core \
- --create-collection flowers.roses
+  echo "Creating collections:"
+  couchbase_cli_check collection-manage -c 127.0.0.1 \
+   -u Administrator -p password --bucket lite-core \
+   --create-collection flowers.roses
 
-couchbase_cli_check collection-manage -c 127.0.0.1 \
-  -u Administrator -p password --bucket lite-core \
-  --create-collection flowers.tulips
+  couchbase_cli_check collection-manage -c 127.0.0.1 \
+    -u Administrator -p password --bucket lite-core \
+    --create-collection flowers.tulips
 
-couchbase_cli_check collection-manage -c 127.0.0.1 \
-  -u Administrator -p password --bucket lite-core \
-  --create-collection flowers.lavenders
+  couchbase_cli_check collection-manage -c 127.0.0.1 \
+    -u Administrator -p password --bucket lite-core \
+    --create-collection flowers.lavenders
+fi
 
 echo "Creating RBAC 'admin' user on lite-core bucket"
 couchbase_cli_check user-manage --set \

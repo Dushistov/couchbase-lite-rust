@@ -1,9 +1,9 @@
 use crate::{
     error::{Error, Result},
     ffi::{
-        C4IndexType, C4SliceResult, FLDict_Get, FLString, FLTrust, FLValueType, FLValue_AsDict,
-        FLValue_AsInt, FLValue_AsString, FLValue_FromData, FLValue_GetType, FLValue_IsInteger,
-        _FLDict,
+        _FLDict, C4IndexType, C4SliceResult, FLDict_Get, FLString, FLTrust, FLValueType,
+        FLValue_AsDict, FLValue_AsInt, FLValue_AsString, FLValue_FromData, FLValue_GetType,
+        FLValue_IsInteger,
     },
     value::{ValueRef, ValueRefArray},
 };
@@ -91,9 +91,7 @@ pub struct IndexInfo {
 impl IndexInfo {
     #[inline]
     pub fn name_as_str(&self) -> Result<&str> {
-        self.name
-            .try_into()
-            .map_err(|_: std::str::Utf8Error| Error::InvalidUtf8)
+        unsafe { self.name.as_str_unchecked() }.map_err(|_| Error::InvalidUtf8)
     }
     #[inline]
     pub fn type_(&self) -> C4IndexType {
@@ -101,9 +99,7 @@ impl IndexInfo {
     }
     #[inline]
     pub fn expr_as_str(&self) -> Result<&str> {
-        self.expr
-            .try_into()
-            .map_err(|_: std::str::Utf8Error| Error::InvalidUtf8)
+        unsafe { self.expr.as_str_unchecked() }.map_err(|_| Error::InvalidUtf8)
     }
 }
 
@@ -122,7 +118,7 @@ impl TryFrom<NonNullConst<_FLDict>> for IndexInfo {
                 ));
             }
             let s = unsafe { FLValue_AsString(s.as_ptr()) };
-            let _s_utf8: &str = s.try_into().map_err(|_| Error::InvalidUtf8)?;
+            let _s_utf8: &str = unsafe { s.as_str_unchecked() }.map_err(|_| Error::InvalidUtf8)?;
             Ok(s)
         }
 

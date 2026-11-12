@@ -393,9 +393,9 @@ unsafe extern "C" fn ws_completed_receive(c4sock: *mut C4Socket, byte_count: usi
 unsafe extern "C" fn ws_request_close(c4sock: *mut C4Socket, status: c_int, message: C4String) {
     trace!(
         "c4sock {c4sock:?}: requestClose status {status}, message: {:?}",
-        std::str::from_utf8(message.into())
+        message.as_str_unchecked()
     );
-    let reason = String::from_utf8_lossy(message.into()).into_owned();
+    let reason = String::from_utf8_lossy(message.as_bytes_unchecked()).into_owned();
     let socket = socket_impl(c4sock).as_ref();
     let _ = socket.commands.send(Command::RequestClose(status, reason));
 }
@@ -423,12 +423,12 @@ unsafe fn c4address_to_request(
     options: C4Slice,
 ) -> Result<(Request, Duration), Error> {
     let mut authority = Vec::with_capacity(addr.hostname.size + 1 + 5);
-    authority.extend_from_slice(<&[u8]>::from(addr.hostname));
+    authority.extend_from_slice(addr.hostname.as_bytes_unchecked());
     write!(authority, ":{}", addr.port).expect("append to Vec failed");
     let uri = Uri::builder()
-        .scheme(<&[u8]>::from(addr.scheme))
+        .scheme(addr.scheme.as_bytes_unchecked())
         .authority(authority)
-        .path_and_query(<&[u8]>::from(addr.path))
+        .path_and_query(addr.path.as_bytes_unchecked())
         .build()?;
     trace!("c4address_to_request, marker {marker:x}, uri {uri:?}");
     let mut request = uri

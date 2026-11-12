@@ -43,9 +43,11 @@ fn test_double_replicator_restart() {
                  rev_flags,
                  _body| {
                     let coll_name: &str =
-                        unsafe { str::from_utf8_unchecked(coll_spec.name.into()) };
-                    let doc_id: &str = unsafe { str::from_utf8_unchecked(doc_id.into()) };
-                    let rev_id: &str = unsafe { str::from_utf8_unchecked(rev_id.into()) };
+                        unsafe { str::from_utf8_unchecked(coll_spec.name.as_bytes_unchecked()) };
+                    let doc_id: &str =
+                        unsafe { str::from_utf8_unchecked(doc_id.as_bytes_unchecked()) };
+                    let rev_id: &str =
+                        unsafe { str::from_utf8_unchecked(rev_id.as_bytes_unchecked()) };
                     println!("Pull filter: {coll_name}, {doc_id}, {rev_id}, {rev_flags:?}");
                     true
                 },
@@ -65,7 +67,8 @@ fn test_double_replicator_restart() {
                 move |pushing: bool, doc_iter: &mut dyn Iterator<Item = &C4DocumentEnded>| {
                     let docs: Vec<String> = doc_iter
                         .map(|x| {
-                            let doc_id: &str = x.docID.as_fl_slice().try_into().unwrap();
+                            let doc_id: &str =
+                                unsafe { x.docID.as_fl_slice().as_str_unchecked() }.unwrap();
                             doc_id.to_string()
                         })
                         .collect();
@@ -153,9 +156,11 @@ fn start_repl_and_save_documents(
                  rev_flags,
                  _body| {
                     let coll_name: &str =
-                        unsafe { str::from_utf8_unchecked(coll_spec.name.into()) };
-                    let doc_id: &str = unsafe { str::from_utf8_unchecked(doc_id.into()) };
-                    let rev_id: &str = unsafe { str::from_utf8_unchecked(rev_id.into()) };
+                        unsafe { str::from_utf8_unchecked(coll_spec.name.as_bytes_unchecked()) };
+                    let doc_id: &str =
+                        unsafe { str::from_utf8_unchecked(doc_id.as_bytes_unchecked()) };
+                    let rev_id: &str =
+                        unsafe { str::from_utf8_unchecked(rev_id.as_bytes_unchecked()) };
                     println!("Pull filter: {coll_name}, {doc_id}, {rev_id}, {rev_flags:?}");
                     true
                 },
@@ -170,7 +175,8 @@ fn start_repl_and_save_documents(
                 move |pushing: bool, doc_iter: &mut dyn Iterator<Item = &C4DocumentEnded>| {
                     let docs: Vec<String> = doc_iter
                         .map(|x| {
-                            let doc_id: &str = x.docID.as_fl_slice().try_into().unwrap();
+                            let doc_id: &str =
+                                unsafe { x.docID.as_fl_slice().as_str_unchecked() }.unwrap();
                             doc_id.to_string()
                         })
                         .collect();

@@ -338,8 +338,7 @@ impl Database {
     /// This is the filename _without_ the ".cblite2" extension.
     #[inline]
     pub fn name(&self) -> Result<&str> {
-        unsafe { c4db_getName(self.inner.0.as_ptr()) }
-            .try_into()
+        unsafe { c4db_getName(self.inner.0.as_ptr()).as_str_unchecked() }
             .map_err(|_| Error::InvalidUtf8)
     }
 

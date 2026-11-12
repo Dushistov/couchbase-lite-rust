@@ -1,6 +1,6 @@
 use ffi::{
-    FLEncoder_Free, FLEncoder_New, FLSliceResult, FLTrust, FLValue_FromData, FLValue_ToJSON,
-    _FLEncoder,
+    _FLEncoder, FLEncoder_Free, FLEncoder_New, FLSliceResult, FLTrust, FLValue_FromData,
+    FLValue_ToJSON,
 };
 use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -530,7 +530,7 @@ fn to_fleece_to_json<T: Serialize>(value: &T) -> String {
     let val = unsafe { FLValue_FromData(data.as_fl_slice(), FLTrust::kFLUntrusted) };
     assert!(!val.is_null());
     let json = unsafe { FLValue_ToJSON(val) };
-    let json: &str = json.as_fl_slice().try_into().unwrap();
+    let json: &str = unsafe { json.as_fl_slice().as_str_unchecked() }.unwrap();
     json.to_string()
 }
 
@@ -561,7 +561,7 @@ fn to_fleece_to_json_enc<T: Serialize>(value: &T, enc: FlEncoderSession) -> Stri
     let val = unsafe { FLValue_FromData(data.as_fl_slice(), FLTrust::kFLUntrusted) };
     assert!(!val.is_null());
     let json = unsafe { FLValue_ToJSON(val) };
-    let json: &str = json.as_fl_slice().try_into().unwrap();
+    let json: &str = unsafe { json.as_fl_slice().as_str_unchecked() }.unwrap();
     json.to_string()
 }
 
@@ -574,6 +574,6 @@ fn fleece_encoded_to_json(data: FLSliceResult) -> String {
     let val = unsafe { FLValue_FromData(data.as_fl_slice(), FLTrust::kFLUntrusted) };
     assert!(!val.is_null());
     let json = unsafe { FLValue_ToJSON(val) };
-    let s: &str = json.as_fl_slice().try_into().unwrap();
+    let s: &str = unsafe { json.as_fl_slice().as_str_unchecked() }.unwrap();
     s.to_string()
 }

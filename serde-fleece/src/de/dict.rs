@@ -2,8 +2,8 @@ use super::NonNullConst;
 use crate::{
     de::Deserializer,
     ffi::{
-        FLDictIterator, FLDictIterator_Begin, FLDictIterator_End, FLDictIterator_GetCount,
-        FLDictIterator_GetKeyString, FLDictIterator_GetValue, FLDictIterator_Next, _FLDict,
+        _FLDict, FLDictIterator, FLDictIterator_Begin, FLDictIterator_End, FLDictIterator_GetCount,
+        FLDictIterator_GetKeyString, FLDictIterator_GetValue, FLDictIterator_Next,
     },
     Error,
 };
@@ -43,7 +43,7 @@ impl<'de, 'a> de::EnumAccess<'de> for EnumAccess<'a> {
                     format!("enum should be dict with len 1, got {n}").into(),
                 ));
             }
-            let key: &str = FLDictIterator_GetKeyString(&it).try_into()?;
+            let key: &str = FLDictIterator_GetKeyString(&it).as_str_unchecked()?;
             let key = <&str as de::IntoDeserializer<'_, Error>>::into_deserializer(key);
             let key = seed.deserialize(key)?;
             let value = FLDictIterator_GetValue(&it);
@@ -125,7 +125,7 @@ impl<'a, 'de> de::MapAccess<'de> for DictAccess<'a> {
         K: de::DeserializeSeed<'de>,
     {
         if unsafe { FLDictIterator_GetCount(&self.it) } > 0 {
-            let key: &str = unsafe { FLDictIterator_GetKeyString(&self.it) }.try_into()?;
+            let key: &str = unsafe { FLDictIterator_GetKeyString(&self.it).as_str_unchecked()? };
             let key = de::DeserializeSeed::deserialize(seed, DictKeySerializer(key))?;
             Ok(Some(key))
         } else {

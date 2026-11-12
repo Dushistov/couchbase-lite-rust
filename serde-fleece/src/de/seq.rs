@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{
     de::Deserializer,
-    ffi::{FLArray_Get, _FLArray},
+    ffi::{_FLArray, FLArray_Get},
     Error,
 };
 use serde::de;

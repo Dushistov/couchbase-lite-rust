@@ -235,12 +235,18 @@ jobs:
       - name: Run Rust tests under Valgrind
         run: python ci/build_and_run_tests.py --rust-only --with-valigrind
   network-tests:
-    name: Sync Gateway tests
+    name: Sync Gateway tests (${{ matrix.versions }})
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        versions: ${{ fromJSON(github.event_name == 'schedule' && '["minimum","maximum"]' || '["minimum"]') }}
     env:
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
       CORE_SRC: ${{ github.workspace }}/couchbase-lite-core
+      COUCHBASE_VERSION: ${{ matrix.versions == 'maximum' && '8.0.3' || '6.6.0' }}
+      SG_VERSION: ${{ matrix.versions == 'maximum' && '4.1.2' || '3.0.9' }}
     steps:
       - uses: actions/checkout@v5
       - name: Start Sync Gateway

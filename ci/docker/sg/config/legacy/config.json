@@ -1,7 +1,4 @@
 {
    "num_index_replicas": 0,
-   "bucket": "lite-core",
-   "delta_sync": {
-       "enabled": true
-   }
+   "bucket": "lite-core"
 }

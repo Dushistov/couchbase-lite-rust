@@ -9,9 +9,5 @@
              "lavenders": { "sync": "function (doc, oldDoc) { if (doc.isRejected == 'true') throw({'forbidden':'read_only'}); channel(doc.channels); }" }
           }
        }
-    },
-    "delta_sync": {
-        "enabled": true
     }
  }
- 

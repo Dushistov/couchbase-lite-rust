@@ -1,76 +1,15 @@
-This docker folder contains the `docker-compose.yml` file for starting and configuring Couchbase Server and Sync Gateways for running non-walrus replicator tests with Sync Gateway.
+# Sync Gateway test fixture
 
-Use `./ci/docker-up-down.py up` and `./ci/docker-up-down.py down` from the repository root. The default is Docker with sudo. Select any combination with `--engine docker|podman` and `--sudo` or `--no-sudo`; for example, run `./ci/docker-up-down.py up --engine podman --no-sudo` for rootless Podman. Use the same options with `down`. Run `./ci/docker-up-down.py --help` for usage. Podman requires an installed Compose provider such as `podman-compose`.
+Run `./ci/docker-up-down.py up` and `./ci/docker-up-down.py down` from the repository root. The default uses Docker with sudo. For rootless Podman, add `--engine podman --no-sudo` to both commands; Podman also needs a Compose provider such as `podman-compose`.
 
-Run `./ci/build_and_run_tests.py --with-server-only --with-valigrind` for the Sync Gateway tests under Valgrind. It tests the normal Cargo release build. `ci/valgrind-suppressions.supp` limits suppression of observed `http` header warnings to the WebSocket handshake paths; investigate new warning stacks before adding rules. For a quicker local check, set `SG_TEST_DOCUMENT_COUNT=100`; the ordering test uses 10,000 documents by default.
+The default fixture uses Couchbase Server Enterprise 6.6.0 and Sync Gateway Community 3.0.9. It starts the server and the legacy Sync Gateway database `scratch-30` on public port 4884 and admin port 4885. Server 6.6 and Sync Gateway 3.0 do not support named scopes and collections, so the collections gateway is opt in.
 
-The Rust native build applies `couchbase-lite-core-sys/patches/fleece-shared-buffer.patch` to the Core source checkout before compiling it. This fixes a zero-length Fleece slice allocation that Valgrind detects as an invalid write.
+`./ci/build_and_run_tests.py --with-server-only` runs the ignored replication tests against `scratch-30`. Add `--with-valigrind` to run them under Valgrind. The ordering test uses 10,000 documents by default; set `SG_TEST_DOCUMENT_COUNT=100` for a quick local check.
 
-When running `docker compose up`, there will be one Couchbase Server and two Sync Gateways started as follows:
+The `chat-stress` job uses `--stress-only`, which starts the same two services without creating the test user. Its driver provisions its own user through the admin API. Ordinary `up` creates `sguser/password` for the replication tests.
 
-### 1. Sync Gateway for .SyncServerCollection Tests
+To run the newer pair used by the scheduled `network-tests` matrix, set `COUCHBASE_VERSION=8.0.3` and `SG_VERSION=4.1.2` before `up`. The two variables select the Couchbase Server image and Sync Gateway Community package. The Compose file also accepts `SG_LEGACY_DEB_AMD64` and `SG_LEGACY_DEB_ARM64` to override the legacy package URL.
 
- | Config      | Value       |
- | ----------- | ----------- |
- | Database    | scratch     |
- | Port        | 4984        |
- | Admin Port  | 4985        |
- | Collections | flowers.roses, flowers.tulips, and flowers.lavenders |
+For manual collection testing with Server 7+ and Sync Gateway 3.1+, add `--with-collections` to `up` and `down`. This starts a second Sync Gateway database, `scratch`, with collections `flowers.roses`, `flowers.tulips`, and `flowers.lavenders` on public port 4984 and admin port 4985. `SG_DEB_AMD64` and `SG_DEB_ARM64` can override that gateway's package URL. The default minimum pair cannot run this service.
 
- #### Sync Function
- ```JS
-    function (doc, oldDoc) { 
-        if (doc.isRejected == 'true') 
-            throw({'forbidden':'read_only'}); 
-        channel(doc.channels); 
-    }
- ``` 
-
-### 2. Legacy Sync Gateway for .SyncServer30 Tests
-
- | Config      | Value       |
- | ----------- | ----------- |
- | Database    | scratch-30  |
- | Port        | 4884        |
- | Admin Port  | 4885        |
-
- ** SG 3.0 doesn't support collection.
-
- #### Sync Function
-
- Use default sync function which is as follows
- ```JS
-    function (doc, oldDoc) {
-        channel(doc.channels); 
-    }
- ``` 
-
-The Admin Credentials of both Sync Gateways are `admin/password` or `Administrator/password`.
-
-### Docker Compose Environment Variables
-
-The `docker-compose.yml` has 3 environment variables for configuration.
-
- | Variable      |   Description  |
- | ------------- | -------------- |
- | SG_DEB        | Sync Gateway 3.1+ deb file URL. Default is SG 3.1.0 Ubuntu ARM64 URL.      |
- | SG_LEGACY_DEB | Sync Gateway 3.0 deb file URL. Default is SG 3.0.7 Ubuntu ARM64 URL.       |
- | SSL           | Boolean flag to configure Sync Gateway for SSL endpoints. Default is true. |
-
- Note: If you are using Mac x86-64, you must configure SG_DEB and SG_LEGACY_DEB to use x86_64 versions. 
-
- To configure environment variables, create `.env` file with the variables in key=value format.
-
- **Sample .env file for Mac x86-64**
-```
-SG_DEB=https://packages.couchbase.com/releases/couchbase-sync-gateway/3.1.0/couchbase-sync-gateway-enterprise_3.1.0_x86_64.deb
-SG_LEGACY_DEB=https://packages.couchbase.com/releases/couchbase-sync-gateway/3.0.7/couchbase-sync-gateway-enterprise_3.0.7_x86_64.deb
-```
-
-### Some Commands
-
- |      Commands       |   Description  |
- | ------------------- | -------------- |
- | docker compose up   | Start all docker containers as specified in the `docker-compose.yml`. If the docker images and containers do not exists, they will be built first |
- | docker compose down | Stop running docker containers without deleting the containers |
- | docker compose down --rmi all | Stop running docker containers and deleting the images and containers |
+The Rust native build applies `couchbase-lite-core-sys/patches/fleece-shared-buffer.patch` to the Core source checkout before compiling it. This fixes a zero-length Fleece slice allocation that Valgrind detects as an invalid write. `ci/valgrind-suppressions.supp` limits suppression of observed HTTP header warnings to WebSocket handshake paths.

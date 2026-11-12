@@ -18,6 +18,10 @@ COLLECTIONS_USER_BODY = (
     '"lavenders":{"admin_channels":["*"]}}}}'
 )
 LEGACY_USER_BODY = '{"name":"sguser","password":"password","admin_channels":["*"]}'
+COMPOSE_VARIABLES = (
+    "COUCHBASE_VERSION", "SG_VERSION", "SG_DEB_ARM64", "SG_DEB_AMD64",
+    "SG_LEGACY_DEB_ARM64", "SG_LEGACY_DEB_AMD64",
+)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -30,16 +34,23 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--project-name", help="Isolated Compose project name")
     parser.add_argument("--stress-only", action="store_true",
                         help="Start only Couchbase Server and legacy Sync Gateway")
+    parser.add_argument("--with-collections", action="store_true",
+                        help="Also start the collections Sync Gateway (requires Server 7+ and Sync Gateway 3.1+)")
     return parser.parse_args(argv)
 
 
-def compose_command(args: argparse.Namespace) -> list[str]:
+def compose_command(args: argparse.Namespace, env: dict[str, str]) -> list[str]:
     if not shutil.which(args.engine):
         raise RuntimeError(f"Container engine not found: {args.engine}")
     command = [args.engine, "compose"]
     if args.project_name:
         command.extend(["--project-name", args.project_name])
-    return ["sudo", "env", "SSL=false", *command] if args.use_sudo else command
+    if args.with_collections:
+        command.extend(["--profile", "collections"])
+    if args.use_sudo:
+        variables = [f"{name}={env[name]}" for name in COMPOSE_VARIABLES if name in env]
+        return ["sudo", "env", "SSL=false", *variables, *command]
+    return command
 
 
 def wait_ready(url: str, *, timeout: int = 600) -> None:
@@ -73,18 +84,21 @@ def setup_user(admin_url: str, user_body: str) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    compose = compose_command(args)
+    if args.stress_only and args.with_collections:
+        raise ValueError("--stress-only and --with-collections cannot be combined")
     env = os.environ.copy()
     env["SSL"] = "false"
+    compose = compose_command(args, env)
     if args.action == "up":
         services = ["lite-core-cbs", "lite-core-sg-legacy"] if args.stress_only else []
         subprocess.run([*compose, "up", "--build", "-d", *services],
                        check=True, cwd=DOCKER_DIR, env=env)
-        if not args.stress_only:
+        if args.with_collections:
             wait_ready(COLLECTIONS_ADMIN + "/_user/")
         wait_ready(LEGACY_ADMIN + "/_user/")
         if not args.stress_only:
-            setup_user(COLLECTIONS_ADMIN, COLLECTIONS_USER_BODY)
+            if args.with_collections:
+                setup_user(COLLECTIONS_ADMIN, COLLECTIONS_USER_BODY)
             setup_user(LEGACY_ADMIN, LEGACY_USER_BODY)
     else:
         subprocess.run([*compose, "down"], check=True, cwd=DOCKER_DIR, env=env)

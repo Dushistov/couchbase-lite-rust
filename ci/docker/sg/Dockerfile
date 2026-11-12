@@ -1,12 +1,10 @@
 FROM docker.io/library/ubuntu:22.04
 
+ARG SG_VERSION=3.0.9
 ARG SG_DEB_ARM64
 ARG SG_DEB_AMD64
 ARG SSL=true
 ARG LEGACY_MODE=false
-
-RUN [ -z "$SG_DEB_ARM64" ] && echo "SG_DEB_ARM64 is required" && exit 1 || true
-RUN [ -z "$SG_DEB_AMD64" ] && echo "SG_DEB_AMD64 is required" && exit 1 || true
 
 RUN apt -yqq update 
 RUN apt -yqq install curl
@@ -14,13 +12,19 @@ RUN apt -yqq install curl
 RUN mkdir -p /opt/sg && \
     ARCHITECTURE="$(dpkg --print-architecture)" && \
     if [ "$ARCHITECTURE" = "amd64" ]; then \
-        curl -o /opt/sg/couchbase-sync-gateway.deb $SG_DEB_AMD64; \
+        SG_PACKAGE_ARCH="x86_64"; \
+        SG_DEB_URL="$SG_DEB_AMD64"; \
     elif [ "$ARCHITECTURE" = "arm64" ]; then \
-        curl -o /opt/sg/couchbase-sync-gateway.deb $SG_DEB_ARM64; \
+        SG_PACKAGE_ARCH="aarch64"; \
+        SG_DEB_URL="$SG_DEB_ARM64"; \
     else \
         echo "Unsupported architecture"; \
         exit 1; \
-    fi
+    fi && \
+    if [ -z "$SG_DEB_URL" ]; then \
+        SG_DEB_URL="https://packages.couchbase.com/releases/couchbase-sync-gateway/$SG_VERSION/couchbase-sync-gateway-community_${SG_VERSION}_${SG_PACKAGE_ARCH}.deb"; \
+    fi && \
+    curl --fail --location --output /opt/sg/couchbase-sync-gateway.deb "$SG_DEB_URL"
 
 COPY cert /opt/sg/cert
 COPY config /opt/sg/config

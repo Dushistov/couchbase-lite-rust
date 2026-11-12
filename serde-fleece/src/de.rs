@@ -7,10 +7,10 @@ use self::dict::DictAccess;
 use crate::{
     de::{dict::EnumAccess, seq::ArrayAccess},
     ffi::{
-        FLArray_Count, FLDict_Count, FLTrust, FLValueType, FLValue_AsArray, FLValue_AsBool,
-        FLValue_AsDict, FLValue_AsDouble, FLValue_AsFloat, FLValue_AsInt, FLValue_AsString,
-        FLValue_AsUnsigned, FLValue_FromData, FLValue_GetType, FLValue_IsDouble, FLValue_IsInteger,
-        FLValue_IsUnsigned, _FLDict, _FLValue,
+        _FLDict, _FLValue, FLArray_Count, FLDict_Count, FLTrust, FLValueType, FLValue_AsArray,
+        FLValue_AsBool, FLValue_AsDict, FLValue_AsDouble, FLValue_AsFloat, FLValue_AsInt,
+        FLValue_AsString, FLValue_AsUnsigned, FLValue_FromData, FLValue_GetType, FLValue_IsDouble,
+        FLValue_IsInteger, FLValue_IsUnsigned,
     },
     Error,
 };
@@ -119,7 +119,7 @@ impl<'de> Deserializer<'de> {
     fn parse_str(&self) -> Result<&'de str, Error> {
         let ty = unsafe { FLValue_GetType(self.value.as_ptr()) };
         if ty == FLValueType::kFLString {
-            let s: &str = unsafe { FLValue_AsString(self.value.as_ptr()) }.try_into()?;
+            let s: &str = unsafe { FLValue_AsString(self.value.as_ptr()).as_str_unchecked()? };
             Ok(s)
         } else {
             Err(Error::InvalidFormat(
@@ -481,7 +481,7 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
         let ftype = unsafe { FLValue_GetType(self.value.as_ptr()) };
         match ftype {
             FLValueType::kFLString => {
-                let s: &str = unsafe { FLValue_AsString(self.value.as_ptr()) }.try_into()?;
+                let s: &str = unsafe { FLValue_AsString(self.value.as_ptr()).as_str_unchecked()? };
                 visitor.visit_enum(s.into_deserializer())
             }
             FLValueType::kFLDict => {

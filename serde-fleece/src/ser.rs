@@ -19,11 +19,11 @@ use self::map::MapKeySerializer;
 use crate::{
     error::Error,
     ffi::{
-        FLEncoder_BeginArray, FLEncoder_BeginDict, FLEncoder_ConvertJSON, FLEncoder_EndArray,
-        FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free, FLEncoder_GetError, FLEncoder_New,
-        FLEncoder_Reset, FLEncoder_WriteBool, FLEncoder_WriteDouble, FLEncoder_WriteFloat,
-        FLEncoder_WriteInt, FLEncoder_WriteKey, FLEncoder_WriteNull, FLEncoder_WriteString,
-        FLEncoder_WriteUInt, FLError, FLSliceResult, _FLEncoder,
+        _FLEncoder, FLEncoder_BeginArray, FLEncoder_BeginDict, FLEncoder_ConvertJSON,
+        FLEncoder_EndArray, FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free,
+        FLEncoder_GetError, FLEncoder_New, FLEncoder_Reset, FLEncoder_WriteBool,
+        FLEncoder_WriteDouble, FLEncoder_WriteFloat, FLEncoder_WriteInt, FLEncoder_WriteKey,
+        FLEncoder_WriteNull, FLEncoder_WriteString, FLEncoder_WriteUInt, FLError, FLSliceResult,
     },
 };
 use serde::{ser, Serialize};

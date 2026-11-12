@@ -73,8 +73,8 @@ impl Document {
     }
     /// Decode body of document
     pub fn decode_body<T: DeserializeOwned>(self) -> Result<T> {
-        if let Some(slice) = self.unsaved_body.as_ref().map(FLSliceResult::as_fl_slice) {
-            let x: T = serde_fleece::from_slice(slice.into())?;
+        if let Some(slice) = self.unsaved_body.as_ref() {
+            let x: T = serde_fleece::from_slice(slice.as_bytes())?;
             return Ok(x);
         }
         let inner: &C4DocumentOwner = self.inner.as_ref().ok_or_else(|| {
@@ -179,12 +179,12 @@ impl C4DocumentOwner {
                 .as_ref()
                 .docID
                 .as_fl_slice()
-                .try_into()
+                .as_str_unchecked()
                 .map_err(|_| Error::InvalidUtf8)
         }
     }
     pub(crate) fn revision_id(&self) -> &[u8] {
-        unsafe { self.0.as_ref() }.revID.as_fl_slice().into()
+        unsafe { self.0.as_ref().revID.as_fl_slice().as_bytes_unchecked() }
     }
     pub(crate) fn generation(rev_id: &[u8]) -> c_uint {
         unsafe { c4rev_getGeneration(rev_id.into()) }
@@ -192,7 +192,7 @@ impl C4DocumentOwner {
     pub(crate) fn load_body(&self) -> Result<&[u8]> {
         let mut c4err = c4error_init();
         if unsafe { c4doc_loadRevisionBody(self.0.as_ptr(), &mut c4err) } {
-            Ok(unsafe { c4doc_getRevisionBody(self.0.as_ptr()) }.into())
+            Ok(unsafe { c4doc_getRevisionBody(self.0.as_ptr()).as_bytes_unchecked() })
         } else {
             Err(c4err.into())
         }

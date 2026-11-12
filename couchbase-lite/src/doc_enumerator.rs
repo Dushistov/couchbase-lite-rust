@@ -38,7 +38,7 @@ impl DocumentInfo<'_, '_> {
     }
     #[inline]
     pub fn doc_id(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(self.inner.docID.into()) }
+        unsafe { str::from_utf8_unchecked(self.inner.docID.as_bytes_unchecked()) }
     }
 }
 

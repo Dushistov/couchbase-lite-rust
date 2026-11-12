@@ -2,9 +2,8 @@ use couchbase_lite_core_sys::{FLValue_AsString, FLValue_GetType};
 
 use crate::{
     ffi::{
-        FLDict, FLDict_Get, FLError, FLMutableDict_New, FLMutableDict_Release,
+        _FLDict, _FLValue, FLDict, FLDict_Get, FLError, FLMutableDict_New, FLMutableDict_Release,
         FLMutableDict_SetInt, FLMutableDict_SetString, FLSlice, FLValueType, FLValue_AsData,
-        _FLDict, _FLValue,
     },
     Error, NonNullConst,
 };
@@ -66,7 +65,7 @@ impl<'a> Dict<'a> {
         let val = NonNullConst::new(val)?;
         if unsafe { FLValue_GetType(val.as_ptr()) } == FLValueType::kFLString {
             let raw_s = unsafe { FLValue_AsString(val.as_ptr()) };
-            raw_s.try_into().ok()
+            unsafe { raw_s.as_str_unchecked() }.ok()
         } else {
             None
         }

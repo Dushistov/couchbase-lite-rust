@@ -556,8 +556,10 @@ impl DbState {
             .with_documents_ended_callback(
                 move |pushing: bool, docs: &mut dyn Iterator<Item = &C4DocumentEnded>| {
                     for doc in docs {
-                        let id =
-                            String::from_utf8_lossy(doc.docID.as_fl_slice().into()).into_owned();
+                        let id = String::from_utf8_lossy(unsafe {
+                            doc.docID.as_fl_slice().as_bytes_unchecked()
+                        })
+                        .into_owned();
                         if doc.error.code != 0 {
                             docs_output.callback(OutputEvent::ReplicationDocumentError {
                                 generation,
@@ -784,7 +786,7 @@ fn input_doc_filter(
         .filter(|body| body.get_as_str("type") == Some("Message"))
         .is_some_and(|body| from_fl_dict::<Message, _>(body).is_ok());
     if !valid {
-        let id = String::from_utf8_lossy(doc_id.into()).into_owned();
+        let id = String::from_utf8_lossy(unsafe { doc_id.as_bytes_unchecked() }).into_owned();
         output.callback(OutputEvent::ValidationRejected { generation, id });
     }
     valid

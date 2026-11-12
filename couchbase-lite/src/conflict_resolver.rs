@@ -88,7 +88,12 @@ fn default_conflict_resolver<'b>(
     remote_doc: Option<&'b C4DocumentOwner>,
 ) -> Option<&'b C4DocumentOwner> {
     fn selected_rev_gen(doc: &C4DocumentOwner) -> (&[u8], c_uint) {
-        let rev_id: &[u8] = doc.selected_revision().revID.as_fl_slice().into();
+        let rev_id: &[u8] = unsafe {
+            doc.selected_revision()
+                .revID
+                .as_fl_slice()
+                .as_bytes_unchecked()
+        };
         (rev_id, C4DocumentOwner::generation(rev_id))
     }
     match (local_doc, remote_doc) {

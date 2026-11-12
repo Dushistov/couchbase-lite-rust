@@ -2,7 +2,6 @@
 
 use crate::{
     C4CollectionSpec, C4String, FLHeapSlice, FLSlice, FLSliceResult, FLSliceResult_Release,
-    FLString,
 };
 use std::{borrow::Cow, os::raw::c_void, ptr, slice, str};
 
@@ -44,16 +43,29 @@ impl<'a> From<&'a [u8]> for FLSlice {
     }
 }
 
-impl From<FLSlice> for &[u8] {
+impl FLSlice {
+    /// Borrows the bytes referenced by this FFI slice
+    ///
+    /// # Safety
+    ///
+    /// For nonempty slices, uphold [`slice::from_raw_parts`]'s contract for `'a`
     #[inline]
-    fn from(s: FLSlice) -> Self {
-        if s.size != 0 {
-            unsafe { slice::from_raw_parts(s.buf as *const u8, s.size) }
-        } else {
-            // pointer should not be null, even in zero case
-            // but pointer from FLSlice can be null in zero case, so:
+    pub unsafe fn as_bytes_unchecked<'a>(self) -> &'a [u8] {
+        if self.size == 0 {
             &[]
+        } else {
+            slice::from_raw_parts(self.buf as *const u8, self.size)
         }
+    }
+
+    /// Borrows UTF-8 text referenced by this FFI slice
+    ///
+    /// # Safety
+    ///
+    /// Same as [`FLSlice::as_bytes_unchecked`]
+    #[inline]
+    pub unsafe fn as_str_unchecked<'a>(self) -> Result<&'a str, str::Utf8Error> {
+        str::from_utf8(self.as_bytes_unchecked())
     }
 }
 
@@ -117,15 +129,6 @@ impl FLSliceResult {
     }
 }
 
-impl<'a> TryFrom<FLString> for &'a str {
-    type Error = str::Utf8Error;
-    #[inline]
-    fn try_from(value: FLString) -> Result<Self, Self::Error> {
-        let bytes: &'a [u8] = value.into();
-        str::from_utf8(bytes)
-    }
-}
-
 impl FLHeapSlice {
     #[inline]
     pub fn as_fl_slice(&self) -> FLSlice {
@@ -166,7 +169,7 @@ mod tests {
     #[test]
     fn test_null_slice_handling() {
         let ffi_null_slice = FLSlice::default();
-        let slice: &[u8] = ffi_null_slice.into();
+        let slice: &[u8] = unsafe { ffi_null_slice.as_bytes_unchecked() };
         assert!(slice.is_empty());
 
         // This value has no native allocation. Suppress its native Release call
@@ -179,7 +182,7 @@ mod tests {
     fn test_nonempty_slice_handling() {
         let bytes = [0, 1, 255];
         let ffi_slice = FLSlice::from(bytes.as_slice());
-        let slice: &[u8] = ffi_slice.into();
+        let slice: &[u8] = unsafe { ffi_slice.as_bytes_unchecked() };
         assert_eq!(slice, bytes);
 
         // The bytes belong to Rust, so the native Release call must not run
@@ -188,7 +191,7 @@ mod tests {
             size: bytes.len(),
         });
         assert_eq!(ffi_result.as_bytes(), bytes);
-        let slice: &[u8] = ffi_result.as_fl_slice().into();
+        let slice: &[u8] = unsafe { ffi_result.as_fl_slice().as_bytes_unchecked() };
         assert_eq!(slice, bytes);
         assert!(!ffi_result.is_empty());
     }
@@ -197,7 +200,7 @@ mod tests {
     fn test_string_slice_handling() {
         let text = "héllo";
         let ffi_string = FLSlice::from(text);
-        let decoded: &str = ffi_string.try_into().unwrap();
+        let decoded: &str = unsafe { ffi_string.as_str_unchecked() }.unwrap();
         assert_eq!(decoded, text);
 
         let ffi_result = ManuallyDrop::new(FLSliceResult {
@@ -208,7 +211,7 @@ mod tests {
 
         let invalid_utf8 = [255];
         let invalid_string = FLSlice::from(invalid_utf8.as_slice());
-        let decoded: Result<&str, _> = invalid_string.try_into();
+        let decoded: Result<&str, _> = unsafe { invalid_string.as_str_unchecked() };
         assert!(decoded.is_err());
     }
 

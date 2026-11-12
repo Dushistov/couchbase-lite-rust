@@ -72,7 +72,9 @@ impl ValueRef<'_> {
                 }
             }
             kFLString => {
-                let s: &str = FLValue_AsString(value).try_into().expect("not valid utf-8");
+                let s: &str = FLValue_AsString(value)
+                    .as_str_unchecked()
+                    .expect("not valid utf-8");
                 ValueRef::String(s)
             }
             kFLArray => ValueRef::Array(ValueRefArray(FLValue_AsArray(value))),

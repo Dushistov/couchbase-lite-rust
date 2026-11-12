@@ -1,4 +1,4 @@
-use crate::ffi::{FLEncoder_WriteBool, FLEncoder_WriteInt, FLEncoder_WriteString, _FLEncoder};
+use crate::ffi::{_FLEncoder, FLEncoder_WriteBool, FLEncoder_WriteInt, FLEncoder_WriteString};
 use std::ptr::NonNull;
 
 mod private {

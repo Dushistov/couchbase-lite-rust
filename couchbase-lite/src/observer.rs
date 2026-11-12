@@ -101,19 +101,11 @@ impl DbChange {
     }
     #[inline]
     pub fn doc_id(&self) -> Result<&str> {
-        self.inner
-            .docID
-            .as_fl_slice()
-            .try_into()
-            .map_err(|_| Error::InvalidUtf8)
+        unsafe { self.inner.docID.as_fl_slice().as_str_unchecked() }.map_err(|_| Error::InvalidUtf8)
     }
     #[inline]
     pub fn revision_id(&self) -> Result<&str> {
-        self.inner
-            .revID
-            .as_fl_slice()
-            .try_into()
-            .map_err(|_| Error::InvalidUtf8)
+        unsafe { self.inner.revID.as_fl_slice().as_str_unchecked() }.map_err(|_| Error::InvalidUtf8)
     }
     #[inline]
     pub fn body_size(&self) -> u32 {

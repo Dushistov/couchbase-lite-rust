@@ -34,7 +34,7 @@ bitflags! {
 
 impl Document {
     #[inline]
-    pub fn new<T>(data: &T, enc: FlEncoderSession) -> Result<Self>
+    pub fn new<T>(data: &T, enc: FlEncoderSession<'_>) -> Result<Self>
     where
         T: Serialize,
     {
@@ -46,7 +46,7 @@ impl Document {
         })
     }
     #[inline]
-    pub fn new_with_id<S, T>(doc_id: S, data: &T, enc: FlEncoderSession) -> Result<Self>
+    pub fn new_with_id<S, T>(doc_id: S, data: &T, enc: FlEncoderSession<'_>) -> Result<Self>
     where
         S: Into<Box<str>>,
         T: Serialize,
@@ -86,7 +86,7 @@ impl Document {
     }
     /// Update internal buffer with data, you need save document
     /// to database to make this change permanent
-    pub fn update_body<T>(&mut self, data: &T, enc: FlEncoderSession) -> Result<()>
+    pub fn update_body<T>(&mut self, data: &T, enc: FlEncoderSession<'_>) -> Result<()>
     where
         T: Serialize,
     {

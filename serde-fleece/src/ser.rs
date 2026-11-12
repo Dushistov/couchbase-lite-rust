@@ -27,35 +27,36 @@ use crate::{
     },
 };
 use serde::{ser, Serialize};
-use std::{borrow::Borrow, fmt::Display, ptr::NonNull};
+use std::{fmt::Display, marker::PhantomData, ptr::NonNull};
 
 pub(crate) struct Serializer {
     inner: NonNull<_FLEncoder>,
 }
 
-/// Helper struct for multiple uses of `FLEncoder`
-pub struct FlEncoderSession {
+/// Exclusive borrow of a Fleece encoder. Resets the encoder on drop
+#[repr(transparent)]
+pub struct FlEncoderSession<'enc> {
     inner: NonNull<_FLEncoder>,
+    marker: PhantomData<&'enc mut _FLEncoder>,
 }
 
-impl FlEncoderSession {
+impl<'enc> FlEncoderSession<'enc> {
+    /// # Safety
+    ///
+    /// The encoder must remain alive and reserved for this session for `'enc`
     #[inline]
-    pub fn new(inner: NonNull<_FLEncoder>) -> Self {
-        Self { inner }
+    pub unsafe fn new(inner: NonNull<_FLEncoder>) -> Self {
+        Self {
+            inner,
+            marker: PhantomData,
+        }
     }
 }
 
-impl Drop for FlEncoderSession {
+impl Drop for FlEncoderSession<'_> {
     #[inline]
     fn drop(&mut self) {
         unsafe { FLEncoder_Reset(self.inner.as_ptr()) }
-    }
-}
-
-impl Borrow<NonNull<_FLEncoder>> for FlEncoderSession {
-    #[inline]
-    fn borrow(&self) -> &NonNull<_FLEncoder> {
-        &self.inner
     }
 }
 
@@ -66,21 +67,29 @@ where
 {
     let enc =
         unsafe { NonNull::new(FLEncoder_New()).ok_or(Error::Fleece(FLError::kFLMemoryError))? };
-    let ret = to_fl_slice_result_with_encoder(value, enc);
+    let ret = to_fl_slice_result_with_encoder(value, unsafe { FlEncoderSession::new(enc) });
     unsafe { FLEncoder_Free(enc.as_ptr()) };
     ret
 }
 
-pub fn to_fl_slice_result_with_encoder<T, FleeceEncoder>(
+/// Serializes with an exclusive encoder session.
+///
+/// A raw pointer cannot substitute for the session:
+/// ```compile_fail,E0308
+/// use serde_fleece::{ffi::_FLEncoder, to_fl_slice_result_with_encoder};
+/// use std::ptr::NonNull;
+/// let encoder = NonNull::<_FLEncoder>::dangling();
+/// let _ = to_fl_slice_result_with_encoder(&42, encoder);
+/// ```
+pub fn to_fl_slice_result_with_encoder<T>(
     value: &T,
-    encoder: FleeceEncoder,
+    encoder: FlEncoderSession<'_>,
 ) -> Result<FLSliceResult, Error>
 where
     T: Serialize,
-    FleeceEncoder: Borrow<NonNull<_FLEncoder>>,
 {
     let mut serializer = Serializer {
-        inner: *encoder.borrow(),
+        inner: encoder.inner,
     };
     value.serialize(&mut serializer)?;
     let mut err = FLError::kFLNoError;
@@ -93,15 +102,12 @@ where
 }
 
 /// Convert json data into fleece encoded byte array
-pub fn json_to_fleece_with_encoder<FleeceEncoder>(
+pub fn json_to_fleece_with_encoder(
     json: &[u8],
-    encoder: FleeceEncoder,
-) -> Result<FLSliceResult, Error>
-where
-    FleeceEncoder: Borrow<NonNull<_FLEncoder>>,
-{
+    encoder: FlEncoderSession<'_>,
+) -> Result<FLSliceResult, Error> {
     let serializer = Serializer {
-        inner: *encoder.borrow(),
+        inner: encoder.inner,
     };
     if !unsafe { FLEncoder_ConvertJSON(serializer.inner.as_ptr(), json.into()) } {
         return Err(Error::Fleece(FLError::kFLEncodeError));

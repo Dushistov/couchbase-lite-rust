@@ -238,15 +238,31 @@ impl Database {
         crate::replicator::init_tokio_socket_impl(handle);
     }
 
-    /// Get shared "fleece" encoder, `&mut self` to make possible
-    /// exists only one session
-    pub fn shared_encoder_session(&mut self) -> Result<FlEncoderSession> {
+    /// Borrows the database's shared Fleece encoder exclusively until the session is dropped.
+    ///
+    /// Sessions cannot overlap:
+    /// ```compile_fail,E0499
+    /// # fn overlapping(db: &mut couchbase_lite::Database) {
+    /// let first = db.shared_encoder_session().unwrap();
+    /// let second = db.shared_encoder_session().unwrap();
+    /// drop((first, second));
+    /// # }
+    /// ```
+    /// The database must outlive its session:
+    /// ```compile_fail,E0505
+    /// # fn outliving(mut db: couchbase_lite::Database) {
+    /// let session = db.shared_encoder_session().unwrap();
+    /// drop(db);
+    /// drop(session);
+    /// # }
+    /// ```
+    pub fn shared_encoder_session(&mut self) -> Result<FlEncoderSession<'_>> {
         let enc = unsafe { c4db_getSharedFleeceEncoder(self.inner.0.as_ptr()) };
         NonNull::new(enc)
             .ok_or_else(|| {
                 Error::LogicError("c4db_getSharedFleeceEncoder return null.into()".into())
             })
-            .map(FlEncoderSession::new)
+            .map(|enc| unsafe { FlEncoderSession::new(enc) })
     }
 
     /// Returns the names of all indexes in the database

@@ -259,9 +259,7 @@ impl Database {
     pub fn shared_encoder_session(&mut self) -> Result<FlEncoderSession<'_>> {
         let enc = unsafe { c4db_getSharedFleeceEncoder(self.inner.0.as_ptr()) };
         NonNull::new(enc)
-            .ok_or_else(|| {
-                Error::LogicError("c4db_getSharedFleeceEncoder return null.into()".into())
-            })
+            .ok_or_else(|| Error::LogicError("c4db_getSharedFleeceEncoder return null".into()))
             .map(|enc| unsafe { FlEncoderSession::new(enc) })
     }
 

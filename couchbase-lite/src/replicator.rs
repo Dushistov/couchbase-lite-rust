@@ -295,7 +295,11 @@ impl Replicator {
                 !ctx.is_null(),
                 "Replicator::call_on_documents_ended: Internal error - null function pointer"
             );
-            let docs: &[*const C4DocumentEnded] = slice::from_raw_parts(docs, num_docs);
+            let docs: &[*const C4DocumentEnded] = if num_docs == 0 {
+                &[]
+            } else {
+                slice::from_raw_parts(docs, num_docs)
+            };
             let mut it = docs.iter().map(|x| &**x);
             ((*ctx).docs_ended_cb)(pushing, &mut it);
         }

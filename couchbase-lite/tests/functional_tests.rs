@@ -1,7 +1,7 @@
 #[cfg(feature = "use-tokio-websocket")]
 mod need_sync_gateway;
 
-use couchbase_lite::{ffi::FLSlice, *};
+use couchbase_lite::*;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, str, time::Instant};
 use tempfile::tempdir;
@@ -773,8 +773,8 @@ fn test_all_types_in_query() {
             panic!("Expect dict type, got {m_value:?}");
         };
         assert_eq!(2, m.len());
-        assert_eq!(17, m.get(FLSlice::from("a".as_bytes())).as_i32().unwrap());
-        assert_eq!(18, m.get(FLSlice::from("b".as_bytes())).as_i32().unwrap());
+        assert_eq!(17, m.get("a").as_i32().unwrap());
+        assert_eq!(18, m.get("b").as_i32().unwrap());
 
         drop(iter);
         drop(query);

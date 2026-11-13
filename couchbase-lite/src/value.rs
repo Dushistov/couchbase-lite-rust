@@ -128,8 +128,8 @@ impl ValueRefDict<'_> {
         FLDict_Get(self.0, key)
     }
     #[inline]
-    pub fn get<'a>(&'a self, key: FLSlice) -> ValueRef<'a> {
-        unsafe { ValueRef::new(self.get_raw(key)) }
+    pub fn get(&self, key: &str) -> ValueRef<'_> {
+        unsafe { ValueRef::new(self.get_raw(key.into())) }
     }
 }
 

@@ -15,7 +15,7 @@ use crate::{
 };
 use log::{info, trace};
 use std::{
-    mem::{self, MaybeUninit},
+    mem::{self, DropGuard, MaybeUninit},
     num::NonZero,
     os::raw::c_void,
     ptr,
@@ -414,6 +414,9 @@ impl Replicator {
     ) -> Result<Self> {
         use consts::*;
 
+        let callback_guard = DropGuard::new(boxed_callback_f, |ptr| unsafe {
+            free_callback_f(ptr.as_ptr())
+        });
         let mut remote_addr = MaybeUninit::<C4Address>::uninit();
         let mut db_name = C4String::default();
         if !unsafe { c4address_fromURL(url.into(), remote_addr.as_mut_ptr(), &mut db_name) } {
@@ -477,21 +480,18 @@ impl Replicator {
             )
         };
         trace!("repl new result {repl:?}");
-        NonNull::new(repl)
-            .map(|inner| Replicator {
-                inner,
-                free_callback_f,
-                boxed_callback_f,
-                validation,
-                c_callback_on_status_changed: call_on_status_changed,
-                c_callback_on_documents_ended: call_on_documents_ended,
-                heartbeat_secs,
-                mode,
-            })
-            .ok_or_else(|| {
-                unsafe { free_callback_f(boxed_callback_f.as_ptr()) };
-                c4err.into()
-            })
+        let inner = NonNull::new(repl).ok_or_else(|| Error::from(c4err))?;
+        let boxed_callback_f = DropGuard::dismiss(callback_guard);
+        Ok(Replicator {
+            inner,
+            free_callback_f,
+            boxed_callback_f,
+            validation,
+            c_callback_on_status_changed: call_on_status_changed,
+            c_callback_on_documents_ended: call_on_documents_ended,
+            heartbeat_secs,
+            mode,
+        })
     }
     #[inline]
     pub fn stop(&mut self) {
@@ -529,6 +529,30 @@ pub enum ReplicatorState {
 
 unsafe fn free_boxed_value<T>(p: *mut c_void) {
     drop(Box::from_raw(p as *mut T));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::DatabaseFlags;
+    use std::sync::Arc;
+
+    #[test]
+    fn test_callback_released_when_replicator_creation_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Database::open_with_flags(&dir.path().join("repl.cblite2"), DatabaseFlags::CREATE)
+            .unwrap();
+
+        let context = Arc::new(());
+        let captured = Arc::clone(&context);
+        let params = ReplicatorParameters::default()
+            .with_validation_func(|_: C4CollectionSpec, _, _, _, _| true)
+            .with_state_changed_callback(move |_| {
+                let _ = &captured;
+            });
+        assert!(Replicator::new(&db, "not-a-url", params).is_err());
+        assert_eq!(Arc::strong_count(&context), 1);
+    }
 }
 
 impl From<C4ReplicatorStatus> for ReplicatorState {

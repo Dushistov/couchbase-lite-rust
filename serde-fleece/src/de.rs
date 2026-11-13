@@ -3,7 +3,7 @@ mod seq;
 
 use std::{marker::PhantomData, ptr::NonNull};
 
-use self::dict::DictAccess;
+use self::dict::DictIterator;
 use crate::{
     de::{dict::EnumAccess, seq::ArrayAccess},
     ffi::{
@@ -490,7 +490,8 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
         let n: usize = n.try_into().map_err(|err| {
             Error::InvalidFormat(format!("Can not convert {n} to usize: {err}").into())
         })?;
-        visitor.visit_map(DictAccess::new(dict, n))
+        // SAFETY: The dictionary borrows this deserializer's input for 'de
+        visitor.visit_map(unsafe { DictIterator::<'de>::new(dict, n) })
     }
 
     fn deserialize_struct<V>(
@@ -519,7 +520,8 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
             Error::InvalidFormat(format!("Can not convert {dict_size} to usize: {err}").into())
         })?;
 
-        visitor.visit_map(DictAccess::new(dict, dict_size))
+        // SAFETY: The dictionary borrows this deserializer's input for 'de
+        visitor.visit_map(unsafe { DictIterator::<'de>::new(dict, dict_size) })
     }
 
     fn deserialize_enum<V>(
@@ -542,6 +544,8 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
                 let dict = NonNullConst::new(dict).ok_or_else(|| {
                     Error::InvalidFormat(format!("enum {name} has not dict type (null)").into())
                 })?;
+                // SAFETY: The dictionary borrows this deserializer's input for 'de
+                let dict = unsafe { DictIterator::<'de>::new(dict, 1) };
                 visitor.visit_enum(EnumAccess::new(dict))
             }
             _ => Err(Error::InvalidFormat(

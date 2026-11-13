@@ -5,26 +5,22 @@ use crate::{
         _FLDict, FLDictIterator, FLDictIterator_Begin, FLDictIterator_End, FLDictIterator_GetCount,
         FLDictIterator_GetKeyString, FLDictIterator_GetValue, FLDictIterator_Next,
     },
-    Error,
+    Error, Value,
 };
 use serde::de::{self, IntoDeserializer};
 use std::{marker::PhantomData, mem::MaybeUninit, str::FromStr};
 
 pub(crate) struct EnumAccess<'a> {
-    dict: NonNullConst<_FLDict>,
-    marker: PhantomData<&'a [u8]>,
+    dict: DictIterator<'a>,
 }
 
 impl<'a> EnumAccess<'a> {
-    pub fn new(dict: NonNullConst<_FLDict>) -> Self {
-        Self {
-            dict,
-            marker: PhantomData,
-        }
+    pub fn new(dict: DictIterator<'a>) -> Self {
+        Self { dict }
     }
 }
 
-impl<'de, 'a> de::EnumAccess<'de> for EnumAccess<'a> {
+impl<'de> de::EnumAccess<'de> for EnumAccess<'de> {
     type Error = Error;
     type Variant = Deserializer<'de>;
 
@@ -32,23 +28,23 @@ impl<'de, 'a> de::EnumAccess<'de> for EnumAccess<'a> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        let it = DictAccess::new(self.dict, 1);
-        unsafe {
-            let n = FLDictIterator_GetCount(&it.it);
-            if n != 1 {
-                return Err(Error::InvalidFormat(
-                    format!("enum should be dict with len 1, got {n}").into(),
-                ));
-            }
-            let key: &str = FLDictIterator_GetKeyString(&it.it).as_str_unchecked()?;
-            let key = <&str as de::IntoDeserializer<'_, Error>>::into_deserializer(key);
-            let key = seed.deserialize(key)?;
-            let value = FLDictIterator_GetValue(&it.it);
-            let value = NonNullConst::new(value).ok_or_else(|| {
-                Error::InvalidFormat("not expecting null value in enum dict".into())
-            })?;
-            Ok((key, Deserializer::new(value)))
+        let n = self.dict.count();
+        if n != 1 {
+            return Err(Error::InvalidFormat(
+                format!("enum should be dict with len 1, got {n}").into(),
+            ));
         }
+        let key = self
+            .dict
+            .key()?
+            .ok_or_else(|| Error::InvalidFormat("not expecting null key in enum dict".into()))?;
+        let key = <&str as de::IntoDeserializer<'_, Error>>::into_deserializer(key);
+        let key = seed.deserialize(key)?;
+        let value = self
+            .dict
+            .value()
+            .ok_or_else(|| Error::InvalidFormat("not expecting null value in enum dict".into()))?;
+        Ok((key, Deserializer::<'de>::new(value.as_raw())))
     }
 }
 
@@ -86,43 +82,81 @@ impl<'de> de::VariantAccess<'de> for Deserializer<'de> {
     }
 }
 
-pub(crate) struct DictAccess<'a> {
+pub(crate) struct DictIterator<'a> {
     n: usize,
-    it: FLDictIterator,
+    // Native storage uses a byte width where the bindings declare a bool.
+    // Keep it untyped; None means native Next has destroyed the iterator.
+    it: Option<MaybeUninit<FLDictIterator>>,
     marker: PhantomData<&'a [u8]>,
 }
 
-impl<'a> Drop for DictAccess<'a> {
+impl Drop for DictIterator<'_> {
     fn drop(&mut self) {
-        // Releases native iterator state when traversal stops early
-        unsafe { FLDictIterator_End(&mut self.it) };
-    }
-}
-
-impl<'a> DictAccess<'a> {
-    pub fn new(dict: NonNullConst<_FLDict>, n: usize) -> Self {
-        let mut it = MaybeUninit::<FLDictIterator>::uninit();
-        let it = unsafe {
-            FLDictIterator_Begin(dict.as_ptr(), it.as_mut_ptr());
-            it.assume_init()
-        };
-        Self {
-            n,
-            it,
-            marker: PhantomData,
+        if let Some(it) = &mut self.it {
+            unsafe { FLDictIterator_End(it.as_mut_ptr()) };
         }
     }
 }
 
-impl<'a, 'de> de::MapAccess<'de> for DictAccess<'a> {
+impl<'a> DictIterator<'a> {
+    /// # Safety
+    ///
+    /// The dictionary and its data must stay valid and immutable for `'a`.
+    pub unsafe fn new(dict: NonNullConst<_FLDict>, n: usize) -> Self {
+        let mut it = MaybeUninit::<FLDictIterator>::uninit();
+        unsafe { FLDictIterator_Begin(dict.as_ptr(), it.as_mut_ptr()) };
+        Self {
+            n,
+            it: Some(it),
+            marker: PhantomData,
+        }
+    }
+
+    fn count(&self) -> u32 {
+        self.it
+            .as_ref()
+            .map_or(0, |it| unsafe { FLDictIterator_GetCount(it.as_ptr()) })
+    }
+
+    fn key(&self) -> Result<Option<&str>, Error> {
+        let Some(it) = &self.it else {
+            return Ok(None);
+        };
+        let key = unsafe { FLDictIterator_GetKeyString(it.as_ptr()) };
+        if key.buf.is_null() {
+            return Ok(None);
+        }
+        Ok(Some(unsafe { key.as_str_unchecked()? }))
+    }
+
+    fn value(&self) -> Option<Value<'a>> {
+        let it = self.it.as_ref()?;
+        let value = NonNullConst::new(unsafe { FLDictIterator_GetValue(it.as_ptr()) })?;
+        // SAFETY: The constructor guarantees the backing data's lifetime
+        Some(unsafe { Value::new(value) })
+    }
+
+    fn advance(&mut self) {
+        // An initially empty iterator is still live, but cannot be advanced
+        if self.value().is_none() {
+            return;
+        }
+        if let Some(it) = &mut self.it {
+            if !unsafe { FLDictIterator_Next(it.as_mut_ptr()) } {
+                self.it = None;
+            }
+        }
+    }
+}
+
+impl<'de> de::MapAccess<'de> for DictIterator<'de> {
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
     where
         K: de::DeserializeSeed<'de>,
     {
-        if unsafe { FLDictIterator_GetCount(&self.it) } > 0 {
-            let key: &str = unsafe { FLDictIterator_GetKeyString(&self.it).as_str_unchecked()? };
+        if let Some(key) = self.key()? {
             let key = de::DeserializeSeed::deserialize(seed, DictKeySerializer(key))?;
             Ok(Some(key))
         } else {
@@ -134,15 +168,12 @@ impl<'a, 'de> de::MapAccess<'de> for DictAccess<'a> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        unsafe {
-            debug_assert!(FLDictIterator_GetCount(&self.it) > 0);
-            let value = FLDictIterator_GetValue(&self.it);
-            let value = NonNullConst::new(value)
-                .ok_or_else(|| Error::InvalidFormat("not expecting null value in dict".into()))?;
-            let value = de::DeserializeSeed::deserialize(seed, &mut Deserializer::new(value))?;
-            FLDictIterator_Next(&mut self.it);
-            Ok(value)
-        }
+        let value = self
+            .value()
+            .ok_or_else(|| Error::InvalidFormat("not expecting null value in dict".into()))?;
+        let value = seed.deserialize(&mut Deserializer::<'de>::new(value.as_raw()))?;
+        self.advance();
+        Ok(value)
     }
 
     fn size_hint(&self) -> Option<usize> {

@@ -434,6 +434,10 @@ fn test_de_enum_delta_dict() {
     let value: E<'_> = from_slice(&data).unwrap();
     assert_eq!(value, E::Text("borrowed text"));
 
+    // Exhaustion destroys the native iterator; Drop must not destroy it again
+    let map: FxHashMap<String, &str> = from_slice(&data).unwrap();
+    assert_eq!(map.get("Text"), Some(&"borrowed text"));
+
     #[derive(Deserialize, Debug)]
     enum Other {
         Unknown,

@@ -782,9 +782,9 @@ fn input_doc_filter(
     {
         return true;
     }
-    let valid = Dict::new(&body)
+    let valid = unsafe { Dict::new(&body) }
         .filter(|body| body.get_as_str("type") == Some("Message"))
-        .is_some_and(|body| from_fl_dict::<Message, _>(body).is_ok());
+        .is_some_and(|body| from_fl_dict::<Message>(body).is_ok());
     if !valid {
         let id = String::from_utf8_lossy(unsafe { doc_id.as_bytes_unchecked() }).into_owned();
         output.callback(OutputEvent::ValidationRejected { generation, id });

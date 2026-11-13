@@ -8,6 +8,7 @@ use crate::{
         FLValue_IsUnsigned,
     },
 };
+use std::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ValueRef<'a> {
@@ -18,8 +19,8 @@ pub enum ValueRef<'a> {
     Float(f32),
     Double(f64),
     String(&'a str),
-    Array(ValueRefArray),
-    Dict(ValueRefDict),
+    Array(ValueRefArray<'a>),
+    Dict(ValueRefDict<'a>),
 }
 
 impl ValueRef<'_> {
@@ -77,8 +78,8 @@ impl ValueRef<'_> {
                     .expect("not valid utf-8");
                 ValueRef::String(s)
             }
-            kFLArray => ValueRef::Array(ValueRefArray(FLValue_AsArray(value))),
-            kFLDict => ValueRef::Dict(ValueRefDict(FLValue_AsDict(value))),
+            kFLArray => ValueRef::Array(ValueRefArray(FLValue_AsArray(value), PhantomData)),
+            kFLDict => ValueRef::Dict(ValueRefDict(FLValue_AsDict(value), PhantomData)),
             kFLData => unimplemented!(),
         }
     }
@@ -86,9 +87,13 @@ impl ValueRef<'_> {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
-pub struct ValueRefArray(FLArray);
+pub struct ValueRefArray<'a>(FLArray, PhantomData<&'a ()>);
 
-impl ValueRefArray {
+impl ValueRefArray<'_> {
+    pub(crate) fn into_raw(self) -> FLArray {
+        self.0
+    }
+
     #[inline]
     pub fn len(&self) -> u32 {
         unsafe { FLArray_Count(self.0) }
@@ -108,9 +113,9 @@ impl ValueRefArray {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
-pub struct ValueRefDict(FLDict);
+pub struct ValueRefDict<'a>(FLDict, PhantomData<&'a ()>);
 
-impl ValueRefDict {
+impl ValueRefDict<'_> {
     #[inline]
     pub fn len(&self) -> u32 {
         unsafe { FLDict_Count(self.0) }

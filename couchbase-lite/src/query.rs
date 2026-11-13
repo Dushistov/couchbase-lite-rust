@@ -151,13 +151,13 @@ impl<'a> Enumerator<'a> {
     ///
     /// The enumerator cannot advance while the value is still in use:
     /// ```compile_fail,E0502
-    /// use couchbase_lite::{FallibleStreamingIterator, Query};
+    /// use couchbase_lite::{FallibleStreamingIterator, Query, ValueRef};
     /// # fn advancing(query: &Query<'_>) {
     /// let mut rows = query.run().unwrap();
     /// rows.advance().unwrap();
-    /// let value = rows.get_raw_checked(0).unwrap();
+    /// let ValueRef::Array(array) = rows.get_raw_checked(0).unwrap() else { return; };
     /// rows.advance().unwrap();
-    /// println!("{value:?}");
+    /// println!("{array:?}");
     /// # }
     /// ```
     #[inline]

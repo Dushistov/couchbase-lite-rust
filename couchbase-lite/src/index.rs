@@ -1,11 +1,11 @@
 use crate::{
     error::{Error, Result},
     ffi::{
-        _FLDict, C4IndexType, C4SliceResult, FLDict_Get, FLString, FLTrust, FLValueType,
-        FLValue_AsDict, FLValue_AsInt, FLValue_AsString, FLValue_FromData, FLValue_GetType,
-        FLValue_IsInteger,
+        _FLDict, C4IndexType, C4SliceResult, FLArray, FLArray_Count, FLArray_Get, FLDict_Get,
+        FLString, FLTrust, FLValueType, FLValue_AsDict, FLValue_AsInt, FLValue_AsString,
+        FLValue_FromData, FLValue_GetType, FLValue_IsInteger,
     },
-    value::{ValueRef, ValueRefArray},
+    value::ValueRef,
 };
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use serde_fleece::NonNullConst;
@@ -55,7 +55,8 @@ pub struct IndexOptions<'a> {
 
 pub(crate) struct DbIndexesListIterator {
     _enc_data: C4SliceResult,
-    array: ValueRefArray,
+    // _enc_data keeps this Fleece array alive
+    array: FLArray,
     next_idx: u32,
     cur_val: Option<IndexInfo>,
 }
@@ -65,7 +66,7 @@ impl DbIndexesListIterator {
         let fvalue = unsafe { FLValue_FromData(enc_data.as_fl_slice(), FLTrust::kFLTrusted) };
         let val = unsafe { ValueRef::new(fvalue) };
         let array = match val {
-            ValueRef::Array(arr) => arr,
+            ValueRef::Array(arr) => arr.into_raw(),
             _ => {
                 return Err(Error::LogicError(
                     "db indexes are not fleece encoded array".into(),
@@ -150,8 +151,8 @@ impl FallibleStreamingIterator for DbIndexesListIterator {
     type Item = IndexInfo;
 
     fn advance(&mut self) -> Result<()> {
-        if self.next_idx < self.array.len() {
-            let val = unsafe { self.array.get_raw(self.next_idx) };
+        if self.next_idx < unsafe { FLArray_Count(self.array) } {
+            let val = unsafe { FLArray_Get(self.array, self.next_idx) };
             let val_type = unsafe { FLValue_GetType(val) };
             if val_type != FLValueType::kFLDict {
                 return Err(Error::LogicError(

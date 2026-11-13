@@ -8,13 +8,16 @@ mod private {
 // Not public API.
 #[doc(hidden)]
 pub trait EncodeValue: private::Sealed {
-    fn encode(&self, enc: NonNull<_FLEncoder>) -> bool;
+    /// # Safety
+    ///
+    /// The caller must have exclusive access to a live encoder for this call
+    unsafe fn encode(&self, enc: NonNull<_FLEncoder>) -> bool;
 }
 
 impl private::Sealed for &str {}
 impl EncodeValue for &str {
     #[inline]
-    fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
+    unsafe fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
         unsafe { FLEncoder_WriteString(enc.as_ptr(), (*self).into()) }
     }
 }
@@ -22,7 +25,7 @@ impl EncodeValue for &str {
 impl private::Sealed for i64 {}
 impl EncodeValue for i64 {
     #[inline]
-    fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
+    unsafe fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
         unsafe { FLEncoder_WriteInt(enc.as_ptr(), *self) }
     }
 }
@@ -30,23 +33,23 @@ impl EncodeValue for i64 {
 impl private::Sealed for String {}
 impl EncodeValue for String {
     #[inline]
-    fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
-        self.as_str().encode(enc)
+    unsafe fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
+        unsafe { self.as_str().encode(enc) }
     }
 }
 
 impl private::Sealed for Box<str> {}
 impl EncodeValue for Box<str> {
     #[inline]
-    fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
-        (&**self).encode(enc)
+    unsafe fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
+        unsafe { (&**self).encode(enc) }
     }
 }
 
 impl private::Sealed for bool {}
 impl EncodeValue for bool {
     #[inline]
-    fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
+    unsafe fn encode(&self, enc: NonNull<_FLEncoder>) -> bool {
         unsafe { FLEncoder_WriteBool(enc.as_ptr(), *self) }
     }
 }

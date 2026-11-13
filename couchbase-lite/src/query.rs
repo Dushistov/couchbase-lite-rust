@@ -170,6 +170,8 @@ impl<'a> Enumerator<'a> {
         let value = NonNullConst::new(value).ok_or_else(|| {
             Error::LogicError(format!("Query parameter {i} is null, can not deserialize").into())
         })?;
+        // SAFETY: Borrowing the enumerator prevents advancing or releasing this row
+        let value: serde_fleece::Value<'de> = unsafe { serde_fleece::Value::new(value) };
         serde_fleece::from_fl_value(value).map_err(Error::from)
     }
 }

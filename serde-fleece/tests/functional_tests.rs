@@ -413,6 +413,38 @@ fn test_de_enum() {
 }
 
 #[test]
+fn test_de_enum_delta_dict() {
+    #[derive(Deserialize, Debug, PartialEq)]
+    enum E<'a> {
+        Text(&'a str),
+    }
+
+    // Base {"Text": "old"}, then a delta overriding Text. The -2048 key
+    // (08 00) references the parent dictionary and makes iteration allocate.
+    // The encoder's size heuristic does not produce single-entry deltas.
+    let data = [
+        &b"\x44Text\0\x43old"[..],                                // 0: strings
+        &b"\x70\x01\x80\x06\x80\x04\x80\x03"[..],                 // 10: base dict + trailer
+        &b"\x4dborrowed text"[..],                                // 18: new value
+        &b"\x70\x02\x08\x00\x80\x0d\x80\x13\x80\x0b\x80\x05"[..], // 32: delta + trailer
+    ]
+    .concat();
+
+    // Run under Valgrind/LeakSanitizer to check cleanup on success and error
+    let value: E<'_> = from_slice(&data).unwrap();
+    assert_eq!(value, E::Text("borrowed text"));
+
+    #[derive(Deserialize, Debug)]
+    enum Other {
+        Unknown,
+    }
+    assert!(from_slice::<Other>(&data)
+        .unwrap_err()
+        .to_string()
+        .contains("unknown variant"));
+}
+
+#[test]
 fn test_de_collections() {
     let expect = [1_u8, 2_u8];
     assert_eq!(expect, ser_deser(&expect).unwrap());

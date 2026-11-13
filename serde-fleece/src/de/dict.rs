@@ -32,21 +32,18 @@ impl<'de, 'a> de::EnumAccess<'de> for EnumAccess<'a> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        let mut it = MaybeUninit::<FLDictIterator>::uninit();
+        let it = DictAccess::new(self.dict, 1);
         unsafe {
-            FLDictIterator_Begin(self.dict.as_ptr(), it.as_mut_ptr());
-            let mut it = it.assume_init();
-            let n = FLDictIterator_GetCount(&it);
+            let n = FLDictIterator_GetCount(&it.it);
             if n != 1 {
-                FLDictIterator_End(&mut it);
                 return Err(Error::InvalidFormat(
                     format!("enum should be dict with len 1, got {n}").into(),
                 ));
             }
-            let key: &str = FLDictIterator_GetKeyString(&it).as_str_unchecked()?;
+            let key: &str = FLDictIterator_GetKeyString(&it.it).as_str_unchecked()?;
             let key = <&str as de::IntoDeserializer<'_, Error>>::into_deserializer(key);
             let key = seed.deserialize(key)?;
-            let value = FLDictIterator_GetValue(&it);
+            let value = FLDictIterator_GetValue(&it.it);
             let value = NonNullConst::new(value).ok_or_else(|| {
                 Error::InvalidFormat("not expecting null value in enum dict".into())
             })?;
@@ -97,7 +94,7 @@ pub(crate) struct DictAccess<'a> {
 
 impl<'a> Drop for DictAccess<'a> {
     fn drop(&mut self) {
-        // not strictly necessary, just to be safe
+        // Releases native iterator state when traversal stops early
         unsafe { FLDictIterator_End(&mut self.it) };
     }
 }

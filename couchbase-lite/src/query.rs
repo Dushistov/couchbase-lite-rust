@@ -147,18 +147,45 @@ impl<'a> Enumerator<'a> {
         Ok(unsafe { FLArrayIterator_GetValueAt(&self.inner.as_ref().columns, i) })
     }
 
+    /// Borrows a column from the current row.
+    ///
+    /// The enumerator cannot advance while the value is still in use:
+    /// ```compile_fail,E0502
+    /// use couchbase_lite::{FallibleStreamingIterator, Query};
+    /// # fn advancing(query: &Query<'_>) {
+    /// let mut rows = query.run().unwrap();
+    /// rows.advance().unwrap();
+    /// let value = rows.get_raw_checked(0).unwrap();
+    /// rows.advance().unwrap();
+    /// println!("{value:?}");
+    /// # }
+    /// ```
     #[inline]
-    pub fn get_raw_checked(&self, i: u32) -> Result<ValueRef<'a>> {
+    pub fn get_raw_checked(&self, i: u32) -> Result<ValueRef<'_>> {
         let value = self.do_get_raw_checked(i)?;
 
+        // SAFETY: Borrowing self keeps the current row alive and prevents advancing it
         let val = unsafe { ValueRef::new(value) };
         Ok(val)
     }
 
+    /// Reads a column, borrowing from the current row when needed.
+    ///
+    /// Borrowed strings cannot outlive the enumerator:
+    /// ```compile_fail,E0505
+    /// use couchbase_lite::{FallibleStreamingIterator, Query};
+    /// # fn outliving(query: &Query<'_>) {
+    /// let mut rows = query.run().unwrap();
+    /// rows.advance().unwrap();
+    /// let text: &str = rows.get_checked(0).unwrap();
+    /// drop(rows);
+    /// println!("{text}");
+    /// # }
+    /// ```
     #[inline]
-    pub fn get_checked<T>(&self, i: u32) -> Result<T>
+    pub fn get_checked<'row, T>(&'row self, i: u32) -> Result<T>
     where
-        T: FromValueRef<'a>,
+        T: FromValueRef<'row>,
     {
         let value_ref = self.get_raw_checked(i)?;
         FromValueRef::column_result(value_ref)

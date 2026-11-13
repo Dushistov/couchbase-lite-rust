@@ -43,7 +43,6 @@ impl DatabaseObserver {
             );
             (*boxed_f)(obs);
         }
-        let boxed_f: *mut F = Box::into_raw(Box::new(callback_f));
         let mut error = c4error_init();
         let collection = unsafe {
             c4db_getCollection(db.inner.0.as_ptr(), kC4DefaultCollectionSpec, &mut error)
@@ -51,6 +50,7 @@ impl DatabaseObserver {
         if collection.is_null() {
             return Err(error.into());
         }
+        let boxed_f: *mut F = Box::into_raw(Box::new(callback_f));
         let mut error = c4error_init();
         let obs = unsafe {
             c4dbobs_createOnCollection(
@@ -82,6 +82,32 @@ impl DatabaseObserver {
 
 unsafe extern "C" fn free_boxed_value<T>(p: *mut c_void) {
     drop(Box::from_raw(p as *mut T));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{ffi::c4db_close, DatabaseFlags};
+    use std::sync::Arc;
+
+    #[test]
+    fn test_callback_released_when_collection_lookup_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut db =
+            Database::open_with_flags(&dir.path().join("observer.cblite2"), DatabaseFlags::CREATE)
+                .unwrap();
+        let mut error = c4error_init();
+        // Close the native database without releasing its handle to make lookup fail
+        assert!(unsafe { c4db_close(db.inner.0.as_ptr(), &mut error) });
+
+        let context = Arc::new(());
+        let captured = Arc::clone(&context);
+        let result = db.register_observer(move || {
+            let _ = &captured;
+        });
+        assert!(result.is_err());
+        assert_eq!(Arc::strong_count(&context), 1);
+    }
 }
 
 pub(crate) struct DbChangesIter<'obs> {

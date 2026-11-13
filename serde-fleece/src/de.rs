@@ -12,7 +12,7 @@ use crate::{
         FLValue_AsString, FLValue_AsUnsigned, FLValue_FromData, FLValue_GetType, FLValue_IsDouble,
         FLValue_IsInteger, FLValue_IsUnsigned,
     },
-    Dict, Error,
+    Dict, Error, Value,
 };
 use itoa::Integer;
 use serde::de::{self, IntoDeserializer};
@@ -170,14 +170,40 @@ pub fn from_fl_dict<'a, T>(dict: Dict<'a>) -> Result<T, Error>
 where
     T: de::Deserialize<'a>,
 {
-    let mut deserializer = Deserializer::<'a>::new(dict.as_value());
-    T::deserialize(&mut deserializer)
+    from_fl_value(dict.as_value())
 }
 
-pub fn from_fl_value<'a, T: de::Deserialize<'a>>(
-    value: NonNullConst<_FLValue>,
-) -> Result<T, Error> {
-    let mut deserializer = Deserializer::new(value);
+/// Deserializes a value, borrowing from its backing data when needed.
+///
+/// Borrowed results keep the value's owner alive:
+/// ```compile_fail,E0505
+/// use serde_fleece::{from_fl_value, MutableDict};
+/// use std::collections::HashMap;
+/// # fn outliving(dict: MutableDict) {
+/// let data: HashMap<String, &str> = from_fl_value(dict.as_dict().as_value()).unwrap();
+/// drop(dict);
+/// drop(data);
+/// # }
+/// ```
+/// They also prevent mutation:
+/// ```compile_fail,E0502
+/// use serde_fleece::{from_fl_value, MutableDict};
+/// use std::collections::HashMap;
+/// # fn mutation(mut dict: MutableDict) {
+/// let data: HashMap<String, &str> = from_fl_value(dict.as_dict().as_value()).unwrap();
+/// dict.set_string("key", "new value");
+/// drop(data);
+/// # }
+/// ```
+/// Raw pointers must first be wrapped in a [`Value`]:
+/// ```compile_fail,E0308
+/// use serde_fleece::{ffi::_FLValue, from_fl_value, NonNullConst};
+/// use std::ptr::NonNull;
+/// let raw = NonNullConst::from(NonNull::<_FLValue>::dangling());
+/// let _: String = from_fl_value(raw).unwrap();
+/// ```
+pub fn from_fl_value<'a, T: de::Deserialize<'a>>(value: Value<'a>) -> Result<T, Error> {
+    let mut deserializer = Deserializer::<'a>::new(value.as_raw());
     T::deserialize(&mut deserializer)
 }
 

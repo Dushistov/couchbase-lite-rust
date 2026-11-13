@@ -498,6 +498,24 @@ fn test_de_fleece_dict_borrowed() {
 }
 
 #[test]
+fn test_de_fleece_value_borrowed() {
+    #[derive(Deserialize)]
+    struct Borrowed<'a> {
+        text: &'a str,
+    }
+
+    let mut dict = MutableDict::new().unwrap();
+    dict.set_string("text", "borrowed text");
+
+    let data: Borrowed<'_> = serde_fleece::from_fl_value(dict.as_dict().as_value()).unwrap();
+    assert_eq!(data.text, "borrowed text");
+
+    dict.set_string("text", "updated text");
+    let data: Borrowed<'_> = serde_fleece::from_fl_value(dict.as_dict().as_value()).unwrap();
+    assert_eq!(data.text, "updated text");
+}
+
+#[test]
 fn test_fleece_macro() {
     assert_eq!(
         r#"{"pattern":"%555"}"#,

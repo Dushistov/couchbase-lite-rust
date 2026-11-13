@@ -101,12 +101,11 @@ impl IndexInfo {
     pub fn expr_as_str(&self) -> Result<&str> {
         unsafe { self.expr.as_str_unchecked() }.map_err(|_| Error::InvalidUtf8)
     }
-}
-
-impl TryFrom<NonNullConst<_FLDict>> for IndexInfo {
-    type Error = Error;
-
-    fn try_from(dict: NonNullConst<_FLDict>) -> Result<Self> {
+    /// # Safety
+    ///
+    /// The dictionary and its data must stay valid and immutable through all uses
+    /// of the returned index.
+    unsafe fn from_dict(dict: NonNullConst<_FLDict>) -> Result<Self> {
         fn get_str(dict: NonNullConst<_FLDict>, key: &str) -> Result<FLString> {
             let s = unsafe { FLDict_Get(dict.as_ptr(), key.into()) };
             let s = NonNullConst::new(s).ok_or_else(|| {
@@ -163,7 +162,8 @@ impl FallibleStreamingIterator for DbIndexesListIterator {
             let dict = NonNullConst::new(dict).ok_or_else(|| {
                 Error::LogicError("Can not convert one index info to Dict".into())
             })?;
-            self.cur_val = Some(dict.try_into()?);
+            // SAFETY: _enc_data owns the data; cur_val is only exposed through a borrow of self
+            self.cur_val = Some(unsafe { IndexInfo::from_dict(dict) }?);
             self.next_idx += 1;
         } else {
             self.cur_val = None;

@@ -352,6 +352,8 @@ fn test_indices() {
             let mut index_name_it = db.get_indexes().unwrap();
             while let Some(value) = index_name_it.next().unwrap() {
                 let name = value.name_as_str().unwrap();
+                assert_eq!(value.type_(), ffi::C4IndexType::kC4ValueIndex);
+                assert_eq!(value.expr_as_str().unwrap(), "[[\".s\"]]");
                 println!("index name: {name}");
                 ret.push(name.into());
             }

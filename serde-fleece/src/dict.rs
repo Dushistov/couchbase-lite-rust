@@ -7,7 +7,7 @@ use crate::{
     },
     Error, NonNullConst,
 };
-use std::{borrow::Borrow, marker::PhantomData, ptr::NonNull};
+use std::{marker::PhantomData, ptr::NonNull};
 
 #[repr(transparent)]
 pub struct MutableDict(NonNull<_FLDict>);
@@ -28,9 +28,13 @@ impl MutableDict {
     pub fn set_i64(&mut self, key: &str, value: i64) {
         unsafe { FLMutableDict_SetInt(self.0.as_ptr(), key.into(), value) };
     }
+    /// Borrows an immutable dictionary view
     #[inline]
-    pub fn as_dict(&self) -> NonNullConst<_FLDict> {
-        self.0.into()
+    pub fn as_dict(&self) -> Dict<'_> {
+        Dict {
+            inner: self.0.into(),
+            marker: PhantomData,
+        }
     }
     #[inline]
     pub fn as_fleece_slice(&self) -> FLSlice {
@@ -46,14 +50,19 @@ impl Drop for MutableDict {
     }
 }
 
+/// Immutable borrow of a Fleece dictionary and its backing data.
+#[repr(transparent)]
 pub struct Dict<'a> {
     inner: NonNullConst<_FLDict>,
-    marker: PhantomData<&'a FLDict>,
+    marker: PhantomData<&'a _FLDict>,
 }
 
 impl<'a> Dict<'a> {
+    /// # Safety
+    ///
+    /// If non-null, the dictionary and its data must stay valid and immutable for `'a`.
     #[inline]
-    pub fn new(dict: &FLDict) -> Option<Self> {
+    pub unsafe fn new(dict: &FLDict) -> Option<Self> {
         let inner = NonNullConst::new(*dict)?;
         Some(Self {
             inner,
@@ -70,11 +79,9 @@ impl<'a> Dict<'a> {
             None
         }
     }
-}
 
-impl<'a> Borrow<NonNullConst<_FLDict>> for Dict<'a> {
     #[inline]
-    fn borrow(&self) -> &NonNullConst<_FLDict> {
-        &self.inner
+    pub(crate) fn as_value(&self) -> NonNullConst<_FLValue> {
+        self.inner.cast()
     }
 }

@@ -477,6 +477,27 @@ fn test_de_fleece_dict() {
 }
 
 #[test]
+fn test_de_fleece_dict_borrowed() {
+    #[derive(Deserialize)]
+    struct Borrowed<'a> {
+        text: &'a str,
+    }
+
+    let mut dict = MutableDict::new().unwrap();
+    dict.set_string("text", "borrowed text");
+
+    // The temporary view can go away while the result still borrows the owner.
+    let data: Borrowed<'_> = from_fl_dict(dict.as_dict()).unwrap();
+    assert_eq!(data.text, "borrowed text");
+    assert_eq!(dict.as_dict().get_as_str("text"), Some(data.text));
+
+    // Mutation is allowed again after the last use of the borrowed result.
+    dict.set_string("text", "updated text");
+    let data: Borrowed<'_> = from_fl_dict(dict.as_dict()).unwrap();
+    assert_eq!(data.text, "updated text");
+}
+
+#[test]
 fn test_fleece_macro() {
     assert_eq!(
         r#"{"pattern":"%555"}"#,

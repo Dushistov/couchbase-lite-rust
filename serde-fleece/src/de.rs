@@ -1,18 +1,18 @@
 mod dict;
 mod seq;
 
-use std::{borrow::Borrow, marker::PhantomData, ptr::NonNull};
+use std::{marker::PhantomData, ptr::NonNull};
 
 use self::dict::DictAccess;
 use crate::{
     de::{dict::EnumAccess, seq::ArrayAccess},
     ffi::{
-        _FLDict, _FLValue, FLArray_Count, FLDict_Count, FLTrust, FLValueType, FLValue_AsArray,
+        _FLValue, FLArray_Count, FLDict_Count, FLTrust, FLValueType, FLValue_AsArray,
         FLValue_AsBool, FLValue_AsDict, FLValue_AsDouble, FLValue_AsFloat, FLValue_AsInt,
         FLValue_AsString, FLValue_AsUnsigned, FLValue_FromData, FLValue_GetType, FLValue_IsDouble,
         FLValue_IsInteger, FLValue_IsUnsigned,
     },
-    Error,
+    Dict, Error,
 };
 use itoa::Integer;
 use serde::de::{self, IntoDeserializer};
@@ -137,13 +137,40 @@ where
     T::deserialize(&mut deserializer)
 }
 
-pub fn from_fl_dict<'a, T, Dict>(dict: Dict) -> Result<T, Error>
+/// Deserializes a dictionary, borrowing from its backing data when needed.
+///
+/// Borrowed results keep the dictionary's owner alive:
+/// ```compile_fail,E0505
+/// use serde_fleece::{from_fl_dict, MutableDict};
+/// use std::collections::HashMap;
+/// # fn outliving(dict: MutableDict) {
+/// let data: HashMap<String, &str> = from_fl_dict(dict.as_dict()).unwrap();
+/// drop(dict);
+/// drop(data);
+/// # }
+/// ```
+/// They also prevent mutation:
+/// ```compile_fail,E0502
+/// use serde_fleece::{from_fl_dict, MutableDict};
+/// use std::collections::HashMap;
+/// # fn mutation(mut dict: MutableDict) {
+/// let data: HashMap<String, &str> = from_fl_dict(dict.as_dict()).unwrap();
+/// dict.set_string("key", "new value");
+/// drop(data);
+/// # }
+/// ```
+/// Raw pointers must first be wrapped in a [`Dict`]:
+/// ```compile_fail,E0308
+/// use serde_fleece::{ffi::_FLDict, from_fl_dict, NonNullConst};
+/// use std::{collections::HashMap, ptr::NonNull};
+/// let raw = NonNullConst::from(NonNull::<_FLDict>::dangling());
+/// let _: HashMap<String, String> = from_fl_dict(raw).unwrap();
+/// ```
+pub fn from_fl_dict<'a, T>(dict: Dict<'a>) -> Result<T, Error>
 where
     T: de::Deserialize<'a>,
-    Dict: Borrow<NonNullConst<_FLDict>>,
 {
-    let value: NonNullConst<_FLValue> = dict.borrow().cast();
-    let mut deserializer = Deserializer::<'a>::new(value);
+    let mut deserializer = Deserializer::<'a>::new(dict.as_value());
     T::deserialize(&mut deserializer)
 }
 

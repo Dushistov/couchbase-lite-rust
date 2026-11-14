@@ -18,10 +18,13 @@ COLLECTIONS_USER_BODY = (
     '"lavenders":{"admin_channels":["*"]}}}}'
 )
 LEGACY_USER_BODY = '{"name":"sguser","password":"password","admin_channels":["*"]}'
-COMPOSE_VARIABLES = (
-    "COUCHBASE_VERSION", "SG_VERSION", "SG_DEB_ARM64", "SG_DEB_AMD64",
+# Keep these in sync with the scheduled network-tests matrix in main.yml
+MAX_SUPPORTED_VERSIONS = {"COUCHBASE_VERSION": "8.0.3", "SG_VERSION": "4.1.2"}
+SG_PACKAGE_OVERRIDES = (
+    "SG_DEB_ARM64", "SG_DEB_AMD64",
     "SG_LEGACY_DEB_ARM64", "SG_LEGACY_DEB_AMD64",
 )
+COMPOSE_VARIABLES = (*MAX_SUPPORTED_VERSIONS, *SG_PACKAGE_OVERRIDES)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -36,6 +39,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="Start only Couchbase Server and legacy Sync Gateway")
     parser.add_argument("--with-collections", action="store_true",
                         help="Also start the collections Sync Gateway (requires Server 7+ and Sync Gateway 3.1+)")
+    parser.add_argument(
+        "--max-supported-server-components-versions", action="store_true",
+        help=(
+            f"Use Server {MAX_SUPPORTED_VERSIONS['COUCHBASE_VERSION']} and "
+            f"Sync Gateway {MAX_SUPPORTED_VERSIONS['SG_VERSION']} instead of the minimum versions"
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -88,6 +98,10 @@ def main(argv: list[str] | None = None) -> None:
         raise ValueError("--stress-only and --with-collections cannot be combined")
     env = os.environ.copy()
     env["SSL"] = "false"
+    if args.max_supported_server_components_versions:
+        env.update(MAX_SUPPORTED_VERSIONS)
+        # Explicit package URLs would otherwise override SG_VERSION in Compose
+        env.update({name: "" for name in SG_PACKAGE_OVERRIDES})
     compose = compose_command(args, env)
     if args.action == "up":
         services = ["lite-core-cbs", "lite-core-sg-legacy"] if args.stress_only else []

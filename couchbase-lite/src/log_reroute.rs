@@ -4,6 +4,7 @@ use crate::ffi::{
 };
 use std::{
     ffi::{CStr, VaList},
+    mem::ManuallyDrop,
     os::raw::c_char,
 };
 
@@ -16,7 +17,7 @@ extern "C" {
                 arg1: C4LogDomain,
                 arg2: C4LogLevel,
                 arg3: *const ::std::os::raw::c_char,
-                arg4: VaList<'_>,
+                arg4: ManuallyDrop<VaList<'_>>,
             ),
         >,
         preformatted: bool,
@@ -31,10 +32,8 @@ unsafe extern "C" fn db_log_callback(
     domain: C4LogDomain,
     level: C4LogLevel,
     fmt: *const c_char,
-    va: VaList<'_>,
+    _va: ManuallyDrop<VaList<'_>>, //  we use preformatted mode
 ) {
-    // this callback receives preformatted messages
-    std::mem::forget(va);
     fn lifetime_marker(ptr_ref: &*const c_char) -> &CStr {
         unsafe { CStr::from_ptr(*ptr_ref) }
     }

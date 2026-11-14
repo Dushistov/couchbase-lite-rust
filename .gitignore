@@ -2,3 +2,4 @@
 *.bk
 target/
 Cargo.lock
+logs/

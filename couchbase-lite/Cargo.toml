@@ -14,7 +14,7 @@ rust-version = "1.100"
 # Isolate the process-wide LiteCore object count and socket factory in each test.
 [[test]]
 name = "sync_gateway_restart"
-path = "tests/need_sync_gateway/mod.rs"
+path = "tests/need_sync_gateway/restart.rs"
 required-features = ["use-tokio-websocket"]
 
 [[test]]

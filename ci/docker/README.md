@@ -8,7 +8,13 @@ The default fixture uses Couchbase Server Enterprise 6.6.0 and Sync Gateway Comm
 
 The `chat-stress` job uses `--stress-only`, which starts the same two services without creating the test user. Its driver provisions its own user through the admin API. Ordinary `up` creates `sguser/password` for the replication tests.
 
-To run the newer pair used by the scheduled `network-tests` matrix, set `COUCHBASE_VERSION=8.0.3` and `SG_VERSION=4.1.2` before `up`. The two variables select the Couchbase Server image and Sync Gateway Community package. The Compose file also accepts `SG_LEGACY_DEB_AMD64` and `SG_LEGACY_DEB_ARM64` to override the legacy package URL.
+To run the newer pair used by the scheduled `network-tests` matrix, pass `--max-supported-server-components-versions` to `up` and `down`, or set `COUCHBASE_VERSION=8.0.3` and `SG_VERSION=4.1.2` in the environment. The flag selects Server 8.0.3 and Sync Gateway Community 4.1.2 and takes precedence over version and package URL environment overrides. Without the flag, the Compose file also accepts `SG_LEGACY_DEB_AMD64` and `SG_LEGACY_DEB_ARM64` to override the legacy package URL.
+
+```sh
+./ci/docker-up-down.py up --max-supported-server-components-versions
+./ci/build_and_run_tests.py --with-server-only
+./ci/docker-up-down.py down --max-supported-server-components-versions
+```
 
 For manual collection testing with Server 7+ and Sync Gateway 3.1+, add `--with-collections` to `up` and `down`. This starts a second Sync Gateway database, `scratch`, with collections `flowers.roses`, `flowers.tulips`, and `flowers.lavenders` on public port 4984 and admin port 4985. `SG_DEB_AMD64` and `SG_DEB_ARM64` can override that gateway's package URL. The default minimum pair cannot run this service.
 

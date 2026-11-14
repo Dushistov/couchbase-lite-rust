@@ -1,6 +1,3 @@
-#[cfg(feature = "use-tokio-websocket")]
-mod need_sync_gateway;
-
 use couchbase_lite::*;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, str, time::Instant};

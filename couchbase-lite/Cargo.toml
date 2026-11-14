@@ -11,6 +11,17 @@ readme = "../README.md"
 keywords = ["ffi", "couchbase", "couchbase-lite-core", "database"]
 rust-version = "1.100"
 
+# Isolate the process-wide LiteCore object count and socket factory in each test.
+[[test]]
+name = "sync_gateway_restart"
+path = "tests/need_sync_gateway/mod.rs"
+required-features = ["use-tokio-websocket"]
+
+[[test]]
+name = "sync_gateway_packet_order"
+path = "tests/need_sync_gateway/packet_order.rs"
+required-features = ["use-tokio-websocket"]
+
 [features]
 default = ["build-cpp", "git-download-cpp", "use-couchbase-lite-sqlite", "use-tokio-websocket", "use-native-tls"]
 build-cpp = ["couchbase-lite-core-sys/build", "serde-fleece/build-cpp"]

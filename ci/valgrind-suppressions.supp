@@ -19,6 +19,7 @@
    match-leak-kinds: possible
    fun:malloc
    fun:*3std6thread6thread*6Thread3new*
+   ...
    fun:*3std6thread7current12init_current*
    fun:*3std4sync4mpmc7context*7Context3new*
    ...

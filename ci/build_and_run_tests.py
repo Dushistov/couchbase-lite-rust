@@ -303,6 +303,7 @@ def run_tests_that_require_server(src_root: Path, *, use_valgrind: bool) -> None
     my_env["SG_USER"] = "sguser"
     my_env["SG_URL"] = "ws://localhost:4884/scratch-30/"
     for test_name in (
+        "test_replication_round_trip",
         "test_double_replicator_restart",
         "test_wrong_sync_packets_order",
     ):

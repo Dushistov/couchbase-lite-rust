@@ -11,12 +11,13 @@ from pathlib import Path
 DOCKER_DIR = Path(__file__).resolve().parent / "docker"
 COLLECTIONS_ADMIN = "http://localhost:4985/scratch"
 LEGACY_ADMIN = "http://localhost:4885/scratch-30"
-USER_BODY = (
+COLLECTIONS_USER_BODY = (
     '{"name":"sguser","password":"password","collection_access":'
     '{"flowers":{"roses":{"admin_channels":["*"]},'
     '"tulips":{"admin_channels":["*"]},'
     '"lavenders":{"admin_channels":["*"]}}}}'
 )
+LEGACY_USER_BODY = '{"name":"sguser","password":"password","admin_channels":["*"]}'
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -61,11 +62,11 @@ def wait_ready(url: str, *, timeout: int = 600) -> None:
     raise TimeoutError(f"Sync Gateway did not become ready: {url}")
 
 
-def setup_user(admin_url: str) -> None:
+def setup_user(admin_url: str, user_body: str) -> None:
     subprocess.run(
         ["curl", "--silent", "--show-error", "--fail", "--request", "POST",
          "--user", "Administrator:password", "--header", "Content-Type: application/json",
-         "--data-raw", USER_BODY, f"{admin_url}/_user/"],
+         "--data-raw", user_body, f"{admin_url}/_user/"],
         check=True, stdout=subprocess.DEVNULL,
     )
 
@@ -83,8 +84,8 @@ def main(argv: list[str] | None = None) -> None:
             wait_ready(COLLECTIONS_ADMIN + "/_user/")
         wait_ready(LEGACY_ADMIN + "/_user/")
         if not args.stress_only:
-            setup_user(COLLECTIONS_ADMIN)
-            setup_user(LEGACY_ADMIN)
+            setup_user(COLLECTIONS_ADMIN, COLLECTIONS_USER_BODY)
+            setup_user(LEGACY_ADMIN, LEGACY_USER_BODY)
     else:
         subprocess.run([*compose, "down"], check=True, cwd=DOCKER_DIR, env=env)
 

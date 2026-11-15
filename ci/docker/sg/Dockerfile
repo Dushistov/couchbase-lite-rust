@@ -1,6 +1,6 @@
 FROM docker.io/library/ubuntu:22.04
 
-ARG SG_VERSION=3.0.9
+ARG SG_VERSION
 ARG SG_DEB_ARM64
 ARG SG_DEB_AMD64
 ARG SSL=true

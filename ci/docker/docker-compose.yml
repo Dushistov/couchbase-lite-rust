@@ -4,7 +4,7 @@ services:
     build:
       context: ./cbs
       args:
-        - COUCHBASE_VERSION=${COUCHBASE_VERSION:-6.6.0}
+        - COUCHBASE_VERSION=${COUCHBASE_VERSION:?Set by ci/docker-up-down.py}
     ports:
       - "8091:8091"
       - "8092:8092"
@@ -24,7 +24,7 @@ services:
     build:
       context: ./sg
       args:
-        - SG_VERSION=${SG_VERSION:-3.0.9}
+        - SG_VERSION=${SG_VERSION:?Set by ci/docker-up-down.py}
         - SG_DEB_ARM64=${SG_DEB_ARM64:-}
         - SG_DEB_AMD64=${SG_DEB_AMD64:-}
         - SSL=${SSL:-true}
@@ -38,7 +38,7 @@ services:
     build:
       context: ./sg
       args:
-        - SG_VERSION=${SG_VERSION:-3.0.9}
+        - SG_VERSION=${SG_VERSION:?Set by ci/docker-up-down.py}
         - SG_DEB_ARM64=${SG_LEGACY_DEB_ARM64:-}
         - SG_DEB_AMD64=${SG_LEGACY_DEB_AMD64:-}
         - SSL=${SSL:-true}

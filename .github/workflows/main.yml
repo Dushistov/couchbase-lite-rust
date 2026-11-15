@@ -245,13 +245,12 @@ jobs:
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
       CORE_SRC: ${{ github.workspace }}/couchbase-lite-core
-      COUCHBASE_VERSION: ${{ matrix.versions == 'maximum' && '8.0.3' || '6.6.0' }}
-      SG_VERSION: ${{ matrix.versions == 'maximum' && '4.1.2' || '3.0.9' }}
+      SERVER_COMPONENTS_VERSION_OPTION: ${{ matrix.versions == 'maximum' && '--max-supported-server-components-versions' || '' }}
     steps:
       - uses: actions/checkout@v5
       - name: Start Sync Gateway
         id: network_fixture
-        run: python3 ci/docker-up-down.py up
+        run: python3 ci/docker-up-down.py up $SERVER_COMPONENTS_VERSION_OPTION
         background: true
       - name: Checkout couchbase-lite-core
         uses: actions/checkout@v5
@@ -286,15 +285,15 @@ jobs:
         run: python ci/build_and_run_tests.py --with-server-only
       - name: Stop Sync Gateway
         if: always() && (steps.network_fixture.outcome == 'success' || steps.network_fixture.outcome == 'failure')
-        run: python ci/docker-up-down.py down
+        run: python ci/docker-up-down.py down $SERVER_COMPONENTS_VERSION_OPTION
       - name: Restart Sync Gateway for Valgrind
         id: network_valgrind_fixture
-        run: python ci/docker-up-down.py up
+        run: python ci/docker-up-down.py up $SERVER_COMPONENTS_VERSION_OPTION
       - name: Run Sync Gateway tests under Valgrind
         run: python ci/build_and_run_tests.py --with-server-only --with-valigrind
       - name: Stop Sync Gateway after Valgrind
         if: always() && (steps.network_valgrind_fixture.outcome == 'success' || steps.network_valgrind_fixture.outcome == 'failure')
-        run: python ci/docker-up-down.py down
+        run: python ci/docker-up-down.py down $SERVER_COMPONENTS_VERSION_OPTION
   android-tests:
     name: Android Rust tests
     runs-on: ubuntu-24.04

@@ -1,4 +1,4 @@
-ARG COUCHBASE_VERSION=6.6.0
+ARG COUCHBASE_VERSION
 
 FROM docker.io/couchbase/server:enterprise-$COUCHBASE_VERSION
 

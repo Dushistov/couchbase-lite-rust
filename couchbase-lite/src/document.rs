@@ -7,7 +7,7 @@ use crate::{
 };
 use bitflags::bitflags;
 use serde::{de::DeserializeOwned, Serialize};
-use serde_fleece::{to_fl_slice_result_with_encoder, FlEncoderSession};
+use serde_fleece::to_fl_slice_result;
 use std::{os::raw::c_uint, ptr::NonNull, str};
 use uuid::Uuid;
 
@@ -34,11 +34,11 @@ bitflags! {
 
 impl Document {
     #[inline]
-    pub fn new<T>(data: &T, enc: FlEncoderSession<'_>) -> Result<Self>
+    pub fn new<T>(data: &T) -> Result<Self>
     where
         T: Serialize,
     {
-        let unsaved_body = Some(to_fl_slice_result_with_encoder(data, enc)?);
+        let unsaved_body = Some(to_fl_slice_result(data)?);
         Ok(Self {
             inner: None,
             unsaved_body,
@@ -46,25 +46,17 @@ impl Document {
         })
     }
     #[inline]
-    pub fn new_with_id<S, T>(doc_id: S, data: &T, enc: FlEncoderSession<'_>) -> Result<Self>
+    pub fn new_with_id<S, T>(doc_id: S, data: &T) -> Result<Self>
     where
         S: Into<Box<str>>,
         T: Serialize,
     {
-        let unsaved_body = Some(to_fl_slice_result_with_encoder(data, enc)?);
+        let unsaved_body = Some(to_fl_slice_result(data)?);
         Ok(Self {
             inner: None,
             id: doc_id.into(),
             unsaved_body,
         })
-    }
-    #[inline]
-    pub fn new_with_id_fleece<S: Into<Box<str>>>(doc_id: S, fleece_data: FLSliceResult) -> Self {
-        Self {
-            inner: None,
-            id: doc_id.into(),
-            unsaved_body: Some(fleece_data),
-        }
     }
     /// return the document's ID
     #[inline]
@@ -86,11 +78,11 @@ impl Document {
     }
     /// Update internal buffer with data, you need save document
     /// to database to make this change permanent
-    pub fn update_body<T>(&mut self, data: &T, enc: FlEncoderSession<'_>) -> Result<()>
+    pub fn update_body<T>(&mut self, data: &T) -> Result<()>
     where
         T: Serialize,
     {
-        let body = to_fl_slice_result_with_encoder(data, enc)?;
+        let body = to_fl_slice_result(data)?;
         self.unsaved_body = Some(body);
         Ok(())
     }

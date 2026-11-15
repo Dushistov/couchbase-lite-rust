@@ -98,8 +98,7 @@ fn start_repl_and_save_documents(
             numbers: (0..(i as i32)).collect(),
         };
         let mut trans = db.transaction()?;
-        let enc = trans.shared_encoder_session()?;
-        let mut doc = Document::new_with_id(format!("{i}"), &data, enc)?;
+        let mut doc = Document::new_with_id(format!("{i}"), &data)?;
         trans.save(&mut doc)?;
         trans.commit()?;
     }

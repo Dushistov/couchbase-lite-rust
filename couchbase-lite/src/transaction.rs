@@ -88,6 +88,18 @@ impl Transaction<'_> {
     }
 
     fn main_save(&mut self, doc: &mut Document, deletion: bool) -> Result<()> {
+        let encoded_body = if !deletion {
+            doc.unsaved_body
+                .as_ref()
+                .map(|body| {
+                    let encoder = self.shared_encoder_session()?;
+                    serde_fleece::transcode_with_encoder(body.as_bytes(), encoder)
+                        .map_err(Error::from)
+                })
+                .transpose()?
+        } else {
+            None
+        };
         let loaded_body = if !deletion && doc.unsaved_body.is_none() {
             doc.inner
                 .as_ref()
@@ -114,7 +126,7 @@ impl Transaction<'_> {
             let (rev_flags, body) = if !deletion {
                 (
                     C4RevisionFlags(0),
-                    doc.unsaved_body
+                    encoded_body
                         .as_ref()
                         .map(FLSliceResult::as_fl_slice)
                         .or_else(|| loaded_body.as_deref().map(Into::into))

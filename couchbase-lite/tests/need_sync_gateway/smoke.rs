@@ -57,8 +57,7 @@ fn test_replication_round_trip() {
     {
         let mut transaction = db.transaction().unwrap();
         for (id, body) in ids.iter().zip(&docs) {
-            let encoder = transaction.shared_encoder_session().unwrap();
-            let mut doc = Document::new_with_id(id.as_str(), body, encoder).unwrap();
+            let mut doc = Document::new_with_id(id.as_str(), body).unwrap();
             transaction.save(&mut doc).unwrap();
         }
         transaction.commit().unwrap();

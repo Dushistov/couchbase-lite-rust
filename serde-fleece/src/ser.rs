@@ -23,7 +23,8 @@ use crate::{
         FLEncoder_EndArray, FLEncoder_EndDict, FLEncoder_Finish, FLEncoder_Free,
         FLEncoder_GetError, FLEncoder_New, FLEncoder_Reset, FLEncoder_WriteBool,
         FLEncoder_WriteDouble, FLEncoder_WriteFloat, FLEncoder_WriteInt, FLEncoder_WriteKey,
-        FLEncoder_WriteNull, FLEncoder_WriteString, FLEncoder_WriteUInt, FLError, FLSliceResult,
+        FLEncoder_WriteNull, FLEncoder_WriteString, FLEncoder_WriteUInt, FLEncoder_WriteValue,
+        FLError, FLSliceResult, FLTrust, FLValue_FromData,
     },
 };
 use serde::{ser, Serialize};
@@ -98,6 +99,31 @@ where
         Ok(ret)
     } else {
         Err(err.into())
+    }
+}
+
+/// Re-encodes standalone Fleece data with the encoder's shared keys.
+///
+/// The input must not contain dictionary keys encoded with another shared-key table.
+pub fn transcode_with_encoder(
+    data: &[u8],
+    encoder: FlEncoderSession<'_>,
+) -> Result<FLSliceResult, Error> {
+    let value = unsafe { FLValue_FromData(data.into(), FLTrust::kFLUntrusted) };
+    if value.is_null() {
+        return Err(Error::Fleece(FLError::kFLInvalidData));
+    }
+    if !unsafe { FLEncoder_WriteValue(encoder.inner.as_ptr(), value) } {
+        return Err(Error::Fleece(unsafe {
+            FLEncoder_GetError(encoder.inner.as_ptr())
+        }));
+    }
+    let mut err = FLError::kFLNoError;
+    let result = unsafe { FLEncoder_Finish(encoder.inner.as_ptr(), &mut err) };
+    if result.is_empty() {
+        Err(err.into())
+    } else {
+        Ok(result)
     }
 }
 

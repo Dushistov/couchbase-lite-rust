@@ -44,8 +44,7 @@ fn test_write_read() {
                     i: i,
                     s: format!("Hello {i}"),
                 };
-                let enc = trans.shared_encoder_session().unwrap();
-                let mut doc = Document::new(&foo, enc).unwrap();
+                let mut doc = Document::new(&foo).unwrap();
                 trans.save(&mut doc).unwrap();
                 ids_and_data.push((doc.id().into(), foo));
             }
@@ -85,8 +84,7 @@ fn test_write_read() {
                 let mut doc = trans.get_existing(doc_id).unwrap();
                 let mut foo_updated = foo.clone();
                 foo_updated.i += 1;
-                let enc = trans.shared_encoder_session().unwrap();
-                doc.update_body(&foo_updated, enc).unwrap();
+                doc.update_body(&foo_updated).unwrap();
                 trans.save(&mut doc).unwrap();
             }
             trans.commit().unwrap();
@@ -214,8 +212,7 @@ fn test_observed_changes() {
                 i: 17,
                 s: "hello".into(),
             };
-            let enc = trans.shared_encoder_session().unwrap();
-            let mut doc = Document::new(&foo, enc).unwrap();
+            let mut doc = Document::new(&foo).unwrap();
             trans.save(&mut doc).unwrap();
             trans.commit().unwrap();
             doc.id().into()
@@ -265,8 +262,7 @@ fn test_save_float() {
             f: 17.48,
             s: "ABCD".into(),
         };
-        let enc = trans.shared_encoder_session().unwrap();
-        let mut doc = Document::new(&s, enc).unwrap();
+        let mut doc = Document::new(&s).unwrap();
         trans.save(&mut doc).unwrap();
         trans.commit().unwrap();
         let doc_id: String = doc.id().into();
@@ -295,7 +291,7 @@ fn test_save_several_times() {
         let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
         let s = create_s(500);
         let mut trans = db.transaction().unwrap();
-        let mut doc = Document::new(&s, trans.shared_encoder_session().unwrap()).unwrap();
+        let mut doc = Document::new(&s).unwrap();
         trans.save(&mut doc).unwrap();
         trans.commit().unwrap();
         let doc_id: String = doc.id().into();
@@ -306,9 +302,7 @@ fn test_save_several_times() {
         assert_eq!(s, doc.decode_body::<S>().unwrap());
 
         let s = create_s(501);
-        let mut doc =
-            Document::new_with_id(doc_id.as_str(), &s, db.shared_encoder_session().unwrap())
-                .unwrap();
+        let mut doc = Document::new_with_id(doc_id.as_str(), &s).unwrap();
         let mut trans = db.transaction().unwrap();
         trans.save(&mut doc).unwrap();
         trans.commit().unwrap();
@@ -319,10 +313,8 @@ fn test_save_several_times() {
         assert_eq!(s, doc.decode_body::<S>().unwrap());
 
         let s = create_s(400);
-        let fleece_data =
-            serde_fleece::to_fl_slice_result_with_encoder(&s, db.shared_encoder_session().unwrap())
-                .unwrap();
-        let mut doc = Document::new_with_id_fleece(doc_id.clone(), fleece_data);
+        let mut doc = db.get_existing(&doc_id).unwrap();
+        doc.update_body(&s).unwrap();
         let mut trans = db.transaction().unwrap();
         trans.save(&mut doc).unwrap();
         trans.commit().unwrap();
@@ -344,12 +336,7 @@ fn test_save_unchanged_loaded_document_preserves_body() {
 
     {
         let mut transaction = db.transaction().unwrap();
-        let mut doc = Document::new_with_id(
-            "saved-doc",
-            &original,
-            transaction.shared_encoder_session().unwrap(),
-        )
-        .unwrap();
+        let mut doc = Document::new_with_id("saved-doc", &original).unwrap();
         transaction.save(&mut doc).unwrap();
         transaction.commit().unwrap();
     }
@@ -370,6 +357,70 @@ fn test_save_unchanged_loaded_document_preserves_body() {
     let body: HashMap<String, String> =
         db.get_existing("saved-doc").unwrap().decode_body().unwrap();
     assert_eq!(body, original);
+}
+
+#[test]
+fn test_pending_document_uses_destination_shared_keys() {
+    let dir = tempdir().unwrap();
+    let mut destination = Database::open_with_flags(
+        &dir.path().join("destination.cblite2"),
+        DatabaseFlags::CREATE,
+    )
+    .unwrap();
+
+    let mut transaction = destination.transaction().unwrap();
+    let mut seed = Document::new_with_id("seed", &HashMap::from([("bravo", "seed")])).unwrap();
+    transaction.save(&mut seed).unwrap();
+    transaction.commit().unwrap();
+
+    let expected = HashMap::from([("alpha".to_owned(), "payload".to_owned())]);
+    let mut doc = Document::new_with_id("pending", &expected).unwrap();
+    doc.update_body(&expected).unwrap();
+    let mut transaction = destination.transaction().unwrap();
+    transaction.save(&mut doc).unwrap();
+    transaction.commit().unwrap();
+
+    let actual: HashMap<String, String> = destination
+        .get_existing("pending")
+        .unwrap()
+        .decode_body()
+        .unwrap();
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn test_pending_document_preserves_keys_after_encoder_transaction_rollback() {
+    let dir = tempdir().unwrap();
+    let mut db =
+        Database::open_with_flags(&dir.path().join("a.cblite2"), DatabaseFlags::CREATE).unwrap();
+    let expected = HashMap::from([("alpha".to_owned(), "payload".to_owned())]);
+
+    let mut pending = {
+        let mut transaction = db.transaction().unwrap();
+        let _body_with_rolled_back_key = serde_fleece::to_fl_slice_result_with_encoder(
+            &expected,
+            transaction.shared_encoder_session().unwrap(),
+        )
+        .unwrap();
+        Document::new_with_id("pending", &expected).unwrap()
+        // Dropping the transaction also rolls back its shared-key additions.
+    };
+
+    {
+        let mut transaction = db.transaction().unwrap();
+        let mut other =
+            Document::new_with_id("other", &HashMap::from([("bravo", "seed")])).unwrap();
+        transaction.save(&mut other).unwrap();
+        transaction.commit().unwrap();
+    }
+
+    let mut transaction = db.transaction().unwrap();
+    transaction.save(&mut pending).unwrap();
+    transaction.commit().unwrap();
+
+    let actual: HashMap<String, String> =
+        db.get_existing("pending").unwrap().decode_body().unwrap();
+    assert_eq!(actual, expected);
 }
 
 #[test]
@@ -409,8 +460,7 @@ fn test_indices() {
                     i: i,
                     s: format!("Hello {i}"),
                 };
-                let enc = trans.shared_encoder_session().unwrap();
-                let mut doc = Document::new(&foo, enc).unwrap();
+                let mut doc = Document::new(&foo).unwrap();
                 trans.save(&mut doc).unwrap();
             }
             trans.commit().unwrap();
@@ -459,8 +509,7 @@ fn test_like_offset_limit() {
                 i: i,
                 s: format!("Hello {i}"),
             };
-            let enc = trans.shared_encoder_session().unwrap();
-            let mut doc = Document::new(&foo, enc).unwrap();
+            let mut doc = Document::new(&foo).unwrap();
             trans.save(&mut doc).unwrap();
         }
         trans.commit().unwrap();
@@ -572,8 +621,7 @@ fn test_like_performance() {
                 field1: format!("_common_prefix_{i}"),
                 field2: format!("{}", i + 1),
             };
-            let enc = trans.shared_encoder_session().unwrap();
-            let mut doc = Document::new(&d, enc).unwrap();
+            let mut doc = Document::new(&d).unwrap();
             trans.save(&mut doc).unwrap();
         }
         trans.commit().unwrap();
@@ -621,8 +669,7 @@ fn test_n1ql_query() {
                 i,
                 s: format!("Hello {i}"),
             };
-            let enc = trans.shared_encoder_session().unwrap();
-            let mut doc = Document::new(&foo, enc).unwrap();
+            let mut doc = Document::new(&foo).unwrap();
             trans.save(&mut doc).unwrap();
         }
         trans.commit().unwrap();
@@ -690,8 +737,7 @@ fn test_n1ql_query_with_parameter() {
                 i,
                 s: format!("Hello {i}"),
             };
-            let enc = trans.shared_encoder_session().unwrap();
-            let mut doc = Document::new(&foo, enc).unwrap();
+            let mut doc = Document::new(&foo).unwrap();
             trans.save(&mut doc).unwrap();
         }
         trans.commit().unwrap();
@@ -761,8 +807,7 @@ fn test_all_types_in_query() {
         let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
 
         let mut trans = db.transaction().unwrap();
-        let enc = trans.shared_encoder_session().unwrap();
-        let mut doc = Document::new(&boo, enc).unwrap();
+        let mut doc = Document::new(&boo).unwrap();
         trans.save(&mut doc).unwrap();
         trans.commit().unwrap();
 
@@ -820,8 +865,7 @@ fn test_all_types_in_query() {
             ..boo
         };
         let mut trans = db.transaction().unwrap();
-        let enc = trans.shared_encoder_session().unwrap();
-        let mut doc = Document::new(&boo, enc).unwrap();
+        let mut doc = Document::new(&boo).unwrap();
         trans.save(&mut doc).unwrap();
         trans.commit().unwrap();
 

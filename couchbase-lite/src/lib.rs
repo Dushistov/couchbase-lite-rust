@@ -22,8 +22,7 @@
 //!     {
 //!         let msg = Message { msg: "Test message".into() };
 //!         let mut trans = db.transaction()?;
-//!         let enc = trans.shared_encoder_session()?;
-//!         let mut doc = Document::new(&msg, enc)?;
+//!         let mut doc = Document::new(&msg)?;
 //!         trans.save(&mut doc)?;
 //!         trans.commit()?;
 //!     }

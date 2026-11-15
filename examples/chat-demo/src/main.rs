@@ -667,14 +667,9 @@ impl DbState {
         for mut message in messages {
             let id = message.id.take();
             message.channels = self.config.channel.iter().cloned().collect();
-            let encoder = transaction
-                .shared_encoder_session()
-                .map_err(|err| err.to_string())?;
             let mut doc = match id {
-                Some(id) => {
-                    Document::new_with_id(id, &message, encoder).map_err(|err| err.to_string())?
-                }
-                None => Document::new(&message, encoder).map_err(|err| err.to_string())?,
+                Some(id) => Document::new_with_id(id, &message).map_err(|err| err.to_string())?,
+                None => Document::new(&message).map_err(|err| err.to_string())?,
             };
             transaction.save(&mut doc).map_err(|err| err.to_string())?;
             ids.push(doc.id().to_string());

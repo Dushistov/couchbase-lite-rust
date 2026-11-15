@@ -523,8 +523,7 @@ unsafe fn c4address_to_request(
         options.as_ptr(),
         kC4ReplicatorOptionAuthentication.into(),
     )) {
-        let auth_type = if let ValueRef::String(auth_type) = auth.get(kC4ReplicatorAuthType.into())
-        {
+        let auth_type = if let ValueRef::String(auth_type) = auth.get(kC4ReplicatorAuthType) {
             auth_type
         } else {
             // No auth type, default to Basic
@@ -533,8 +532,8 @@ unsafe fn c4address_to_request(
 
         if auth_type == kC4AuthTypeBasic {
             let (username, password) = match (
-                auth.get(kC4ReplicatorAuthUserName.into()),
-                auth.get(kC4ReplicatorAuthPassword.into()),
+                auth.get(kC4ReplicatorAuthUserName),
+                auth.get(kC4ReplicatorAuthPassword),
             ) {
                 (ValueRef::String(username), ValueRef::String(password)) => (username, password),
                 _ => {
@@ -552,7 +551,7 @@ unsafe fn c4address_to_request(
                 .headers_mut()
                 .insert("Authorization", HeaderValue::from_str(&header)?);
         } else if auth_type == kC4AuthTypeSession {
-            if let ValueRef::String(token) = auth.get(kC4ReplicatorAuthToken.into()) {
+            if let ValueRef::String(token) = auth.get(kC4ReplicatorAuthToken) {
                 let token_cookie = format!("SyncGatewaySession={token}");
                 cookies.push(token_cookie);
             }

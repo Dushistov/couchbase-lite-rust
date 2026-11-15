@@ -158,6 +158,13 @@ fn do_resolve_conflict(
             merge_body = body.into();
         } else {
             merge_flags = C4RevisionFlags::kRevDeleted;
+            // A null body tells LiteCore to keep the winning revision. A non-null,
+            // empty body makes it create the deletion revision instead.
+            static EMPTY_MERGE_BODY: u8 = 0;
+            merge_body = FLSlice {
+                buf: (&EMPTY_MERGE_BODY as *const u8).cast(),
+                size: 0,
+            };
         }
     }
     let mut c4err = c4error_init();
@@ -179,4 +186,106 @@ fn do_resolve_conflict(
     }
     tx.commit()?;
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{ffi::*, DatabaseFlags, DocumentFlags};
+
+    fn encode_body(db: *mut C4Database, json: &str) -> FLSliceResult {
+        unsafe {
+            let encoder = c4db_getSharedFleeceEncoder(db);
+            FLEncoder_Reset(encoder);
+            assert!(FLEncoder_ConvertJSON(encoder, json.into()));
+            let mut error = FLError::kFLNoError;
+            let body = FLEncoder_Finish(encoder, &mut error);
+            assert_eq!(error, FLError::kFLNoError);
+            FLEncoder_Reset(encoder);
+            body
+        }
+    }
+
+    fn put_revision(
+        db: *mut C4Database,
+        history: &[C4String],
+        body: FLSlice,
+        flags: C4RevisionFlags,
+        remote: bool,
+    ) {
+        let request = C4DocPutRequest {
+            body,
+            docID: "conflict".into(),
+            revFlags: flags,
+            existingRevision: true,
+            allowConflict: true,
+            history: history.as_ptr(),
+            historyCount: history.len(),
+            save: true,
+            maxRevTreeDepth: 0,
+            remoteDBID: if remote { 1 } else { 0 },
+            allocedBody: FLSliceResult::default(),
+            deltaCB: None,
+            deltaCBContext: ptr::null_mut(),
+            deltaSourceRevID: FLSlice::default(),
+        };
+        let mut error = c4error_init();
+        let doc = unsafe { c4doc_put(db, &request, ptr::null_mut(), &mut error) };
+        assert!(!doc.is_null(), "put failed: {:?}", Error::C4Error(error));
+        unsafe { c4doc_release(doc) };
+    }
+
+    #[test]
+    fn test_local_deletion_wins_conflict() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("conflict.cblite2");
+        let mut db = Database::open_with_flags(&path, DatabaseFlags::CREATE).unwrap();
+
+        {
+            let transaction = db.transaction().unwrap();
+            let raw_db = transaction.inner.0.as_ptr();
+            let deleted_body = encode_body(raw_db, "{}");
+            let remote_body = encode_body(raw_db, r#"{"value":"remote"}"#);
+            put_revision(
+                raw_db,
+                &["3-cccc".into(), "2-aaaa".into(), "1-aaaa".into()],
+                deleted_body.as_fl_slice(),
+                C4RevisionFlags::kRevDeleted,
+                false,
+            );
+            put_revision(
+                raw_db,
+                &["2-bbbb".into(), "1-aaaa".into()],
+                remote_body.as_fl_slice(),
+                C4RevisionFlags::kRevKeepBody,
+                true,
+            );
+            transaction.commit().unwrap();
+        }
+
+        let before = db.get_existing("conflict").unwrap();
+        assert_eq!(before.revision_id(), Some("3-cccc"));
+        let before_flags = before.flags().unwrap();
+        assert!(before_flags.contains(DocumentFlags::DELETED));
+        assert!(before_flags.contains(DocumentFlags::CONFLICTED));
+        drop(before);
+
+        resolve_conflict(&mut db, "conflict").unwrap();
+
+        let resolved = db.get_existing("conflict").unwrap();
+        let flags = resolved.flags().unwrap();
+        assert!(flags.contains(DocumentFlags::DELETED));
+        assert!(!flags.contains(DocumentFlags::CONFLICTED));
+        assert_eq!(db.document_count(), 0);
+
+        drop(resolved);
+        drop(db);
+        let reopened = Database::open_with_flags(&path, DatabaseFlags::empty()).unwrap();
+        assert!(reopened
+            .get_existing("conflict")
+            .unwrap()
+            .flags()
+            .unwrap()
+            .contains(DocumentFlags::DELETED));
+    }
 }

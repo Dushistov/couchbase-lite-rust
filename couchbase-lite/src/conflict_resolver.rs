@@ -3,7 +3,7 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4doc_resolveConflict, c4doc_save, c4doc_selectNextLeafRevision, C4DocContentLevel,
-        C4RevisionFlags, FLSlice, FLSlice_Compare,
+        C4ErrorCode, C4ErrorDomain, C4RevisionFlags, FLSlice, FLSlice_Compare,
     },
     Database,
 };
@@ -12,8 +12,16 @@ use std::{os::raw::c_uint, ptr};
 
 /// Resolves a replication conflict in a document
 pub fn resolve_conflict(db: &mut Database, doc_id: &str) -> Result<()> {
-    let mut retry_count = 0_u8;
-    const MAX_RETRY_COUNT: u8 = 10;
+    resolve_conflict_with(db, doc_id, default_resolve_conflict)
+}
+
+fn resolve_conflict_with(
+    db: &mut Database,
+    doc_id: &str,
+    mut resolve: impl FnMut(&mut Database, &str, &C4DocumentOwner) -> Result<()>,
+) -> Result<()> {
+    const MAX_ATTEMPTS: u8 = 10;
+    let mut attempt = 0;
     loop {
         let doc = match db.do_internal_get_opt(doc_id, true, C4DocContentLevel::kDocGetAll)? {
             Some(x) => x,
@@ -28,31 +36,31 @@ pub fn resolve_conflict(db: &mut Database, doc_id: &str) -> Result<()> {
             info!("conflict in doc {doc_id} already resolved, nothing to do");
             return Ok(());
         }
-        let ok = default_resolve_conflict(db, doc_id, &doc)?;
-        let mut in_conflict = false;
-        if !ok {
-            retry_count += 1;
-            in_conflict = retry_count < MAX_RETRY_COUNT;
-            if in_conflict {
+        match resolve(db, doc_id, &doc) {
+            Ok(()) => return Ok(()),
+            Err(Error::C4Error(err))
+                if err.domain == C4ErrorDomain::LiteCoreDomain
+                    && err.code == C4ErrorCode::kC4ErrorConflict.0 =>
+            {
+                attempt += 1;
+                if attempt == MAX_ATTEMPTS {
+                    return Err(Error::C4Error(err));
+                }
                 warn!(
                     "conflict resolution of doc '{}' conflicted with newer saved, retry {}",
-                    doc_id, retry_count
+                    doc_id, attempt
                 );
             }
-        }
-
-        if !in_conflict {
-            break;
+            Err(err) => return Err(err),
         }
     }
-    Ok(())
 }
 
 fn default_resolve_conflict(
     db: &mut Database,
     doc_id: &str,
     conflict: &C4DocumentOwner,
-) -> Result<bool> {
+) -> Result<()> {
     let remote_doc = if (conflict.selected_revision().flags & C4RevisionFlags::kRevDeleted)
         != C4RevisionFlags(0)
     {
@@ -139,7 +147,7 @@ fn do_resolve_conflict(
     conflict_doc: &C4DocumentOwner,
     resolution: Resolution,
     resolved_doc: Option<&C4DocumentOwner>,
-) -> Result<bool> {
+) -> Result<()> {
     let tx = db.transaction()?;
     // Remote Revision always win so that the resolved revision will not conflict with the remote:
     let winner = unsafe { conflict_doc.0.as_ref() }
@@ -187,7 +195,7 @@ fn do_resolve_conflict(
         return Err(c4err.into());
     }
     tx.commit()?;
-    Ok(true)
+    Ok(())
 }
 
 #[cfg(test)]
@@ -235,6 +243,97 @@ mod tests {
         let doc = unsafe { c4doc_put(db, &request, ptr::null_mut(), &mut error) };
         assert!(!doc.is_null(), "put failed: {:?}", Error::C4Error(error));
         unsafe { c4doc_release(doc) };
+    }
+
+    fn live_conflict() -> (tempfile::TempDir, Database) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("conflict.cblite2");
+        let mut db = Database::open_with_flags(&path, DatabaseFlags::CREATE).unwrap();
+        {
+            let transaction = db.transaction().unwrap();
+            let raw_db = transaction.inner.0.as_ptr();
+            let local_body = encode_body(raw_db, r#"{"value":"local"}"#);
+            let remote_body = encode_body(raw_db, r#"{"value":"remote"}"#);
+            put_revision(
+                raw_db,
+                &["3-cccc".into(), "2-aaaa".into(), "1-aaaa".into()],
+                local_body.as_fl_slice(),
+                C4RevisionFlags(0),
+                false,
+            );
+            put_revision(
+                raw_db,
+                &["2-bbbb".into(), "1-aaaa".into()],
+                remote_body.as_fl_slice(),
+                C4RevisionFlags::kRevKeepBody,
+                true,
+            );
+            transaction.commit().unwrap();
+        }
+        assert!(db
+            .get_existing("conflict")
+            .unwrap()
+            .flags()
+            .unwrap()
+            .contains(DocumentFlags::CONFLICTED));
+        (dir, db)
+    }
+
+    fn conflict_error() -> Error {
+        Error::C4Error(C4Error {
+            domain: C4ErrorDomain::LiteCoreDomain,
+            code: C4ErrorCode::kC4ErrorConflict.0,
+            internal_info: 0,
+        })
+    }
+
+    #[test]
+    fn test_retry_after_conflict_error() {
+        let (_dir, mut db) = live_conflict();
+        let mut attempts = 0;
+        resolve_conflict_with(&mut db, "conflict", |db, doc_id, conflict| {
+            attempts += 1;
+            if attempts == 1 {
+                Err(conflict_error())
+            } else {
+                default_resolve_conflict(db, doc_id, conflict)
+            }
+        })
+        .unwrap();
+
+        assert_eq!(attempts, 2);
+        assert!(!db
+            .get_existing("conflict")
+            .unwrap()
+            .flags()
+            .unwrap()
+            .contains(DocumentFlags::CONFLICTED));
+    }
+
+    #[test]
+    fn test_conflict_retry_limit_returns_error() {
+        let (_dir, mut db) = live_conflict();
+        let mut attempts = 0;
+        let error = resolve_conflict_with(&mut db, "conflict", |_, _, _| {
+            attempts += 1;
+            Err(conflict_error())
+        })
+        .unwrap_err();
+
+        assert_eq!(attempts, 10);
+        match error {
+            Error::C4Error(err) => {
+                assert_eq!(err.domain, C4ErrorDomain::LiteCoreDomain);
+                assert_eq!(err.code, C4ErrorCode::kC4ErrorConflict.0);
+            }
+            other => panic!("expected LiteCore conflict, got {other:?}"),
+        }
+        assert!(db
+            .get_existing("conflict")
+            .unwrap()
+            .flags()
+            .unwrap()
+            .contains(DocumentFlags::CONFLICTED));
     }
 
     #[test]

@@ -336,6 +336,43 @@ fn test_save_several_times() {
 }
 
 #[test]
+fn test_save_unchanged_loaded_document_preserves_body() {
+    let tmp_dir = tempdir().unwrap();
+    let db_path = tmp_dir.path().join("a.cblite2");
+    let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE).unwrap();
+    let original = HashMap::from([("value".to_string(), "original".to_string())]);
+
+    {
+        let mut transaction = db.transaction().unwrap();
+        let mut doc = Document::new_with_id(
+            "saved-doc",
+            &original,
+            transaction.shared_encoder_session().unwrap(),
+        )
+        .unwrap();
+        transaction.save(&mut doc).unwrap();
+        transaction.commit().unwrap();
+    }
+
+    let mut doc = db.get_existing("saved-doc").unwrap();
+    {
+        let mut transaction = db.transaction().unwrap();
+        transaction.save(&mut doc).unwrap();
+        transaction.commit().unwrap();
+    }
+    let body: HashMap<String, String> =
+        db.get_existing("saved-doc").unwrap().decode_body().unwrap();
+    assert_eq!(body, original);
+
+    drop(doc);
+    drop(db);
+    let db = Database::open_with_flags(&db_path, DatabaseFlags::empty()).unwrap();
+    let body: HashMap<String, String> =
+        db.get_existing("saved-doc").unwrap().decode_body().unwrap();
+    assert_eq!(body, original);
+}
+
+#[test]
 fn test_indices() {
     let _ = env_logger::try_init();
     let tmp_dir = tempdir().expect("Can not create tmp directory");

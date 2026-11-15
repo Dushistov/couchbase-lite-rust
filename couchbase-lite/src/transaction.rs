@@ -88,6 +88,14 @@ impl Transaction<'_> {
     }
 
     fn main_save(&mut self, doc: &mut Document, deletion: bool) -> Result<()> {
+        let loaded_body = if !deletion && doc.unsaved_body.is_none() {
+            doc.inner
+                .as_ref()
+                .map(|current| current.load_body().map(|body| body.to_vec()))
+                .transpose()?
+        } else {
+            None
+        };
         let mut retrying = false;
         let mut saving_doc = None;
         loop {
@@ -109,6 +117,7 @@ impl Transaction<'_> {
                     doc.unsaved_body
                         .as_ref()
                         .map(FLSliceResult::as_fl_slice)
+                        .or_else(|| loaded_body.as_deref().map(Into::into))
                         .unwrap_or_default(),
                 )
             } else {

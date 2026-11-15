@@ -156,6 +156,8 @@ fn do_resolve_conflict(
         if let Some(resolved_doc) = resolved_doc {
             let body = resolved_doc.load_body()?;
             merge_body = body.into();
+            merge_flags =
+                resolved_doc.selected_revision().flags & C4RevisionFlags::kRevHasAttachments;
         } else {
             merge_flags = C4RevisionFlags::kRevDeleted;
             // A null body tells LiteCore to keep the winning revision. A non-null,
@@ -287,5 +289,76 @@ mod tests {
             .flags()
             .unwrap()
             .contains(DocumentFlags::DELETED));
+    }
+
+    #[test]
+    fn test_local_attachment_flag_survives_conflict_resolution() {
+        #[derive(serde::Deserialize)]
+        struct Blob {
+            digest: String,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct Body {
+            value: String,
+            blob: Blob,
+        }
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("conflict.cblite2");
+        let mut db = Database::open_with_flags(&path, DatabaseFlags::CREATE).unwrap();
+
+        {
+            let transaction = db.transaction().unwrap();
+            let raw_db = transaction.inner.0.as_ptr();
+            let local_body = encode_body(
+                raw_db,
+                r#"{"value":"local","blob":{"@type":"blob","digest":"sha1-2jmj7l5rSw0yVb/vlWAYkK/YBwk=","length":0}}"#,
+            );
+            let remote_body = encode_body(raw_db, r#"{"value":"remote"}"#);
+            put_revision(
+                raw_db,
+                &["3-cccc".into(), "2-aaaa".into(), "1-aaaa".into()],
+                local_body.as_fl_slice(),
+                C4RevisionFlags::kRevHasAttachments,
+                false,
+            );
+            put_revision(
+                raw_db,
+                &["2-bbbb".into(), "1-aaaa".into()],
+                remote_body.as_fl_slice(),
+                C4RevisionFlags::kRevKeepBody,
+                true,
+            );
+            transaction.commit().unwrap();
+        }
+
+        let before = db.get_existing("conflict").unwrap();
+        assert_eq!(before.revision_id(), Some("3-cccc"));
+        let before_flags = before.flags().unwrap();
+        assert!(before_flags.contains(DocumentFlags::CONFLICTED));
+        assert!(before_flags.contains(DocumentFlags::HAS_ATTACHMENTS));
+        drop(before);
+
+        resolve_conflict(&mut db, "conflict").unwrap();
+
+        let resolved = db.get_existing("conflict").unwrap();
+        let flags = resolved.flags().unwrap();
+        assert!(!flags.contains(DocumentFlags::CONFLICTED));
+        assert!(flags.contains(DocumentFlags::HAS_ATTACHMENTS));
+        drop(resolved);
+
+        let body: Body = db.get_existing("conflict").unwrap().decode_body().unwrap();
+        assert_eq!(body.value, "local");
+        assert_eq!(body.blob.digest, "sha1-2jmj7l5rSw0yVb/vlWAYkK/YBwk=");
+
+        drop(db);
+        let reopened = Database::open_with_flags(&path, DatabaseFlags::empty()).unwrap();
+        assert!(reopened
+            .get_existing("conflict")
+            .unwrap()
+            .flags()
+            .unwrap()
+            .contains(DocumentFlags::HAS_ATTACHMENTS));
     }
 }

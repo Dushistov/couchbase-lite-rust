@@ -482,6 +482,85 @@ fn test_loaded_document_cannot_be_saved_or_deleted_from_another_database() {
 }
 
 #[test]
+fn test_failed_save_preserves_document_for_retry() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("failed-save.cblite2");
+    let mut db = Database::open_with_flags(&path, DatabaseFlags::CREATE).unwrap();
+    let original = HashMap::from([("value", "original")]);
+
+    {
+        let mut transaction = db.transaction().unwrap();
+        let mut doc = Document::new_with_id("doc", &original).unwrap();
+        transaction.save(&mut doc).unwrap();
+        transaction.commit().unwrap();
+    }
+
+    let mut doc = db.get_existing("doc").unwrap();
+    let original_revision = doc.revision_id().unwrap().to_owned();
+    let original_sequence = doc.sequence();
+    doc.update_body(&42).unwrap(); // corrupt document, body should be dictionary, not number
+
+    let mut transaction = db.transaction().unwrap();
+    let err = transaction.save(&mut doc).unwrap_err();
+    assert!(matches!(
+        err,
+        Error::C4Error(c4err)
+            if c4err.domain == ffi::C4ErrorDomain::LiteCoreDomain
+                && c4err.code == ffi::C4ErrorCode::kC4ErrorCorruptRevisionData.0
+    ));
+    assert!(doc.exists());
+    assert_eq!(doc.revision_id(), Some(original_revision.as_str()));
+    assert_eq!(doc.sequence(), original_sequence);
+
+    let updated = HashMap::from([("value".to_owned(), "updated".to_owned())]);
+    doc.update_body(&updated).unwrap();
+    transaction.save(&mut doc).unwrap();
+    transaction.commit().unwrap();
+
+    let actual: HashMap<String, String> = db.get_existing("doc").unwrap().decode_body().unwrap();
+    assert_eq!(actual, updated);
+}
+
+#[test]
+fn test_stale_document_save_retries_with_latest_revision() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("stale-save.cblite2");
+    let mut db = Database::open_with_flags(&path, DatabaseFlags::CREATE).unwrap();
+
+    let mut original =
+        Document::new_with_id("doc", &HashMap::from([("value", "original")])).unwrap();
+    {
+        let mut transaction = db.transaction().unwrap();
+        transaction.save(&mut original).unwrap();
+        transaction.commit().unwrap();
+    }
+
+    let mut stale = db.get_existing("doc").unwrap();
+    let mut current = db.get_existing("doc").unwrap();
+    current
+        .update_body(&HashMap::from([("value", "intermediate")]))
+        .unwrap();
+    {
+        let mut transaction = db.transaction().unwrap();
+        transaction.save(&mut current).unwrap();
+        transaction.commit().unwrap();
+    }
+
+    let expected = HashMap::from([("value".to_owned(), "final".to_owned())]);
+    stale.update_body(&expected).unwrap();
+    let mut transaction = db.transaction().unwrap();
+    transaction.save(&mut stale).unwrap();
+    transaction.commit().unwrap();
+
+    let actual: HashMap<String, String> = db.get_existing("doc").unwrap().decode_body().unwrap();
+    assert_eq!(actual, expected);
+    assert_eq!(
+        stale.revision_id(),
+        db.get_existing("doc").unwrap().revision_id()
+    );
+}
+
+#[test]
 fn test_indices() {
     let _ = env_logger::try_init();
     let tmp_dir = tempdir().expect("Can not create tmp directory");

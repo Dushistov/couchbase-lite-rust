@@ -117,21 +117,17 @@ impl Transaction<'_> {
         } else {
             None
         };
-        let mut retrying = false;
-        let mut saving_doc = None;
+        if deletion && !doc.exists() {
+            return Err(Error::LogicError(
+                format!(
+                    "Cannot delete a document that has not yet been saved, doc_id {}",
+                    doc.id()
+                )
+                .into(),
+            ));
+        }
+        let mut retry_doc: Option<C4DocumentOwner> = None;
         loop {
-            if !retrying {
-                if deletion && !doc.exists() {
-                    return Err(Error::LogicError(
-                        format!(
-                            "Cannot delete a document that has not yet been saved, doc_id {}",
-                            doc.id()
-                        )
-                        .into(),
-                    ));
-                }
-                saving_doc = doc.inner.take();
-            }
             let (rev_flags, body) = if !deletion {
                 (
                     C4RevisionFlags(0),
@@ -144,10 +140,9 @@ impl Transaction<'_> {
             } else {
                 (C4RevisionFlags::kRevDeleted, FLSlice::default())
             };
-            retrying = false;
             let mut c4err = c4error_init();
-            let new_doc = if let Some(doc) = saving_doc.as_mut() {
-                unsafe { c4doc_update(doc.0.as_ptr(), body, rev_flags, &mut c4err) }
+            let new_doc = if let Some(current) = retry_doc.as_ref().or(doc.inner.as_ref()) {
+                unsafe { c4doc_update(current.0.as_ptr(), body, rev_flags, &mut c4err) }
             } else {
                 let rq = C4DocPutRequest {
                     body,
@@ -175,8 +170,9 @@ impl Transaction<'_> {
             }
             if let Some(new_doc) = NonNull::new(new_doc) {
                 doc.replace_c4doc(C4DocumentOwner(new_doc), self.db);
+                return Ok(());
             } else {
-                saving_doc = match self.db.internal_get(doc.id(), true) {
+                retry_doc = match self.db.internal_get(doc.id(), true) {
                     Ok(x) => Some(x),
                     Err(Error::C4Error(c4err))
                         if deletion
@@ -187,14 +183,8 @@ impl Transaction<'_> {
                     }
                     Err(err) => return Err(err),
                 };
-                retrying = true;
-            }
-
-            if !retrying {
-                break;
             }
         }
-        Ok(())
     }
 }
 

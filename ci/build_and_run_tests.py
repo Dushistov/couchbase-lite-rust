@@ -100,9 +100,30 @@ def build_tests(cmd: list[str], src_root: Path) -> None:
     check_call(no_run_cmd, cwd=src_root)
 
 
+def report_llvm_cov(src_root: Path) -> None:
+    """Export release coverage accumulated by the Rust and server test runs"""
+    check_call(
+        ["cargo", "llvm-cov", "report", "--release", "--lcov", "--output-path",
+         "target/llvm-cov/coverage.lcov"],
+        cwd=src_root,
+    )
+
+
 @show_timing
-def build_and_test_rust_part(src_root: Path, *, use_valgrind: bool) -> None:
-    """Run Rust tests in debug and release mode, optionally under Valgrind."""
+def build_and_test_rust_part(
+    src_root: Path, *, use_valgrind: bool, use_llvm_cov: bool
+) -> None:
+    """Run Rust tests in debug and release mode, optionally with coverage or Valgrind"""
+    if use_llvm_cov:
+        # Keep debug and release profiles separate: LLVM cannot merge coverage for
+        # differently optimized versions of the same functions reliably.
+        check_call(["cargo", "llvm-cov", "--no-report", "--workspace", "--tests"],
+                   cwd=src_root)
+        check_call(["cargo", "llvm-cov", "--workspace",
+                    "--tests", "--release"], cwd=src_root)
+        report_llvm_cov(src_root)
+        check_call(["cargo", "build", "-p", "chat-demo"], cwd=src_root)
+        return
     if not use_valgrind:
         print("running tests in debug mode")
         cmd = ["cargo", "test", "--all", "-vv"]
@@ -296,7 +317,9 @@ def build_and_test_rust_part_for_android(src_root: Path, *, run_on_device: bool)
 
 
 @show_timing
-def run_tests_that_require_server(src_root: Path, *, use_valgrind: bool) -> None:
+def run_tests_that_require_server(
+    src_root: Path, *, use_valgrind: bool, use_llvm_cov: bool
+) -> None:
     """Run the ignored integration tests against the local Sync Gateway."""
     my_env = os.environ.copy()
     my_env["SG_PASS"] = "password"
@@ -307,28 +330,44 @@ def run_tests_that_require_server(src_root: Path, *, use_valgrind: bool) -> None
         "test_double_replicator_restart",
         "test_wrong_sync_packets_order",
     ):
-        cmd = ["cargo"]
-        if use_valgrind:
-            cmd.append("valgrind")
-        cmd.extend(["test", "--release"])
-        cmd.extend(
-            ["-p", "couchbase-lite", "-vv", test_name, "--", "--ignored", "--nocapture"]
-        )
+        if use_llvm_cov:
+            # Match the Rust run's package selection so both runs use the same
+            # instrumented binaries and LLVM can merge their profiles.
+            cmd = ["cargo", "llvm-cov", "test", "--no-clean", "--release",
+                   "--workspace", "--tests"]
+        else:
+            cmd = ["cargo"]
+            if use_valgrind:
+                cmd.append("valgrind")
+            cmd.extend(["test", "--release"])
+            cmd.extend(["-p", "couchbase-lite", "-vv"])
+        cmd.extend([test_name, "--", "--ignored"])
+        if not use_llvm_cov:
+            cmd.append("--nocapture")
         check_call(cmd, cwd=src_root, env=my_env)
+    if use_llvm_cov:
+        report_llvm_cov(src_root)
 
 
-def selected_tests(options: list[str]) -> set[str]:
-    """Apply test selection options in command-line order."""
+def selected_tests(options: list[str]) -> tuple[set[str], bool]:
+    """Apply test and coverage options in command-line order"""
     tests = {CPP_TESTS, RUST_TESTS}
+    use_llvm_cov = False
     for option in options:
-        if option == "--with-valigrind":
+        if option == "--llvm-cov":
+            use_llvm_cov = True
+        elif option == "--no-llvm-cov":
+            use_llvm_cov = False
+        elif option == "--with-valigrind":
             tests.add(VALGRIND_TESTS)
         elif option in TEST_SELECTIONS:
             tests = {TEST_SELECTIONS[option]}
         else:
             message = f"Unknown option {option}"
             raise SystemExit(message)
-    return tests
+    if use_llvm_cov and VALGRIND_TESTS in tests:
+        raise SystemExit("--llvm-cov cannot be combined with --with-valigrind")
+    return tests, use_llvm_cov
 
 
 @show_timing
@@ -351,7 +390,7 @@ def main() -> None:
         )
         chat_stress.run(settings, src_root)
         return
-    tests = selected_tests(sys.argv[1:])
+    tests, use_llvm_cov = selected_tests(sys.argv[1:])
 
     if VALGRIND_TESTS in tests:
         os.environ["VALGRINDFLAGS"] = " ".join(
@@ -369,7 +408,9 @@ def main() -> None:
     if CPP_TESTS in tests:
         build_and_test_cpp_part(src_root)
     if RUST_TESTS in tests:
-        build_and_test_rust_part(src_root, use_valgrind=VALGRIND_TESTS in tests)
+        build_and_test_rust_part(
+            src_root, use_valgrind=VALGRIND_TESTS in tests, use_llvm_cov=use_llvm_cov
+        )
     if MIRI_TESTS in tests:
         run_miri_tests(src_root)
     if RUST_IOS_TESTS in tests:
@@ -379,7 +420,9 @@ def main() -> None:
             src_root, run_on_device=RUST_ANDROID_TESTS in tests
         )
     if WITH_SERVER_TESTS in tests:
-        run_tests_that_require_server(src_root, use_valgrind=VALGRIND_TESTS in tests)
+        run_tests_that_require_server(
+            src_root, use_valgrind=VALGRIND_TESTS in tests, use_llvm_cov=use_llvm_cov
+        )
     if REUSE_CPP_ONLY_BUILD in tests:
         cargo_check_sys_with_external_couchbase_lite(src_root)
 

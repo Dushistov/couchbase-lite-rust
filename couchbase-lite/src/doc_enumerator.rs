@@ -81,7 +81,7 @@ impl<'a> DocEnumerator<'a> {
                 err
             })?;
         let id: String = c4doc.id()?.into();
-        Ok(Document::new_internal(c4doc, id))
+        Ok(Document::new_internal(c4doc, id, self._db))
     }
 }
 

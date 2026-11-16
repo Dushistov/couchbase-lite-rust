@@ -4,8 +4,8 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4db_createIndex, c4db_getDoc, c4db_getDocumentCount, c4db_getIndexesInfo, c4db_getName,
-        c4db_getSharedFleeceEncoder, c4db_getUUIDs, c4db_openNamed, c4db_release, C4Database,
-        C4DatabaseConfig2, C4DatabaseFlags, C4DocContentLevel, C4EncryptionAlgorithm,
+        c4db_getSharedFleeceEncoder, c4db_getUUIDs, c4db_openNamed, c4db_release, c4db_retain,
+        C4Database, C4DatabaseConfig2, C4DatabaseFlags, C4DocContentLevel, C4EncryptionAlgorithm,
         C4EncryptionKey, C4ErrorCode, C4ErrorDomain, C4IndexOptions, C4IndexType, C4UUID,
     },
     index::{DbIndexesListIterator, IndexInfo, IndexOptions, IndexType},
@@ -83,11 +83,19 @@ pub struct Database {
     pub(crate) db_observers: Vec<DatabaseObserver>,
 }
 
+#[derive(Debug)]
 pub(crate) struct DbInner(pub NonNull<C4Database>);
 /// According to
 /// https://github.com/couchbase/couchbase-lite-core/wiki/Thread-Safety
 /// it is possible to call from any thread, but not concurrently
 unsafe impl Send for DbInner {}
+
+impl Clone for DbInner {
+    fn clone(&self) -> Self {
+        let ptr = unsafe { c4db_retain(self.0.as_ptr()) };
+        Self(NonNull::new(ptr).expect("c4db_retain returned null for a live database"))
+    }
+}
 
 impl Drop for DbInner {
     #[inline]
@@ -156,7 +164,7 @@ impl Database {
     #[inline]
     pub fn get_existing(&self, doc_id: &str) -> Result<Document> {
         self.internal_get(doc_id, true)
-            .map(|x| Document::new_internal(x, doc_id))
+            .map(|x| Document::new_internal(x, doc_id, self))
     }
     /// Compiles a query from an expression given as JSON.
     /// The expression is a predicate that describes which documents should be returned.

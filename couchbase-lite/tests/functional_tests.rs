@@ -424,6 +424,64 @@ fn test_pending_document_preserves_keys_after_encoder_transaction_rollback() {
 }
 
 #[test]
+fn test_loaded_document_cannot_be_saved_or_deleted_from_another_database() {
+    let dir = tempdir().unwrap();
+    let mut source =
+        Database::open_with_flags(&dir.path().join("source.cblite2"), DatabaseFlags::CREATE)
+            .unwrap();
+    let mut destination = Database::open_with_flags(
+        &dir.path().join("destination.cblite2"),
+        DatabaseFlags::CREATE,
+    )
+    .unwrap();
+    let original = HashMap::from([("value".to_owned(), "original".to_owned())]);
+    let mut newly_saved = Document::new_with_id("newly-saved", &original).unwrap();
+
+    {
+        let mut transaction = source.transaction().unwrap();
+        for id in ["to-update", "to-delete"] {
+            let mut doc = Document::new_with_id(id, &original).unwrap();
+            transaction.save(&mut doc).unwrap();
+        }
+        transaction.save(&mut newly_saved).unwrap();
+        transaction.commit().unwrap();
+    }
+
+    let mut to_update = source.get_existing("to-update").unwrap();
+    let mut to_delete = source.get_existing("to-delete").unwrap();
+    to_update
+        .update_body(&HashMap::from([("value", "changed")]))
+        .unwrap();
+
+    // The source transaction makes a wrongly directed native update possible
+    let source_transaction = source.transaction().unwrap();
+    let mut destination_transaction = destination.transaction().unwrap();
+    assert!(destination_transaction.save(&mut to_update).is_err());
+    assert!(destination_transaction.delete(&mut to_delete).is_err());
+    assert!(destination_transaction.save(&mut newly_saved).is_err());
+    drop(destination_transaction);
+    source_transaction.commit().unwrap();
+
+    for id in ["to-update", "to-delete", "newly-saved"] {
+        let doc = source.get_existing(id).unwrap();
+        assert!(!doc.flags().unwrap().contains(DocumentFlags::DELETED));
+        let body: HashMap<String, String> = doc.decode_body().unwrap();
+        assert_eq!(body, original);
+    }
+    assert_eq!(destination.document_count(), 0);
+
+    drop(source);
+    let body: HashMap<String, String> = to_delete.decode_body().unwrap();
+    assert_eq!(body, original);
+
+    let mut reopened_source =
+        Database::open_with_flags(&dir.path().join("source.cblite2"), DatabaseFlags::empty())
+            .unwrap();
+    let mut transaction = reopened_source.transaction().unwrap();
+    assert!(transaction.save(&mut newly_saved).is_err());
+}
+
+#[test]
 fn test_indices() {
     let _ = env_logger::try_init();
     let tmp_dir = tempdir().expect("Can not create tmp directory");

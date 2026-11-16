@@ -17,6 +17,11 @@ include!("c4_header_for_docs.rs");
 // see https://github.com/rust-lang/rust-bindgen/issues/1344
 
 #[inline]
+pub unsafe fn c4db_retain(db: *mut C4Database) -> *mut C4Database {
+    c4base_retain(db as *mut std::os::raw::c_void) as *mut C4Database
+}
+
+#[inline]
 pub unsafe fn c4db_release(db: *mut C4Database) {
     c4base_release(db as *mut std::os::raw::c_void)
 }

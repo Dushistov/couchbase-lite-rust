@@ -1,9 +1,11 @@
 use crate::{
+    database::DbInner,
     error::{c4error_init, Error, Result},
     ffi::{
         c4doc_getRevisionBody, c4doc_loadRevisionBody, c4doc_release, c4rev_getGeneration,
         C4Document, C4DocumentFlags, C4Revision, FLSliceResult,
     },
+    Database,
 };
 use bitflags::bitflags;
 use serde::{de::DeserializeOwned, Serialize};
@@ -16,6 +18,7 @@ pub struct Document {
     id: Box<str>,
     pub(crate) unsaved_body: Option<FLSliceResult>,
     pub(crate) inner: Option<C4DocumentOwner>,
+    pub(crate) origin: Option<DbInner>,
 }
 
 bitflags! {
@@ -41,6 +44,7 @@ impl Document {
         let unsaved_body = Some(to_fl_slice_result(data)?);
         Ok(Self {
             inner: None,
+            origin: None,
             unsaved_body,
             id: Uuid::new_v4().hyphenated().to_string().into(),
         })
@@ -54,6 +58,7 @@ impl Document {
         let unsaved_body = Some(to_fl_slice_result(data)?);
         Ok(Self {
             inner: None,
+            origin: None,
             id: doc_id.into(),
             unsaved_body,
         })
@@ -129,18 +134,20 @@ impl Document {
         self.inner.as_ref().map(|x| x.exists()).unwrap_or(false)
     }
 
-    pub(crate) fn new_internal<S>(inner: C4DocumentOwner, doc_id: S) -> Self
+    pub(crate) fn new_internal<S>(inner: C4DocumentOwner, doc_id: S, db: &Database) -> Self
     where
         S: Into<Box<str>>,
     {
         Self {
             inner: Some(inner),
+            origin: Some(db.inner.clone()),
             id: doc_id.into(),
             unsaved_body: None,
         }
     }
-    pub(crate) fn replace_c4doc(&mut self, doc: Option<C4DocumentOwner>) {
-        self.inner = doc;
+    pub(crate) fn replace_c4doc(&mut self, doc: C4DocumentOwner, db: &Database) {
+        self.inner = Some(doc);
+        self.origin = Some(db.inner.clone());
     }
 }
 

@@ -88,6 +88,15 @@ impl Transaction<'_> {
     }
 
     fn main_save(&mut self, doc: &mut Document, deletion: bool) -> Result<()> {
+        if doc
+            .origin
+            .as_ref()
+            .is_some_and(|origin| origin.0 != self.db.inner.0)
+        {
+            return Err(Error::LogicError(
+                format!("Document {} belongs to another database instance", doc.id()).into(),
+            ));
+        }
         let encoded_body = if !deletion {
             doc.unsaved_body
                 .as_ref()
@@ -165,7 +174,7 @@ impl Transaction<'_> {
                 return Err(c4err.into());
             }
             if let Some(new_doc) = NonNull::new(new_doc) {
-                doc.replace_c4doc(Some(C4DocumentOwner(new_doc)));
+                doc.replace_c4doc(C4DocumentOwner(new_doc), self.db);
             } else {
                 saving_doc = match self.db.internal_get(doc.id(), true) {
                     Ok(x) => Some(x),

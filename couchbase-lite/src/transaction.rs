@@ -3,8 +3,9 @@ use crate::{
     error::{c4error_init, Error, Result},
     ffi::{
         c4db_beginTransaction, c4db_endTransaction, c4db_getSharedFleeceEncoder, c4db_purgeDoc,
-        c4doc_put, c4doc_update, C4DocPutRequest, C4ErrorCode, C4ErrorDomain, C4RevisionFlags,
-        FLSlice, FLSliceResult,
+        c4doc_dictContainsBlobs, c4doc_getProperties, c4doc_put, c4doc_update, C4DocPutRequest,
+        C4ErrorCode, C4ErrorDomain, C4RevisionFlags, FLSlice, FLSliceResult, FLTrust,
+        FLValue_AsDict, FLValue_FromData,
     },
     Database,
 };
@@ -126,19 +127,35 @@ impl Transaction<'_> {
                 .into(),
             ));
         }
+        let rev_flags = if deletion {
+            C4RevisionFlags::kRevDeleted
+        } else {
+            let has_blobs = if let Some(body) = doc.unsaved_body.as_ref() {
+                // Pending bodies use portable Fleece, without database-local shared keys
+                let root = unsafe { FLValue_FromData(body.as_fl_slice(), FLTrust::kFLUntrusted) };
+                unsafe { c4doc_dictContainsBlobs(FLValue_AsDict(root)) }
+            } else {
+                // load_body above ensures the selected revision's properties are available
+                doc.inner.as_ref().is_some_and(|current| unsafe {
+                    c4doc_dictContainsBlobs(c4doc_getProperties(current.0.as_ptr()))
+                })
+            };
+            if has_blobs {
+                C4RevisionFlags::kRevHasAttachments
+            } else {
+                C4RevisionFlags(0)
+            }
+        };
         let mut retry_doc: Option<C4DocumentOwner> = None;
         loop {
-            let (rev_flags, body) = if !deletion {
-                (
-                    C4RevisionFlags(0),
-                    encoded_body
-                        .as_ref()
-                        .map(FLSliceResult::as_fl_slice)
-                        .or_else(|| loaded_body.as_deref().map(Into::into))
-                        .unwrap_or_default(),
-                )
+            let body = if !deletion {
+                encoded_body
+                    .as_ref()
+                    .map(FLSliceResult::as_fl_slice)
+                    .or_else(|| loaded_body.as_deref().map(Into::into))
+                    .unwrap_or_default()
             } else {
-                (C4RevisionFlags::kRevDeleted, FLSlice::default())
+                FLSlice::default()
             };
             let mut c4err = c4error_init();
             let new_doc = if let Some(current) = retry_doc.as_ref().or(doc.inner.as_ref()) {

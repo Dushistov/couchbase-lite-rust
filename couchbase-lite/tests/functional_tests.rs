@@ -360,6 +360,109 @@ fn test_save_unchanged_loaded_document_preserves_body() {
 }
 
 #[test]
+fn test_save_blob_reference_updates_attachment_flag() {
+    #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+    struct BlobReference {
+        #[serde(rename = "@type")]
+        kind: String,
+        digest: String,
+        length: u64,
+    }
+
+    #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+    struct Body {
+        blobs: Vec<BlobReference>,
+    }
+
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("blobs.cblite2");
+    let body = Body {
+        blobs: vec![BlobReference {
+            kind: "blob".into(),
+            digest: "sha1-2jmj7l5rSw0yVb/vlWAYkK/YBwk=".into(),
+            length: 0,
+        }],
+    };
+
+    let mut db = Database::open_with_flags(&path, DatabaseFlags::CREATE).unwrap();
+    let mut doc = Document::new_with_id("blob-doc", &body).unwrap();
+    {
+        let mut transaction = db.transaction().unwrap();
+        transaction.save(&mut doc).unwrap();
+        transaction.commit().unwrap();
+    }
+    assert!(doc
+        .flags()
+        .unwrap()
+        .contains(DocumentFlags::HAS_ATTACHMENTS));
+    drop(doc);
+    drop(db);
+
+    let mut db = Database::open_with_flags(&path, DatabaseFlags::empty()).unwrap();
+    db.register_observer(|| {}).unwrap();
+    let doc = db.get_existing("blob-doc").unwrap();
+    assert!(doc
+        .flags()
+        .unwrap()
+        .contains(DocumentFlags::HAS_ATTACHMENTS));
+    assert_eq!(doc.decode_body::<Body>().unwrap(), body);
+
+    let mut doc = db.get_existing("blob-doc").unwrap();
+    {
+        let mut transaction = db.transaction().unwrap();
+        transaction.save(&mut doc).unwrap();
+        transaction.commit().unwrap();
+    }
+    assert!(doc
+        .flags()
+        .unwrap()
+        .contains(DocumentFlags::HAS_ATTACHMENTS));
+    assert_ne!(
+        db.observed_changes().next().unwrap().revision_flags()
+            & ffi::C4RevisionFlags::kRevHasAttachments,
+        ffi::C4RevisionFlags(0)
+    );
+
+    doc.update_body(&Body { blobs: vec![] }).unwrap();
+    {
+        let mut transaction = db.transaction().unwrap();
+        transaction.save(&mut doc).unwrap();
+        transaction.commit().unwrap();
+    }
+    assert_eq!(
+        db.observed_changes().next().unwrap().revision_flags()
+            & ffi::C4RevisionFlags::kRevHasAttachments,
+        ffi::C4RevisionFlags(0)
+    );
+
+    doc.update_body(&body).unwrap();
+    {
+        let mut transaction = db.transaction().unwrap();
+        transaction.save(&mut doc).unwrap();
+        transaction.commit().unwrap();
+    }
+    assert!(doc
+        .flags()
+        .unwrap()
+        .contains(DocumentFlags::HAS_ATTACHMENTS));
+    assert_ne!(
+        db.observed_changes().next().unwrap().revision_flags()
+            & ffi::C4RevisionFlags::kRevHasAttachments,
+        ffi::C4RevisionFlags(0)
+    );
+    drop(doc);
+    drop(db);
+
+    let db = Database::open_with_flags(&path, DatabaseFlags::empty()).unwrap();
+    let doc = db.get_existing("blob-doc").unwrap();
+    assert!(doc
+        .flags()
+        .unwrap()
+        .contains(DocumentFlags::HAS_ATTACHMENTS));
+    assert_eq!(doc.decode_body::<Body>().unwrap(), body);
+}
+
+#[test]
 fn test_pending_document_uses_destination_shared_keys() {
     let dir = tempdir().unwrap();
     let mut destination = Database::open_with_flags(

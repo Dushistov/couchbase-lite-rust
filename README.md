@@ -9,7 +9,7 @@ Quote from [couchbase-lite-core](https://github.com/couchbase/couchbase-lite-cor
 
 ## Supported versions
 
-For now supported couchbase-lite-core 3.1, see [Couchbase Software Lifecycle Schedules](https://www.couchbase.com/support-policy/EOL/).
+For now supported couchbase-lite-core 3.2, see [Couchbase Software Lifecycle Schedules](https://www.couchbase.com/support-policy/EOL/).
 
 ## Optional features
 

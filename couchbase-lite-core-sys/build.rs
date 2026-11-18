@@ -100,12 +100,11 @@ fn link_native_libraries(sdir: &Path, target: &str) {
         }
     }
 
-    if let Ok(icu_lib_path) = env::var("ICU_LIB_DIR") {
-        println!("cargo:rustc-link-search=native={icu_lib_path}");
-        println!("cargo:rerun-if-env-changed=ICU_LIB_DIR");
-    }
-
     if target_os == "linux" {
+        println!("cargo:rerun-if-env-changed=ICU_LIB_DIR");
+        if let Ok(icu_lib_path) = env::var("ICU_LIB_DIR") {
+            println!("cargo:rustc-link-search=native={icu_lib_path}");
+        }
         println!("cargo:rustc-link-lib=icuuc");
         println!("cargo:rustc-link-lib=icui18n");
         println!("cargo:rustc-link-lib=icudata");
@@ -183,7 +182,7 @@ fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::erro
     use which::which;
 
     const URL: &str = "https://github.com/Dushistov/couchbase-lite-core";
-    const COMMIT_SHA1: &str = "790b368ab8d45ae779a6c9e4b08e99cbcd8aa3e6";
+    const COMMIT_SHA1: &str = "897b62e65d9ff3156d5cdb531e1ab1d9b82ac827";
 
     let git_path = which("git")?;
     let cur_dir = env::current_dir()?;
@@ -670,6 +669,11 @@ fn cmake_build_src_dir(src_dir: &Path) -> Vec<PathBuf> {
             .define("CMAKE_CXX_FLAGS", cc_flags)
             .define("CMAKE_MODULE_LINKER_FLAGS", ld_flags)
             .define("CMAKE_SHARED_LINKER_FLAGS", ld_flags);
+    }
+    if getenv_unwrap("CARGO_CFG_TARGET_OS") == "linux" {
+        // The runtime shim only searches Debian's multiarch library directory.
+        // Explicitly disable it, including when reusing a CMake cache that had it enabled.
+        cmake_config.define("LITECORE_DYNAMIC_ICU", "OFF");
     }
 
     let cmake_profile = cmake_config.get_profile().to_string();

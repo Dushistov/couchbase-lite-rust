@@ -476,6 +476,7 @@ impl Replicator {
                 remote_addr,
                 db_name,
                 repl_params,
+                C4String::default(),
                 &mut c4err,
             )
         };

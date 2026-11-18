@@ -5,7 +5,7 @@ mod support;
 use couchbase_lite::*;
 use couchbase_lite_core_sys::c4_getObjectCount;
 use serde::{Deserialize, Serialize};
-use std::{env, path::Path, str};
+use std::{env, path::Path, str, time::Duration};
 use support::{init_test_env, stop_and_wait, wait_for_litecore_cleanup};
 use tokio::runtime;
 
@@ -29,7 +29,8 @@ fn test_wrong_sync_packets_order() {
                 .expect("SG_TEST_DOCUMENT_COUNT must be a number")
         })
         .unwrap_or(10_000);
-    start_repl_and_save_documents(tmp_dir.path(), "a", document_count, &url, auth).unwrap();
+    start_repl_and_save_documents(tmp_dir.path(), "a", document_count, &url, auth, &runtime)
+        .unwrap();
     wait_for_litecore_cleanup(initial_objects);
 }
 
@@ -46,6 +47,7 @@ fn start_repl_and_save_documents(
     n: usize,
     url: &str,
     auth: ReplicatorAuthentication,
+    runtime: &runtime::Runtime,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let db_path = dir.join(format!("{name}.cblite2"));
     let mut db = Database::open_with_flags(&db_path, DatabaseFlags::CREATE)?;
@@ -105,7 +107,19 @@ fn start_repl_and_save_documents(
 
     println!("saving {n} documents done");
     let mut was_busy = false;
-    while let Some(state) = state_rx.blocking_recv() {
+    loop {
+        let state = runtime.block_on(async {
+            tokio::time::timeout(Duration::from_secs(120), state_rx.recv()).await
+        });
+        let Some(state) = state.unwrap_or_else(|_| {
+            panic!(
+                "replicator state timed out: state {:?}, local documents {}",
+                repl.state(),
+                db.document_count()
+            )
+        }) else {
+            break;
+        };
         println!("Get state: {state:?}");
         match state {
             ReplicatorState::Stopped(_) => {

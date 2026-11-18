@@ -280,12 +280,13 @@ impl<'a> FromValueRef<'a> for usize {
 impl<'a> FromValueRef<'a> for f32 {
     #[inline]
     fn column_result(val: ValueRef<'a>) -> Result<Self> {
-        if let ValueRef::Float(x) = val {
-            Ok(x)
-        } else {
-            Err(Error::LogicError(
-                format!("Wrong ValueRef type, expect Float, got {val:?}").into(),
-            ))
+        match val {
+            ValueRef::Float(x) => Ok(x),
+            ValueRef::Double(x) if x.is_nan() || f64::from(x as f32) == x => Ok(x as f32),
+            _ => Err(Error::LogicError(
+                format!("Wrong ValueRef type or value cannot be represented as f32: {val:?}")
+                    .into(),
+            )),
         }
     }
 }
@@ -300,5 +301,20 @@ impl<'a> FromValueRef<'a> for f64 {
                 format!("Wrong ValueRef type, expect Float/Double, got {val:?}").into(),
             )),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueRef;
+
+    #[test]
+    fn test_f32_from_exact_double() {
+        assert_eq!(
+            ValueRef::Double(f64::from(f32::MAX)).as_f32().unwrap(),
+            f32::MAX
+        );
+        assert!(ValueRef::Double(f64::MAX).as_f32().is_err());
+        assert!(ValueRef::Double(0.1).as_f32().is_err());
     }
 }

@@ -1507,7 +1507,7 @@ mod tests {
         let server = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
             let mut request = [0; 1024];
-            stream.read(&mut request).unwrap();
+            assert!(stream.read(&mut request).unwrap() > 0);
             stream
                 .write_all(
                     b"HTTP/1.1 403 Forbidden\r\nX-Test: rejected\r\nContent-Length: 0\r\n\r\n",

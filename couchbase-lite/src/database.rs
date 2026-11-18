@@ -326,6 +326,8 @@ impl Database {
                 disableStemming: index_options.disable_stemming,
                 ignoreDiacritics: index_options.ignore_diacritics,
                 stopWords: stop_words.map_or(ptr::null(), |x| x.as_ptr()),
+                unnestPath: ptr::null(),
+                where_: ptr::null(),
             };
             unsafe {
                 c4db_createIndex(

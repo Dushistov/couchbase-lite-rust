@@ -664,6 +664,45 @@ fn test_stale_document_save_retries_with_latest_revision() {
 }
 
 #[test]
+fn test_unicode_collation_uses_icu() {
+    let dir = tempdir().unwrap();
+    let mut db =
+        Database::open_with_flags(&dir.path().join("unicode.cblite2"), DatabaseFlags::CREATE)
+            .unwrap();
+    {
+        let mut transaction = db.transaction().unwrap();
+        let mut doc = Document::new_with_id(
+            "cafe",
+            &Foo {
+                i: 0,
+                s: "Café".into(),
+            },
+        )
+        .unwrap();
+        transaction.save(&mut doc).unwrap();
+        transaction.commit().unwrap();
+    }
+
+    let query = db
+        .query(
+            r#"{"WHAT":["._id"],"WHERE":["COLLATE",{"unicode":true,"case":false,"diac":false},["=",[".s"],"cafe"]]}"#,
+        )
+        .unwrap();
+    let mut rows = query.run().unwrap();
+    assert_eq!(
+        rows.next()
+            .unwrap()
+            .unwrap()
+            .get_raw_checked(0)
+            .unwrap()
+            .as_str()
+            .unwrap(),
+        "cafe"
+    );
+    assert!(rows.next().unwrap().is_none());
+}
+
+#[test]
 fn test_indices() {
     let _ = env_logger::try_init();
     let tmp_dir = tempdir().expect("Can not create tmp directory");

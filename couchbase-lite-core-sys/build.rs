@@ -1,4 +1,4 @@
-use bindgen::{callbacks::ParseCallbacks, Builder, RustTarget};
+use bindgen::{callbacks::ParseCallbacks, Builder, Formatter, RustTarget};
 use quote::ToTokens;
 use std::{
     env, fs,
@@ -100,12 +100,11 @@ fn link_native_libraries(sdir: &Path, target: &str) {
         }
     }
 
-    if let Ok(icu_lib_path) = env::var("ICU_LIB_DIR") {
-        println!("cargo:rustc-link-search=native={icu_lib_path}");
-        println!("cargo:rerun-if-env-changed=ICU_LIB_DIR");
-    }
-
     if target_os == "linux" {
+        println!("cargo:rerun-if-env-changed=ICU_LIB_DIR");
+        if let Ok(icu_lib_path) = env::var("ICU_LIB_DIR") {
+            println!("cargo:rustc-link-search=native={icu_lib_path}");
+        }
         println!("cargo:rustc-link-lib=icuuc");
         println!("cargo:rustc-link-lib=icui18n");
         println!("cargo:rustc-link-lib=icudata");
@@ -183,7 +182,7 @@ fn download_source_code_via_git_if_needed() -> Result<PathBuf, Box<dyn std::erro
     use which::which;
 
     const URL: &str = "https://github.com/Dushistov/couchbase-lite-core";
-    const COMMIT_SHA1: &str = "790b368ab8d45ae779a6c9e4b08e99cbcd8aa3e6";
+    const COMMIT_SHA1: &str = "897b62e65d9ff3156d5cdb531e1ab1d9b82ac827";
 
     let git_path = which("git")?;
     let cur_dir = env::current_dir()?;
@@ -300,6 +299,9 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     let couchbase_includes = collect_includes.0.clone();
     let mut bindings: Builder = bindgen::builder()
         .header(c_file_path.to_str().unwrap())
+        // The generated bindings are parsed and rewritten below, so rustfmt
+        // adds no value and may be absent from the selected Rust toolchain.
+        .formatter(Formatter::None)
         .generate_comments(true)
         .generate_cstr(true)
         .prepend_enum_name(true)
@@ -671,6 +673,11 @@ fn cmake_build_src_dir(src_dir: &Path) -> Vec<PathBuf> {
             .define("CMAKE_MODULE_LINKER_FLAGS", ld_flags)
             .define("CMAKE_SHARED_LINKER_FLAGS", ld_flags);
     }
+    if getenv_unwrap("CARGO_CFG_TARGET_OS") == "linux" {
+        // The runtime shim only searches Debian's multiarch library directory.
+        // Explicitly disable it, including when reusing a CMake cache that had it enabled.
+        cmake_config.define("LITECORE_DYNAMIC_ICU", "OFF");
+    }
 
     let cmake_profile = cmake_config.get_profile().to_string();
     let dst = cmake_config.build().join("build");
@@ -740,73 +747,73 @@ fn cc_system_include_dirs() -> Result<(Vec<PathBuf>, Vec<PathBuf>), Box<dyn std:
         }
     }
 
-    for lang in &["c", "c++"] {
-        let cc_build = cc::Build::new();
+    // Bindgen parses the LiteCore headers as C on every platform. Adding C++
+    // search paths can shadow C headers with incompatible libc++ wrappers.
+    let cc_build = cc::Build::new();
 
-        let cc_process = cc_build
-            .get_compiler()
-            .to_command()
-            .env("LANG", "C")
-            .env("LC_MESSAGES", "C")
-            .args(["-v", "-x", lang, "-E", "-"])
-            .stderr(Stdio::piped())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::inherit())
-            .spawn()?;
+    let cc_process = cc_build
+        .get_compiler()
+        .to_command()
+        .env("LANG", "C")
+        .env("LC_MESSAGES", "C")
+        .args(["-v", "-x", "c", "-E", "-"])
+        .stderr(Stdio::piped())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::inherit())
+        .spawn()?;
 
-        cc_process
-            .stdin
-            .ok_or_else(|| "can not get stdin of cc".to_string())?
-            .write_all(b"\n")?;
+    cc_process
+        .stdin
+        .ok_or_else(|| "can not get stdin of cc".to_string())?
+        .write_all(b"\n")?;
 
-        let mut cc_output = String::new();
+    let mut cc_output = String::new();
 
-        cc_process
-            .stderr
-            .ok_or_else(|| "can not get stderr of cc".to_string())?
-            .read_to_string(&mut cc_output)?;
+    cc_process
+        .stderr
+        .ok_or_else(|| "can not get stderr of cc".to_string())?
+        .read_to_string(&mut cc_output)?;
 
-        const BEGIN_PAT: &str = "\n#include <...> search starts here:\n";
-        const END_PAT: &str = "\nEnd of search list.\n";
-        let start_includes = cc_output
-            .find(BEGIN_PAT)
-            .ok_or_else(|| format!("No '{BEGIN_PAT}' in output from cc"))?
-            + BEGIN_PAT.len();
-        let end_includes = cc_output[start_includes..]
-            .find(END_PAT)
-            .ok_or_else(|| format!("No '{END_PAT}' in output from cc"))?
-            + start_includes;
+    const BEGIN_PAT: &str = "\n#include <...> search starts here:\n";
+    const END_PAT: &str = "\nEnd of search list.\n";
+    let start_includes = cc_output
+        .find(BEGIN_PAT)
+        .ok_or_else(|| format!("No '{BEGIN_PAT}' in output from cc"))?
+        + BEGIN_PAT.len();
+    let end_includes = cc_output[start_includes..]
+        .find(END_PAT)
+        .ok_or_else(|| format!("No '{END_PAT}' in output from cc"))?
+        + start_includes;
 
-        const FRAMEWORK_PAT: &str = " (framework directory)";
+    const FRAMEWORK_PAT: &str = " (framework directory)";
 
-        extend_unique(
-            &mut include_dirs,
-            cc_output[start_includes..end_includes]
-                .split('\n')
-                .filter_map(|s| {
-                    if !s.ends_with(FRAMEWORK_PAT) {
-                        Some(PathBuf::from(s.trim().to_string()))
-                    } else {
-                        None
-                    }
-                }),
-        );
+    extend_unique(
+        &mut include_dirs,
+        cc_output[start_includes..end_includes]
+            .split('\n')
+            .filter_map(|s| {
+                if !s.ends_with(FRAMEWORK_PAT) {
+                    Some(PathBuf::from(s.trim().to_string()))
+                } else {
+                    None
+                }
+            }),
+    );
 
-        extend_unique(
-            &mut framework_dirs,
-            cc_output[start_includes..end_includes]
-                .split('\n')
-                .filter_map(|s| {
-                    if s.ends_with(FRAMEWORK_PAT) {
-                        let line = s.trim();
-                        let line = &line[..line.len() - FRAMEWORK_PAT.len()];
-                        Some(PathBuf::from(line.trim().to_string()))
-                    } else {
-                        None
-                    }
-                }),
-        );
-    }
+    extend_unique(
+        &mut framework_dirs,
+        cc_output[start_includes..end_includes]
+            .split('\n')
+            .filter_map(|s| {
+                if s.ends_with(FRAMEWORK_PAT) {
+                    let line = s.trim();
+                    let line = &line[..line.len() - FRAMEWORK_PAT.len()];
+                    Some(PathBuf::from(line.trim().to_string()))
+                } else {
+                    None
+                }
+            }),
+    );
 
     if cfg!(target_os = "macos") {
         // in case CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc
@@ -859,7 +866,7 @@ impl ParseCallbacks for CollectIncludes {
         // These bracketed values in LiteCore's C comments are plain text, not
         // Rust intra-doc links. Bindgen 0.73 emits them on constants too.
         let mut comment = comment.to_owned();
-        for value in ["string", "1", "2", "3", "4"] {
+        for value in ["string", "1", "2", "3", "4", "i", "j"] {
             comment = comment.replace(&format!("[{value}]"), &format!("\\[{value}\\]"));
         }
         Some(comment)

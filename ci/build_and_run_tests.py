@@ -188,11 +188,12 @@ def build_and_test_rust_part_for_ios(src_root: Path) -> None:
         "-DCMAKE_ASM_FLAGS=-fPIC --target=aarch64-apple-ios",
         "-DCMAKE_ASM_COMPILER=/usr/bin/clang",
         "-DCMAKE_BUILD_TYPE=Debug",
+        f"-DCMAKE_PROJECT_LiteCore_INCLUDE={src_root / 'couchbase-lite-core-sys/cmake/rust.cmake'}",
     ]
     print("configure build with cmake " + " ".join(cmake_conf_cmd))
     check_call(cmake_conf_cmd, cwd=cpp_build_dir)
     check_call(
-        ["cmake", "--build", ".", "--", "LiteCoreStatic", "FleeceStatic", "BLIPStatic"],
+        ["cmake", "--build", ".", "--target", "CouchbaseLiteRust"],
         cwd=cpp_build_dir,
     )
     os.environ["COUCHBASE_LITE_CORE_BUILD_DIR"] = str(cpp_build_dir)

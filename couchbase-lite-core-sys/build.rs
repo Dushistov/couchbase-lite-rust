@@ -1,4 +1,4 @@
-use bindgen::{callbacks::ParseCallbacks, Builder, RustTarget};
+use bindgen::{callbacks::ParseCallbacks, Builder, Formatter, RustTarget};
 use quote::ToTokens;
 use std::{
     env, fs,
@@ -299,6 +299,9 @@ fn run_bindgen_for_c_headers<P: AsRef<Path>>(
     let couchbase_includes = collect_includes.0.clone();
     let mut bindings: Builder = bindgen::builder()
         .header(c_file_path.to_str().unwrap())
+        // The generated bindings are parsed and rewritten below, so rustfmt
+        // adds no value and may be absent from the selected Rust toolchain.
+        .formatter(Formatter::None)
         .generate_comments(true)
         .generate_cstr(true)
         .prepend_enum_name(true)

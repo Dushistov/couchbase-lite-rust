@@ -863,7 +863,7 @@ impl ParseCallbacks for CollectIncludes {
         // These bracketed values in LiteCore's C comments are plain text, not
         // Rust intra-doc links. Bindgen 0.73 emits them on constants too.
         let mut comment = comment.to_owned();
-        for value in ["string", "1", "2", "3", "4"] {
+        for value in ["string", "1", "2", "3", "4", "i", "j"] {
             comment = comment.replace(&format!("[{value}]"), &format!("\\[{value}\\]"));
         }
         Some(comment)
